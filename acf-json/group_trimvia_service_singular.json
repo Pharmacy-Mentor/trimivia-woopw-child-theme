@@ -1,0 +1,307 @@
+{
+    "key": "group_trimvia_service_singular",
+    "title": "Service Page Content",
+    "fields": [
+        {
+            "key": "field_trimvia_service_tab_hero",
+            "label": "Hero",
+            "name": "",
+            "type": "tab",
+            "placement": "top"
+        },
+        {
+            "key": "field_trimvia_service_hero_visibility",
+            "label": "Hero Visibility",
+            "name": "service_hero_visibility",
+            "type": "true_false",
+            "default_value": 1,
+            "ui": 1,
+            "ui_on_text": "Show",
+            "ui_off_text": "Hide"
+        },
+        {
+            "key": "field_trimvia_service_hero_title",
+            "label": "Hero Title",
+            "name": "service_hero_title",
+            "type": "text",
+            "instructions": "Leave empty to use the post title."
+        },
+        {
+            "key": "field_trimvia_service_hero_description",
+            "label": "Hero Description",
+            "name": "service_hero_description",
+            "type": "textarea",
+            "new_lines": "br"
+        },
+        {
+            "key": "field_trimvia_service_breadcrumb_label",
+            "label": "Breadcrumb current label",
+            "name": "service_breadcrumb_label",
+            "type": "text",
+            "instructions": "Short label for the last segment of the hero breadcrumb (e.g. \"Weight Loss\"). Leave empty to use the post title."
+        },
+        {
+            "key": "field_trimvia_service_tab_features",
+            "label": "Features bar",
+            "name": "",
+            "type": "tab",
+            "placement": "top"
+        },
+        {
+            "key": "field_trimvia_service_features_visibility",
+            "label": "Features Bar Visibility",
+            "name": "service_features_visibility",
+            "type": "true_false",
+            "default_value": 1,
+            "ui": 1,
+            "ui_on_text": "Show",
+            "ui_off_text": "Hide"
+        },
+        {
+            "key": "field_trimvia_service_features_items",
+            "label": "Feature items",
+            "name": "service_features_items",
+            "type": "repeater",
+            "layout": "block",
+            "button_label": "Add feature",
+            "sub_fields": [
+                {
+                    "key": "field_trimvia_service_feature_icon",
+                    "label": "Icon",
+                    "name": "feature_icon",
+                    "type": "select",
+                    "choices": {
+                        "clock": "Clock",
+                        "truck": "Delivery truck",
+                        "shield": "Shield",
+                        "user": "User / support",
+                        "pulse": "Pulse / chart",
+                        "grid": "Grid"
+                    },
+                    "default_value": "clock",
+                    "return_format": "value",
+                    "allow_null": 0
+                },
+                {
+                    "key": "field_trimvia_service_feature_text",
+                    "label": "Text",
+                    "name": "feature_text",
+                    "type": "text"
+                }
+            ]
+        },
+        {
+            "key": "field_trimvia_service_tab_main",
+            "label": "Main column",
+            "name": "",
+            "type": "tab",
+            "placement": "top"
+        },
+        {
+            "key": "field_trimvia_service_main_visibility",
+            "label": "Main Column Visibility",
+            "name": "service_main_visibility",
+            "type": "true_false",
+            "default_value": 1,
+            "ui": 1,
+            "ui_on_text": "Show",
+            "ui_off_text": "Hide"
+        },
+        {
+            "key": "field_trimvia_service_show_featured_image",
+            "label": "Show featured image",
+            "name": "service_show_featured_image",
+            "type": "true_false",
+            "default_value": 1,
+            "ui": 1,
+            "ui_on_text": "Show",
+            "ui_off_text": "Hide"
+        },
+        {
+            "key": "field_trimvia_service_tab_sidebar",
+            "label": "Sidebar",
+            "name": "",
+            "type": "tab",
+            "placement": "top"
+        },
+        {
+            "key": "field_trimvia_service_sidebar_cta_visibility",
+            "label": "CTA card visibility",
+            "name": "service_sidebar_cta_visibility",
+            "type": "true_false",
+            "default_value": 1,
+            "ui": 1,
+            "ui_on_text": "Show",
+            "ui_off_text": "Hide"
+        },
+        {
+            "key": "field_trimvia_service_sidebar_cta_title",
+            "label": "CTA title",
+            "name": "service_sidebar_cta_title",
+            "type": "text",
+            "default_value": "Ready to Get Started?"
+        },
+        {
+            "key": "field_trimvia_service_sidebar_cta_text",
+            "label": "CTA text",
+            "name": "service_sidebar_cta_text",
+            "type": "textarea",
+            "new_lines": "br",
+            "default_value": "Complete a free online consultation and a prescriber will review your suitability within hours."
+        },
+        {
+            "key": "field_trimvia_service_sidebar_cta_button_label",
+            "label": "CTA button label",
+            "name": "service_sidebar_cta_button_label",
+            "type": "text",
+            "default_value": "Start Consultation"
+        },
+        {
+            "key": "field_trimvia_service_sidebar_cta_button_url",
+            "label": "CTA button URL",
+            "name": "service_sidebar_cta_button_url",
+            "type": "url",
+            "instructions": "Leave empty to use the header primary button URL from the Customizer."
+        },
+        {
+            "key": "field_trimvia_service_sidebar_highlights_visibility",
+            "label": "Highlights card visibility",
+            "name": "service_sidebar_highlights_visibility",
+            "type": "true_false",
+            "default_value": 1,
+            "ui": 1,
+            "ui_on_text": "Show",
+            "ui_off_text": "Hide"
+        },
+        {
+            "key": "field_trimvia_service_sidebar_highlights_title",
+            "label": "Highlights card title",
+            "name": "service_sidebar_highlights_title",
+            "type": "text",
+            "default_value": "Treatments We Offer"
+        },
+        {
+            "key": "field_trimvia_service_sidebar_highlights_items",
+            "label": "Highlight items",
+            "name": "service_sidebar_highlights_items",
+            "type": "repeater",
+            "layout": "block",
+            "button_label": "Add item",
+            "sub_fields": [
+                {
+                    "key": "field_trimvia_service_highlight_title",
+                    "label": "Title",
+                    "name": "highlight_title",
+                    "type": "text"
+                },
+                {
+                    "key": "field_trimvia_service_highlight_subtitle",
+                    "label": "Subtitle",
+                    "name": "highlight_subtitle",
+                    "type": "text"
+                },
+                {
+                    "key": "field_trimvia_service_highlight_url",
+                    "label": "Link URL",
+                    "name": "highlight_url",
+                    "type": "url"
+                },
+                {
+                    "key": "field_trimvia_service_highlight_icon",
+                    "label": "Icon",
+                    "name": "highlight_icon",
+                    "type": "select",
+                    "choices": {
+                        "clock": "Clock",
+                        "truck": "Delivery truck",
+                        "shield": "Shield",
+                        "user": "User / support",
+                        "pulse": "Pulse / chart",
+                        "grid": "Grid"
+                    },
+                    "default_value": "shield",
+                    "return_format": "value",
+                    "allow_null": 0
+                }
+            ]
+        },
+        {
+            "key": "field_trimvia_service_sidebar_help_visibility",
+            "label": "Help card visibility",
+            "name": "service_sidebar_help_visibility",
+            "type": "true_false",
+            "default_value": 1,
+            "ui": 1,
+            "ui_on_text": "Show",
+            "ui_off_text": "Hide"
+        },
+        {
+            "key": "field_trimvia_service_sidebar_help_title",
+            "label": "Help card title",
+            "name": "service_sidebar_help_title",
+            "type": "text",
+            "default_value": "Need Help?"
+        },
+        {
+            "key": "field_trimvia_service_sidebar_help_text",
+            "label": "Help card text",
+            "name": "service_sidebar_help_text",
+            "type": "textarea",
+            "new_lines": "br",
+            "default_value": "Email info@trimvia.co.uk or call us during opening hours."
+        },
+        {
+            "key": "field_trimvia_service_tab_treatment_products",
+            "label": "Treatments (products)",
+            "name": "",
+            "type": "tab",
+            "placement": "top"
+        },
+        {
+            "key": "field_trimvia_service_treatment_products",
+            "label": "Treatment products",
+            "name": "service_treatment_products",
+            "type": "relationship",
+            "instructions": "Choose WooCommerce products for this service. In the picker, open **Taxonomy** and filter by **condition** (your treatment categories). When populated, this list replaces the manual \"Highlight items\" in the sidebar \"Treatments we offer\" card.",
+            "post_type": [
+                "product"
+            ],
+            "post_status": [
+                "publish"
+            ],
+            "taxonomy": "",
+            "filters": [
+                "search",
+                "post_type",
+                "taxonomy"
+            ],
+            "return_format": "id",
+            "min": "",
+            "max": "",
+            "elements": [
+                "featured_image"
+            ],
+            "bidirectional": 0,
+            "bidirectional_target": []
+        }
+    ],
+    "location": [
+        [
+            {
+                "param": "post_type",
+                "operator": "==",
+                "value": "service"
+            }
+        ]
+    ],
+    "menu_order": 2,
+    "position": "acf_after_title",
+    "style": "default",
+    "label_placement": "top",
+    "instruction_placement": "label",
+    "hide_on_screen": "",
+    "active": true,
+    "description": "Trimvia service singular layout (hero, features bar, content + sidebar) with section visibility toggles.",
+    "show_in_rest": 0,
+    "modified": 1770400000
+}

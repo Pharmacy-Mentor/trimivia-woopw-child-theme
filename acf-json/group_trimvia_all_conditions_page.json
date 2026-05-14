@@ -1,0 +1,117 @@
+{
+    "key": "group_trimvia_all_conditions_page",
+    "title": "All Conditions Page",
+    "fields": [
+        {
+            "key": "field_trimvia_all_cond_tab_hero",
+            "label": "Hero",
+            "name": "",
+            "type": "tab",
+            "placement": "top"
+        },
+        {
+            "key": "field_trimvia_all_cond_hero_title_before",
+            "label": "Heading — first line (before accent)",
+            "name": "all_cond_hero_title_before",
+            "type": "text",
+            "default_value": "Our",
+            "instructions": "e.g. \"Our\" for \"Our Conditions\""
+        },
+        {
+            "key": "field_trimvia_all_cond_hero_title_accent",
+            "label": "Heading — accent word (italic)",
+            "name": "all_cond_hero_title_accent",
+            "type": "text",
+            "default_value": "Conditions",
+            "instructions": "Shown in italic after the first line."
+        },
+        {
+            "key": "field_trimvia_all_cond_hero_description",
+            "label": "Intro paragraph",
+            "name": "all_cond_hero_description",
+            "type": "textarea",
+            "new_lines": "br",
+            "instructions": "Short supporting text under the heading."
+        },
+        {
+            "key": "field_trimvia_all_cond_search_placeholder",
+            "label": "Search placeholder",
+            "name": "all_cond_search_placeholder",
+            "type": "text",
+            "default_value": "Search conditions..."
+        },
+        {
+            "key": "field_trimvia_all_cond_show_count_badge",
+            "label": "Show dynamic conditions count badge",
+            "name": "all_cond_show_count_badge",
+            "type": "true_false",
+            "default_value": 1,
+            "ui": 1,
+            "ui_on_text": "Yes",
+            "ui_off_text": "No",
+            "instructions": "Adds a pill like \"5 conditions\" (counts terms that have published products)."
+        },
+        {
+            "key": "field_trimvia_all_cond_count_badge_suffix",
+            "label": "Count badge wording",
+            "name": "all_cond_count_badge_suffix",
+            "type": "text",
+            "default_value": "conditions with treatments",
+            "instructions": "The part after the number, lowercase phrase works best."
+        },
+        {
+            "key": "field_trimvia_all_cond_hero_badges",
+            "label": "Additional hero badges",
+            "name": "all_cond_hero_badges",
+            "type": "repeater",
+            "layout": "block",
+            "button_label": "Add badge",
+            "sub_fields": [
+                {
+                    "key": "field_trimvia_all_cond_badge_html",
+                    "label": "Badge text (HTML allowed)",
+                    "name": "text",
+                    "type": "textarea",
+                    "new_lines": "",
+                    "instructions": "Use &lt;strong&gt; for bold fragments, e.g. Next-day &lt;strong&gt;delivery&lt;/strong&gt;"
+                }
+            ]
+        },
+        {
+            "key": "field_trimvia_all_cond_tab_banner",
+            "label": "Banner form (optional)",
+            "name": "",
+            "type": "tab",
+            "placement": "top"
+        },
+        {
+            "key": "field_trimvia_all_cond_show_banner_form",
+            "label": "Show legacy BannerForm shortcode under hero",
+            "name": "all_cond_show_banner_form",
+            "type": "true_false",
+            "default_value": 0,
+            "ui": 1,
+            "ui_on_text": "Show",
+            "ui_off_text": "Hide"
+        }
+    ],
+    "location": [
+        [
+            {
+                "param": "page_template",
+                "operator": "==",
+                "value": "page-templates/all-conditions.php"
+            }
+        ]
+    ],
+    "menu_order": 0,
+    "position": "acf_after_title",
+    "style": "default",
+    "label_placement": "top",
+    "instruction_placement": "label",
+    "hide_on_screen": "",
+    "active": true,
+    "description": "Hero and badges for the All Conditions landing page.",
+    "show_in_rest": 0,
+    "modified": 1768176000
+}

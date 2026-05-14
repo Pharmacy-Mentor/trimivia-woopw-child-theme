@@ -1,0 +1,62 @@
+{
+    "key": "group_trimvia_legal_page",
+    "title": "Legal / Policy Page",
+    "fields": [
+        {
+            "key": "field_trimvia_legal_tab_hero",
+            "label": "Header (Hero)",
+            "name": "",
+            "type": "tab",
+            "placement": "top"
+        },
+        {
+            "key": "field_trimvia_legal_header_title",
+            "label": "Header Title",
+            "name": "header_title",
+            "type": "text",
+            "instructions": "Displayed as the large heading and in the breadcrumb. Leave empty to use the page title.",
+            "placeholder": "Privacy Policy"
+        },
+        {
+            "key": "field_trimvia_legal_header_description",
+            "label": "Header Description",
+            "name": "header_description",
+            "type": "textarea",
+            "new_lines": "br",
+            "rows": 3
+        },
+        {
+            "key": "field_trimvia_legal_header_grad_start",
+            "label": "Header gradient · start (left)",
+            "name": "header_background_gradient_start",
+            "type": "color_picker",
+            "instructions": "Optional. Darker side of the banner. Leave both colors empty for the theme default gradient."
+        },
+        {
+            "key": "field_trimvia_legal_header_grad_end",
+            "label": "Header gradient · end (right)",
+            "name": "header_background_gradient_end",
+            "type": "color_picker",
+            "instructions": "Optional. Lighter/brighter side of the banner."
+        }
+    ],
+    "location": [
+        [
+            {
+                "param": "page_template",
+                "operator": "==",
+                "value": "page-templates/legal-policy.php"
+            }
+        ]
+    ],
+    "menu_order": 0,
+    "position": "acf_after_title",
+    "style": "default",
+    "label_placement": "top",
+    "instruction_placement": "label",
+    "hide_on_screen": "",
+    "active": true,
+    "description": "Legal and policy pages: configurable hero banner and gradient.",
+    "show_in_rest": 0,
+    "modified": 1770393600
+}

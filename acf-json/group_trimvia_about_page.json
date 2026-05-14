@@ -1,0 +1,314 @@
+{
+    "key": "group_trimvia_about_page",
+    "title": "About Page Content",
+    "fields": [
+        {
+            "key": "field_trimvia_about_tab_hero",
+            "label": "Hero",
+            "name": "",
+            "type": "tab",
+            "placement": "top"
+        },
+        {
+            "key": "field_trimvia_about_hero_title",
+            "label": "Hero Title",
+            "name": "about_hero_title",
+            "type": "text"
+        },
+        {
+            "key": "field_trimvia_about_hero_description",
+            "label": "Hero Description",
+            "name": "about_hero_description",
+            "type": "textarea",
+            "new_lines": "br"
+        },
+        {
+            "key": "field_trimvia_about_tab_stats",
+            "label": "Stats Bar",
+            "name": "",
+            "type": "tab",
+            "placement": "top"
+        },
+        {
+            "key": "field_trimvia_about_stats_visibility",
+            "label": "Stats Bar Visibility",
+            "name": "about_stats_visibility",
+            "type": "true_false",
+            "default_value": 1,
+            "ui": 1,
+            "ui_on_text": "Show",
+            "ui_off_text": "Hide"
+        },
+        {
+            "key": "field_trimvia_about_stats_items",
+            "label": "Stats Items",
+            "name": "about_stats_items",
+            "type": "repeater",
+            "layout": "table",
+            "button_label": "Add Stat",
+            "sub_fields": [
+                {
+                    "key": "field_trimvia_about_stat_value",
+                    "label": "Value",
+                    "name": "value",
+                    "type": "text"
+                },
+                {
+                    "key": "field_trimvia_about_stat_label",
+                    "label": "Label",
+                    "name": "label",
+                    "type": "text"
+                }
+            ]
+        },
+        {
+            "key": "field_trimvia_about_tab_mission",
+            "label": "Mission",
+            "name": "",
+            "type": "tab",
+            "placement": "top"
+        },
+        {
+            "key": "field_trimvia_about_mission_visibility",
+            "label": "Mission Visibility",
+            "name": "about_mission_visibility",
+            "type": "true_false",
+            "default_value": 1,
+            "ui": 1,
+            "ui_on_text": "Show",
+            "ui_off_text": "Hide"
+        },
+        {
+            "key": "field_trimvia_about_mission_tag",
+            "label": "Mission Tag",
+            "name": "about_mission_tag",
+            "type": "text"
+        },
+        {
+            "key": "field_trimvia_about_mission_title",
+            "label": "Mission Title",
+            "name": "about_mission_title",
+            "type": "text"
+        },
+        {
+            "key": "field_trimvia_about_mission_description_one",
+            "label": "Mission Description (Paragraph 1)",
+            "name": "about_mission_description_one",
+            "type": "textarea",
+            "new_lines": "br"
+        },
+        {
+            "key": "field_trimvia_about_mission_description_two",
+            "label": "Mission Description (Paragraph 2)",
+            "name": "about_mission_description_two",
+            "type": "textarea",
+            "new_lines": "br"
+        },
+        {
+            "key": "field_trimvia_about_mission_image",
+            "label": "Mission Image",
+            "name": "about_mission_image",
+            "type": "image",
+            "return_format": "id",
+            "preview_size": "medium",
+            "library": "all"
+        },
+        {
+            "key": "field_trimvia_about_tab_values",
+            "label": "Values",
+            "name": "",
+            "type": "tab",
+            "placement": "top"
+        },
+        {
+            "key": "field_trimvia_about_values_visibility",
+            "label": "Values Visibility",
+            "name": "about_values_visibility",
+            "type": "true_false",
+            "default_value": 1,
+            "ui": 1,
+            "ui_on_text": "Show",
+            "ui_off_text": "Hide"
+        },
+        {
+            "key": "field_trimvia_about_values_tag",
+            "label": "Values Tag",
+            "name": "about_values_tag",
+            "type": "text"
+        },
+        {
+            "key": "field_trimvia_about_values_title",
+            "label": "Values Title",
+            "name": "about_values_title",
+            "type": "text"
+        },
+        {
+            "key": "field_trimvia_about_values_items",
+            "label": "Values Items",
+            "name": "about_values_items",
+            "type": "repeater",
+            "layout": "block",
+            "button_label": "Add Value",
+            "sub_fields": [
+                {
+                    "key": "field_trimvia_about_value_title",
+                    "label": "Title",
+                    "name": "title",
+                    "type": "text"
+                },
+                {
+                    "key": "field_trimvia_about_value_description",
+                    "label": "Description",
+                    "name": "description",
+                    "type": "textarea",
+                    "new_lines": "br"
+                },
+                {
+                    "key": "field_trimvia_about_value_icon_class",
+                    "label": "Icon Class (Font Awesome)",
+                    "name": "icon_class",
+                    "type": "text",
+                    "instructions": "Example: fa-solid fa-shield-halved"
+                }
+            ]
+        },
+        {
+            "key": "field_trimvia_about_tab_team",
+            "label": "Team",
+            "name": "",
+            "type": "tab",
+            "placement": "top"
+        },
+        {
+            "key": "field_trimvia_about_team_visibility",
+            "label": "Team Visibility",
+            "name": "about_team_visibility",
+            "type": "true_false",
+            "default_value": 1,
+            "ui": 1,
+            "ui_on_text": "Show",
+            "ui_off_text": "Hide"
+        },
+        {
+            "key": "field_trimvia_about_team_tag",
+            "label": "Team Tag",
+            "name": "about_team_tag",
+            "type": "text"
+        },
+        {
+            "key": "field_trimvia_about_team_title",
+            "label": "Team Title",
+            "name": "about_team_title",
+            "type": "text",
+            "instructions": "Supports simple HTML line breaks, e.g. Led by Experts in<br>Weight Management"
+        },
+        {
+            "key": "field_trimvia_about_team_description",
+            "label": "Team Description",
+            "name": "about_team_description",
+            "type": "textarea",
+            "new_lines": "br"
+        },
+        {
+            "key": "field_trimvia_about_selected_team_members",
+            "label": "Select Team Members",
+            "name": "about_selected_team_members",
+            "type": "post_object",
+            "instructions": "Select existing Team Member posts.",
+            "post_type": [
+                "team_member"
+            ],
+            "post_status": [
+                "publish"
+            ],
+            "return_format": "id",
+            "multiple": 1,
+            "ui": 1
+        },
+        {
+            "key": "field_trimvia_about_tab_regulatory",
+            "label": "Regulatory",
+            "name": "",
+            "type": "tab",
+            "placement": "top"
+        },
+        {
+            "key": "field_trimvia_about_regulatory_visibility",
+            "label": "Regulatory Visibility",
+            "name": "about_regulatory_visibility",
+            "type": "true_false",
+            "default_value": 1,
+            "ui": 1,
+            "ui_on_text": "Show",
+            "ui_off_text": "Hide"
+        },
+        {
+            "key": "field_trimvia_about_regulatory_tag",
+            "label": "Regulatory Tag",
+            "name": "about_regulatory_tag",
+            "type": "text"
+        },
+        {
+            "key": "field_trimvia_about_regulatory_title",
+            "label": "Regulatory Title",
+            "name": "about_regulatory_title",
+            "type": "text"
+        },
+        {
+            "key": "field_trimvia_about_regulatory_description",
+            "label": "Regulatory Description",
+            "name": "about_regulatory_description",
+            "type": "textarea",
+            "new_lines": "br"
+        },
+        {
+            "key": "field_trimvia_about_regulatory_items",
+            "label": "Regulatory Items",
+            "name": "about_regulatory_items",
+            "type": "repeater",
+            "layout": "block",
+            "button_label": "Add Regulatory Item",
+            "sub_fields": [
+                {
+                    "key": "field_trimvia_about_regulatory_item_title",
+                    "label": "Title",
+                    "name": "title",
+                    "type": "text"
+                },
+                {
+                    "key": "field_trimvia_about_regulatory_item_description",
+                    "label": "Description",
+                    "name": "description",
+                    "type": "textarea",
+                    "new_lines": "br"
+                },
+                {
+                    "key": "field_trimvia_about_regulatory_item_icon_class",
+                    "label": "Icon Class (Font Awesome)",
+                    "name": "icon_class",
+                    "type": "text",
+                    "instructions": "Example: fa-solid fa-shield-halved"
+                }
+            ]
+        }
+    ],
+    "location": [
+        [
+            {
+                "param": "page_template",
+                "operator": "==",
+                "value": "page-templates/about.php"
+            }
+        ]
+    ],
+    "menu_order": 0,
+    "position": "acf_after_title",
+    "style": "default",
+    "label_placement": "top",
+    "instruction_placement": "label",
+    "hide_on_screen": "",
+    "active": true,
+    "description": "Section-wise About page fields with visibility toggles.",
+    "show_in_rest": 0,
+    "modified": 1770000001
+}

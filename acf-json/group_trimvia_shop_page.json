@@ -1,0 +1,195 @@
+{
+    "key": "group_trimvia_shop_page",
+    "title": "Shop Page Content",
+    "fields": [
+        {
+            "key": "field_trimvia_shop_tab_hero",
+            "label": "Hero",
+            "name": "",
+            "type": "tab",
+            "placement": "top"
+        },
+        {
+            "key": "field_trimvia_shop_hero_title",
+            "label": "Hero Title",
+            "name": "shop_hero_title",
+            "type": "text"
+        },
+        {
+            "key": "field_trimvia_shop_hero_description",
+            "label": "Hero Description",
+            "name": "shop_hero_description",
+            "type": "textarea",
+            "new_lines": "br"
+        },
+        {
+            "key": "field_trimvia_shop_hero_breadcrumb_current",
+            "label": "Hero Breadcrumb (current page)",
+            "name": "shop_hero_breadcrumb_current",
+            "type": "text",
+            "instructions": "Last segment after Home, e.g. Start Assessment. The main headline below uses Hero Title.",
+            "default_value": "Start Assessment"
+        },
+        {
+            "key": "field_trimvia_shop_tab_product_grid",
+            "label": "Product Grid",
+            "name": "",
+            "type": "tab",
+            "placement": "top"
+        },
+        {
+            "key": "field_trimvia_shop_products_heading",
+            "label": "Products Section Title",
+            "name": "shop_products_heading",
+            "type": "text"
+        },
+        {
+            "key": "field_trimvia_shop_tab_trust_bar",
+            "label": "Trust Bar",
+            "name": "",
+            "type": "tab",
+            "placement": "top"
+        },
+        {
+            "key": "field_trimvia_shop_trust_visibility",
+            "label": "Trust Bar Visibility",
+            "name": "shop_trust_visibility",
+            "type": "true_false",
+            "default_value": 1,
+            "ui": 1,
+            "ui_on_text": "Show",
+            "ui_off_text": "Hide"
+        },
+        {
+            "key": "field_trimvia_shop_trust_items",
+            "label": "Trust Bar Items",
+            "name": "shop_trust_items",
+            "type": "repeater",
+            "layout": "block",
+            "button_label": "Add Trust Item",
+            "min": 1,
+            "max": 6,
+            "sub_fields": [
+                {
+                    "key": "field_trimvia_shop_trust_icon_class",
+                    "label": "Icon Class (Font Awesome)",
+                    "name": "icon_class",
+                    "type": "text",
+                    "instructions": "Example: fa-solid fa-shield-halved"
+                },
+                {
+                    "key": "field_trimvia_shop_trust_title",
+                    "label": "Title",
+                    "name": "title",
+                    "type": "text"
+                },
+                {
+                    "key": "field_trimvia_shop_trust_subtitle",
+                    "label": "Subtitle",
+                    "name": "subtitle",
+                    "type": "text"
+                }
+            ]
+        },
+        {
+            "key": "field_trimvia_shop_tab_after_products",
+            "label": "After Products Details",
+            "name": "",
+            "type": "tab",
+            "placement": "top"
+        },
+        {
+            "key": "field_trimvia_shop_after_products_visibility",
+            "label": "After Products Section Visibility",
+            "name": "shop_after_products_visibility",
+            "type": "true_false",
+            "default_value": 1,
+            "ui": 1,
+            "ui_on_text": "Show",
+            "ui_off_text": "Hide"
+        },
+        {
+            "key": "field_trimvia_shop_after_products_title",
+            "label": "After Products Title",
+            "name": "shop_after_products_title",
+            "type": "text"
+        },
+        {
+            "key": "field_trimvia_shop_after_products_content",
+            "label": "After Products Content",
+            "name": "shop_after_products_content",
+            "type": "wysiwyg",
+            "tabs": "all",
+            "toolbar": "full",
+            "media_upload": 1
+        },
+        {
+            "key": "field_trimvia_shop_tab_cta",
+            "label": "Bottom CTA",
+            "name": "",
+            "type": "tab",
+            "placement": "top"
+        },
+        {
+            "key": "field_trimvia_shop_cta_visibility",
+            "label": "Bottom CTA Visibility",
+            "name": "shop_cta_visibility",
+            "type": "true_false",
+            "default_value": 1,
+            "ui": 1,
+            "ui_on_text": "Show",
+            "ui_off_text": "Hide"
+        },
+        {
+            "key": "field_trimvia_shop_cta_title",
+            "label": "CTA Title",
+            "name": "shop_cta_title",
+            "type": "text"
+        },
+        {
+            "key": "field_trimvia_shop_cta_description",
+            "label": "CTA Description",
+            "name": "shop_cta_description",
+            "type": "textarea",
+            "new_lines": "br"
+        },
+        {
+            "key": "field_trimvia_shop_cta_button_label",
+            "label": "CTA Button Label",
+            "name": "shop_cta_button_label",
+            "type": "text"
+        },
+        {
+            "key": "field_trimvia_shop_cta_button_url",
+            "label": "CTA Button URL",
+            "name": "shop_cta_button_url",
+            "type": "url"
+        }
+    ],
+    "location": [
+        [
+            {
+                "param": "page_type",
+                "operator": "==",
+                "value": "shop_page"
+            }
+        ],
+        [
+            {
+                "param": "page_template",
+                "operator": "==",
+                "value": "page-shop.php"
+            }
+        ]
+    ],
+    "menu_order": 0,
+    "position": "acf_after_title",
+    "style": "default",
+    "label_placement": "top",
+    "instruction_placement": "label",
+    "hide_on_screen": "",
+    "active": true,
+    "description": "Shown only on the WooCommerce Shop page or on pages using the Shop (Trimvia) template — not on every Page.",
+    "show_in_rest": 0,
+    "modified": 1747238400
+}

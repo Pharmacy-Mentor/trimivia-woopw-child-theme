@@ -1,0 +1,182 @@
+{
+    "key": "group_trimvia_condition_term_hero",
+    "title": "Condition — treatments page",
+    "fields": [
+        {
+            "key": "field_trimvia_cond_hero_tab",
+            "label": "Hero",
+            "name": "",
+            "type": "tab",
+            "placement": "top"
+        },
+        {
+            "key": "field_trimvia_cond_hero_visibility",
+            "label": "Hero visibility",
+            "name": "cond_hero_visibility",
+            "type": "true_false",
+            "default_value": 1,
+            "ui": 1,
+            "ui_on_text": "Show",
+            "ui_off_text": "Hide",
+            "instructions": "Same pattern as Service pages. Hide the full hero (title, intro, search, badges)."
+        },
+        {
+            "key": "field_trimvia_cond_hero_title_prefix",
+            "label": "Heading — prefix (before condition name)",
+            "name": "cond_hero_title_prefix",
+            "type": "text",
+            "default_value": "Our",
+            "instructions": "e.g. \"Our\" → \"Our {Condition name} Treatments\""
+        },
+        {
+            "key": "field_trimvia_cond_hero_title_suffix",
+            "label": "Heading — accent word (italic, after condition name)",
+            "name": "cond_hero_title_suffix",
+            "type": "text",
+            "default_value": "Treatments",
+            "instructions": "Shown in italic after the condition name."
+        },
+        {
+            "key": "field_trimvia_cond_hero_intro",
+            "label": "Intro paragraph",
+            "name": "cond_hero_intro",
+            "type": "textarea",
+            "new_lines": "br",
+            "instructions": "Replaces the default taxonomy description in the hero when set."
+        },
+        {
+            "key": "field_trimvia_cond_hero_search_placeholder",
+            "label": "Search placeholder (filters products below)",
+            "name": "cond_hero_search_placeholder",
+            "type": "text",
+            "default_value": "Search treatments..."
+        },
+        {
+            "key": "field_trimvia_cond_hero_show_count",
+            "label": "Show dynamic treatment count badge",
+            "name": "cond_hero_show_count_badge",
+            "type": "true_false",
+            "default_value": 1,
+            "ui": 1,
+            "ui_on_text": "Yes",
+            "ui_off_text": "No"
+        },
+        {
+            "key": "field_trimvia_cond_hero_count_suffix",
+            "label": "Count badge suffix",
+            "name": "cond_hero_count_suffix",
+            "type": "text",
+            "default_value": "treatments available",
+            "instructions": "Appears after the number."
+        },
+        {
+            "key": "field_trimvia_cond_hero_badges",
+            "label": "Additional hero badges",
+            "name": "cond_hero_badges",
+            "type": "repeater",
+            "layout": "block",
+            "button_label": "Add badge",
+            "sub_fields": [
+                {
+                    "key": "field_trimvia_cond_badge_html",
+                    "label": "Badge text (HTML allowed)",
+                    "name": "text",
+                    "type": "textarea",
+                    "new_lines": "",
+                    "instructions": "e.g. UK prescriber reviewed, or &lt;strong&gt;Next-day&lt;/strong&gt; discreet delivery"
+                }
+            ]
+        },
+        {
+            "key": "field_trimvia_cond_tab_sections",
+            "label": "Page sections",
+            "name": "",
+            "type": "tab",
+            "placement": "top"
+        },
+        {
+            "key": "field_trimvia_cond_products_visibility",
+            "label": "Treatments (products) section",
+            "name": "cond_products_section_visibility",
+            "type": "true_false",
+            "default_value": 1,
+            "ui": 1,
+            "ui_on_text": "Show",
+            "ui_off_text": "Hide"
+        },
+        {
+            "key": "field_trimvia_cond_products_show_intro_header",
+            "label": "Show title row above product grid",
+            "name": "cond_products_show_intro_header",
+            "type": "true_false",
+            "default_value": 0,
+            "ui": 1,
+            "ui_on_text": "Show",
+            "ui_off_text": "Hide",
+            "instructions": "Optional kicker, heading and blurb between the hero and cards. Turn off for grid-only (hero + products)."
+        },
+        {
+            "key": "field_trimvia_cond_products_kicker",
+            "label": "Products block — kicker (small line above heading)",
+            "name": "cond_products_kicker",
+            "type": "text",
+            "default_value": "Treatments",
+            "instructions": "e.g. \"Treatments\". Leave empty to use the default label."
+        },
+        {
+            "key": "field_trimvia_cond_products_heading",
+            "label": "Products block — main heading",
+            "name": "cond_products_heading",
+            "type": "text",
+            "default_value": "Choose your treatment",
+            "instructions": "Large centered title above the product grid."
+        },
+        {
+            "key": "field_trimvia_cond_products_description",
+            "label": "Products block — description",
+            "name": "cond_products_description",
+            "type": "textarea",
+            "new_lines": "br",
+            "instructions": "Optional paragraph under the heading. If empty, falls back to the taxonomy \"short description\" field when set."
+        },
+        {
+            "key": "field_trimvia_cond_about_visibility",
+            "label": "About this condition section",
+            "name": "cond_about_section_visibility",
+            "type": "true_false",
+            "default_value": 1,
+            "ui": 1,
+            "ui_on_text": "Show",
+            "ui_off_text": "Hide"
+        },
+        {
+            "key": "field_trimvia_cond_faqs_visibility",
+            "label": "FAQs section",
+            "name": "cond_faqs_section_visibility",
+            "type": "true_false",
+            "default_value": 1,
+            "ui": 1,
+            "ui_on_text": "Show",
+            "ui_off_text": "Hide"
+        }
+    ],
+    "location": [
+        [
+            {
+                "param": "taxonomy",
+                "operator": "==",
+                "value": "condition"
+            }
+        ]
+    ],
+    "menu_order": 1,
+    "position": "acf_after_title",
+    "style": "default",
+    "label_placement": "top",
+    "instruction_placement": "label",
+    "hide_on_screen": "",
+    "active": true,
+    "description": "Treatments layout for each condition: taxonomy archive (/condition/slug/) and Page Template Treatments (?condition-slug=). Section visibility matches Service pages.",
+    "show_in_rest": 0,
+    "modified": 1770850000
+}

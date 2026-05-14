@@ -1,0 +1,135 @@
+{
+    "key": "group_trimvia_services_archive",
+    "title": "Services archive (Trimvia)",
+    "fields": [
+        {
+            "key": "field_trimvia_svc_arch_tab_hero",
+            "label": "Header / Hero",
+            "name": "",
+            "type": "tab",
+            "placement": "top"
+        },
+        {
+            "key": "field_trimvia_svc_arch_hero_visibility",
+            "label": "Show hero",
+            "name": "svc_archive_hero_visibility",
+            "type": "true_false",
+            "default_value": 1,
+            "ui": 1,
+            "ui_on_text": "Show",
+            "ui_off_text": "Hide"
+        },
+        {
+            "key": "field_trimvia_svc_arch_breadcrumb_label",
+            "label": "Breadcrumb label (current page)",
+            "name": "svc_archive_breadcrumb_label",
+            "type": "text",
+            "default_value": "Services",
+            "instructions": "Shown after Home in the hero breadcrumb."
+        },
+        {
+            "key": "field_trimvia_svc_arch_hero_title",
+            "label": "Hero title",
+            "name": "svc_archive_hero_title",
+            "type": "text",
+            "default_value": "Our Services"
+        },
+        {
+            "key": "field_trimvia_svc_arch_hero_intro",
+            "label": "Hero intro",
+            "name": "svc_archive_hero_intro",
+            "type": "textarea",
+            "new_lines": "br",
+            "rows": 4
+        },
+        {
+            "key": "field_trimvia_svc_arch_tab_grid",
+            "label": "Service grid",
+            "name": "",
+            "type": "tab",
+            "placement": "top"
+        },
+        {
+            "key": "field_trimvia_svc_arch_grid_visibility",
+            "label": "Show service cards grid",
+            "name": "svc_archive_grid_visibility",
+            "type": "true_false",
+            "default_value": 1,
+            "ui": 1,
+            "ui_on_text": "Show",
+            "ui_off_text": "Hide",
+            "instructions": "Lists all published Service posts."
+        },
+        {
+            "key": "field_trimvia_svc_arch_tab_cta",
+            "label": "Bottom CTA",
+            "name": "",
+            "type": "tab",
+            "placement": "top"
+        },
+        {
+            "key": "field_trimvia_svc_arch_cta_visibility",
+            "label": "Show bottom CTA band",
+            "name": "svc_archive_cta_visibility",
+            "type": "true_false",
+            "default_value": 1,
+            "ui": 1,
+            "ui_on_text": "Show",
+            "ui_off_text": "Hide"
+        },
+        {
+            "key": "field_trimvia_svc_arch_cta_title",
+            "label": "CTA title",
+            "name": "svc_archive_cta_title",
+            "type": "text",
+            "default_value": "Need help choosing a service?"
+        },
+        {
+            "key": "field_trimvia_svc_arch_cta_text",
+            "label": "CTA description",
+            "name": "svc_archive_cta_text",
+            "type": "textarea",
+            "new_lines": "br",
+            "rows": 3
+        },
+        {
+            "key": "field_trimvia_svc_arch_cta_button_label",
+            "label": "CTA button label",
+            "name": "svc_archive_cta_button_label",
+            "type": "text",
+            "default_value": "Start Free Consultation"
+        },
+        {
+            "key": "field_trimvia_svc_arch_cta_button_url",
+            "label": "CTA button URL",
+            "name": "svc_archive_cta_button_url",
+            "type": "url"
+        }
+    ],
+    "location": [
+        [
+            {
+                "param": "page_template",
+                "operator": "==",
+                "value": "page-templates/services-trimvia.php"
+            }
+        ],
+        [
+            {
+                "param": "options_page",
+                "operator": "==",
+                "value": "trimvia-services-archive-settings"
+            }
+        ]
+    ],
+    "menu_order": 0,
+    "position": "acf_after_title",
+    "style": "default",
+    "label_placement": "top",
+    "instruction_placement": "label",
+    "hide_on_screen": "",
+    "active": true,
+    "description": "Hero, grid visibility, and bottom CTA for the Services (Trimvia) page template and the Service post type archive.",
+    "show_in_rest": 0,
+    "modified": 1770920000
+}

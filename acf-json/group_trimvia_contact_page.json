@@ -1,0 +1,272 @@
+{
+    "key": "group_trimvia_contact_page",
+    "title": "Contact Page Content",
+    "fields": [
+        {
+            "key": "field_trimvia_contact_tab_hero",
+            "label": "Hero",
+            "name": "",
+            "type": "tab",
+            "placement": "top"
+        },
+        {
+            "key": "field_trimvia_contact_hero_title",
+            "label": "Hero Title",
+            "name": "contact_hero_title",
+            "type": "text"
+        },
+        {
+            "key": "field_trimvia_contact_hero_description",
+            "label": "Hero Description",
+            "name": "contact_hero_description",
+            "type": "textarea",
+            "new_lines": "br"
+        },
+        {
+            "key": "field_trimvia_contact_tab_form",
+            "label": "Contact Form",
+            "name": "",
+            "type": "tab",
+            "placement": "top"
+        },
+        {
+            "key": "field_trimvia_contact_form_visibility",
+            "label": "Contact Form Visibility",
+            "name": "contact_form_visibility",
+            "type": "true_false",
+            "default_value": 1,
+            "ui": 1,
+            "ui_on_text": "Show",
+            "ui_off_text": "Hide"
+        },
+        {
+            "key": "field_trimvia_contact_form_title",
+            "label": "Form Heading",
+            "name": "contact_form_title",
+            "type": "text"
+        },
+        {
+            "key": "field_trimvia_contact_form_description",
+            "label": "Form Description",
+            "name": "contact_form_description",
+            "type": "textarea",
+            "new_lines": "br"
+        },
+        {
+            "key": "field_trimvia_contact_detail_heading",
+            "label": "Contact Detail Heading (HTML)",
+            "name": "contact_detail_heading",
+            "type": "wysiwyg",
+            "tabs": "all",
+            "toolbar": "full",
+            "media_upload": 1
+        },
+        {
+            "key": "field_trimvia_contact_form_shortcode",
+            "label": "Contact Form 7 Shortcode",
+            "name": "contact_form_shortcode",
+            "type": "text",
+            "instructions": "Example: [contact-form-7 id=\"123\" title=\"Contact form 1\"]"
+        },
+        {
+            "key": "field_trimvia_contact_form_7_shortcode",
+            "label": "Contact Form 7 Shortcode (Legacy)",
+            "name": "contact_form_7_shortcode",
+            "type": "text"
+        },
+        {
+            "key": "field_trimvia_contact_tab_map",
+            "label": "Map",
+            "name": "",
+            "type": "tab",
+            "placement": "top"
+        },
+        {
+            "key": "field_trimvia_contact_map_visibility",
+            "label": "Map Visibility",
+            "name": "contact_map_visibility",
+            "type": "true_false",
+            "default_value": 1,
+            "ui": 1,
+            "ui_on_text": "Show",
+            "ui_off_text": "Hide"
+        },
+        {
+            "key": "field_trimvia_contact_map_embed",
+            "label": "Map Embed (iframe HTML)",
+            "name": "contact_map_embed",
+            "type": "textarea",
+            "new_lines": ""
+        },
+        {
+            "key": "field_trimvia_contact_map_legacy",
+            "label": "Map (Legacy)",
+            "name": "map",
+            "type": "wysiwyg",
+            "tabs": "all",
+            "toolbar": "full",
+            "media_upload": 1
+        },
+        {
+            "key": "field_trimvia_contact_map_title",
+            "label": "Map Card Title",
+            "name": "contact_map_title",
+            "type": "text"
+        },
+        {
+            "key": "field_trimvia_contact_map_address",
+            "label": "Map Card Address",
+            "name": "contact_map_address",
+            "type": "textarea",
+            "new_lines": "br"
+        },
+        {
+            "key": "field_trimvia_contact_tab_urgent",
+            "label": "Urgent Help",
+            "name": "",
+            "type": "tab",
+            "placement": "top"
+        },
+        {
+            "key": "field_trimvia_contact_urgent_help_visibility",
+            "label": "Urgent Help Visibility",
+            "name": "contact_urgent_help_visibility",
+            "type": "true_false",
+            "default_value": 1,
+            "ui": 1,
+            "ui_on_text": "Show",
+            "ui_off_text": "Hide"
+        },
+        {
+            "key": "field_trimvia_contact_urgent_title",
+            "label": "Urgent Card Title",
+            "name": "contact_urgent_title",
+            "type": "text"
+        },
+        {
+            "key": "field_trimvia_contact_urgent_description",
+            "label": "Urgent Card Description",
+            "name": "contact_urgent_description",
+            "type": "textarea",
+            "new_lines": "br"
+        },
+        {
+            "key": "field_trimvia_contact_urgent_phone",
+            "label": "Urgent Phone Number",
+            "name": "contact_urgent_phone",
+            "type": "text"
+        },
+        {
+            "key": "field_trimvia_contact_tab_details",
+            "label": "Contact Details",
+            "name": "",
+            "type": "tab",
+            "placement": "top"
+        },
+        {
+            "key": "field_trimvia_contact_details_visibility",
+            "label": "Contact Details Visibility",
+            "name": "contact_details_visibility",
+            "type": "true_false",
+            "default_value": 1,
+            "ui": 1,
+            "ui_on_text": "Show",
+            "ui_off_text": "Hide"
+        },
+        {
+            "key": "field_trimvia_contact_details_title",
+            "label": "Contact Details Title",
+            "name": "contact_details_title",
+            "type": "text"
+        },
+        {
+            "key": "field_trimvia_contact_email_label",
+            "label": "Email Label",
+            "name": "contact_email_label",
+            "type": "text"
+        },
+        {
+            "key": "field_trimvia_contact_email",
+            "label": "Contact Email",
+            "name": "contact_email",
+            "type": "email"
+        },
+        {
+            "key": "field_trimvia_contact_address_label",
+            "label": "Address Label",
+            "name": "contact_address_label",
+            "type": "text"
+        },
+        {
+            "key": "field_trimvia_contact_address",
+            "label": "Contact Address",
+            "name": "contact_address",
+            "type": "textarea",
+            "new_lines": "br"
+        },
+        {
+            "key": "field_trimvia_contact_tab_opening_hours",
+            "label": "Opening Hours",
+            "name": "",
+            "type": "tab",
+            "placement": "top"
+        },
+        {
+            "key": "field_trimvia_contact_opening_hours_visibility",
+            "label": "Opening Hours Visibility",
+            "name": "contact_opening_hours_visibility",
+            "type": "true_false",
+            "default_value": 1,
+            "ui": 1,
+            "ui_on_text": "Show",
+            "ui_off_text": "Hide"
+        },
+        {
+            "key": "field_trimvia_contact_opening_hours_title",
+            "label": "Opening Hours Title",
+            "name": "contact_opening_hours_title",
+            "type": "text"
+        },
+        {
+            "key": "field_trimvia_contact_opening_hours",
+            "label": "Opening Hours",
+            "name": "contact_opening_hours",
+            "type": "repeater",
+            "layout": "table",
+            "button_label": "Add Row",
+            "sub_fields": [
+                {
+                    "key": "field_trimvia_contact_opening_day",
+                    "label": "Day",
+                    "name": "day",
+                    "type": "text"
+                },
+                {
+                    "key": "field_trimvia_contact_opening_time",
+                    "label": "Time",
+                    "name": "time",
+                    "type": "text"
+                }
+            ]
+        }
+    ],
+    "location": [
+        [
+            {
+                "param": "page_template",
+                "operator": "==",
+                "value": "page-templates/contact.php"
+            }
+        ]
+    ],
+    "menu_order": 0,
+    "position": "acf_after_title",
+    "style": "default",
+    "label_placement": "top",
+    "instruction_placement": "label",
+    "hide_on_screen": "",
+    "active": true,
+    "description": "Contact page fields used by child theme template.",
+    "show_in_rest": 0,
+    "modified": 1770000000
+}
