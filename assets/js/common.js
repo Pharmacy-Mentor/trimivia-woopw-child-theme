@@ -1,4 +1,6 @@
 (() => {
+  document.documentElement.classList.add("js");
+
   const initHeaderScroll = () => {
     const header = document.getElementById("header");
     if (!header) return;
@@ -9,7 +11,11 @@
 
   const initRevealOnScroll = () => {
     const revealEls = document.querySelectorAll(".rv");
-    if (!revealEls.length || typeof IntersectionObserver === "undefined") return;
+    if (!revealEls.length) return;
+    if (typeof IntersectionObserver === "undefined") {
+      revealEls.forEach((el) => el.classList.add("vis"));
+      return;
+    }
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -140,11 +146,216 @@
     });
   };
 
+  const initSingleProductTabs = () => {
+    const tablist = document.querySelector(".trimvia-single-product-tabs");
+    if (!tablist) return;
+
+    const tabs = tablist.querySelectorAll(".single-product-tab");
+    const panels = document.querySelectorAll(".trimvia-single-product-panel");
+
+    const syncPanels = () => {
+      panels.forEach((panel) => {
+        const on = panel.classList.contains("is-active");
+        panel.toggleAttribute("hidden", !on);
+        panel.setAttribute("aria-hidden", on ? "false" : "true");
+      });
+    };
+
+    syncPanels();
+
+    tabs.forEach((tab) => {
+      tab.addEventListener("click", () => {
+        const panelId = tab.getAttribute("data-panel");
+        tabs.forEach((t) => {
+          const on = t === tab;
+          t.classList.toggle("is-active", on);
+          t.setAttribute("aria-selected", on ? "true" : "false");
+        });
+        panels.forEach((p) => {
+          const match = panelId && p.id === panelId;
+          p.classList.toggle("is-active", !!match);
+        });
+        syncPanels();
+      });
+    });
+  };
+
+  const initCartQuantityUpdates = () => {
+    const form = document.querySelector(".trimvia-cart-form");
+    if (!form) return;
+
+    const updateButton = form.querySelector('button[name="update_cart"]');
+    const quantityInputs = form.querySelectorAll(".cart-item-quantity .qty");
+    if (!updateButton || !quantityInputs.length) return;
+
+    let updateTimer;
+    const defaultButtonText = updateButton.textContent.trim() || "Update basket";
+
+    const formatMoney = (amount, priceBox) => {
+      const decimals = Number.parseInt(priceBox.dataset.priceDecimals || "2", 10);
+      const decimalSeparator = priceBox.dataset.decimalSeparator || ".";
+      const thousandSeparator = priceBox.dataset.thousandSeparator || ",";
+      const symbol = priceBox.dataset.currencySymbol || "";
+      const position = priceBox.dataset.currencyPosition || "left";
+      const fixed = Number.isFinite(amount) ? amount.toFixed(Number.isFinite(decimals) ? decimals : 2) : "0.00";
+      const parts = fixed.split(".");
+      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, thousandSeparator);
+      const value = parts.length > 1 ? `${parts[0]}${decimalSeparator}${parts[1]}` : parts[0];
+
+      if (position === "right") return `${value}${symbol}`;
+      if (position === "right_space") return `${value} ${symbol}`;
+      if (position === "left_space") return `${symbol} ${value}`;
+      return `${symbol}${value}`;
+    };
+
+    const previewLineSubtotal = (input) => {
+      const cartItem = input.closest(".cart-item");
+      const priceBox = cartItem ? cartItem.querySelector(".cart-item-price") : null;
+      const total = priceBox ? priceBox.querySelector(".cart-item-price-total") : null;
+      if (!priceBox || !total) return;
+
+      const unitPrice = Number.parseFloat(priceBox.dataset.unitPrice || "0");
+      const quantity = Number.parseFloat(input.value || "0");
+      if (!Number.isFinite(unitPrice) || !Number.isFinite(quantity)) return;
+
+      total.textContent = formatMoney(unitPrice * quantity, priceBox);
+      priceBox.classList.add("is-previewing");
+    };
+
+    const markCartDirty = () => {
+      updateButton.disabled = false;
+      updateButton.removeAttribute("aria-disabled");
+      updateButton.classList.add("is-active");
+      updateButton.textContent = defaultButtonText;
+    };
+
+    const submitUpdatedCart = () => {
+      markCartDirty();
+      updateButton.textContent = "Updating...";
+      updateButton.click();
+    };
+
+    quantityInputs.forEach((input) => {
+      input.addEventListener("input", () => {
+        window.clearTimeout(updateTimer);
+        previewLineSubtotal(input);
+        markCartDirty();
+        updateTimer = window.setTimeout(submitUpdatedCart, 800);
+      });
+
+      input.addEventListener("change", () => {
+        window.clearTimeout(updateTimer);
+        previewLineSubtotal(input);
+        submitUpdatedCart();
+      });
+    });
+  };
+
+  const initPractitionerOrderModalFix = () => {
+    const actionSelector = '.practitioner-order-action[data-action_type="view-prescriptions"]';
+    const modalId = "practitioner-order-modal";
+    const closeSelector = [
+      "#practitioner-order-modal .close",
+      "#practitioner-order-modal button.close",
+      "#practitioner-order-modal .close-me",
+      "#practitioner-order-modal .close-my-popup",
+      "#practitioner-order-modal [data-bs-dismiss='modal']",
+    ].join(", ");
+
+    const getModal = () => document.getElementById(modalId);
+
+    const syncBackdrops = () => {
+      const backdrops = Array.from(document.querySelectorAll(".modal-backdrop"));
+      backdrops.forEach((backdrop, index) => {
+        if (index < backdrops.length - 1) {
+          backdrop.remove();
+          return;
+        }
+        backdrop.style.zIndex = "1040";
+      });
+    };
+
+    const makeModalInteractive = () => {
+      const modal = getModal();
+      if (!modal) return;
+
+      modal.classList.add("show");
+      modal.style.display = "block";
+      modal.style.opacity = "1";
+      modal.style.pointerEvents = "auto";
+      modal.style.zIndex = "1062";
+      modal.setAttribute("aria-hidden", "false");
+      modal.setAttribute("aria-modal", "true");
+
+      const dialog = modal.querySelector(".modal-dialog");
+      if (dialog) {
+        dialog.style.pointerEvents = "auto";
+        dialog.style.zIndex = "1064";
+      }
+
+      const content = modal.querySelector(".modal-content, .popup-content-wrapper");
+      if (content) {
+        content.style.pointerEvents = "auto";
+        content.style.opacity = "1";
+        content.style.zIndex = "1065";
+      }
+
+      document.body.classList.add("modal-open");
+      document.body.style.paddingRight = "0px";
+      syncBackdrops();
+    };
+
+    const hideModal = () => {
+      const modal = getModal();
+      if (!modal) return;
+
+      modal.classList.remove("show");
+      modal.style.display = "none";
+      modal.setAttribute("aria-hidden", "true");
+
+      document.body.classList.remove("modal-open");
+      Array.from(document.querySelectorAll(".modal-backdrop")).forEach((backdrop) => backdrop.remove());
+    };
+
+    document.addEventListener("click", (event) => {
+      const actionButton = event.target.closest(actionSelector);
+      if (actionButton) {
+        window.requestAnimationFrame(makeModalInteractive);
+        window.setTimeout(makeModalInteractive, 120);
+      }
+    });
+
+    document.addEventListener("click", (event) => {
+      const closeButton = event.target.closest(closeSelector);
+      if (!closeButton) return;
+      event.preventDefault();
+      hideModal();
+    });
+
+    document.addEventListener("click", (event) => {
+      const modal = getModal();
+      if (!modal || modal.style.display === "none") return;
+      if (event.target === modal) {
+        hideModal();
+      }
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") return;
+      const modal = getModal();
+      if (!modal || modal.style.display === "none") return;
+      hideModal();
+    });
+  };
+
   const initCommon = () => {
     initHeaderScroll();
     initMobileMenu();
     initRevealOnScroll();
     initFaqAccordion();
+    initSingleProductTabs();
+    initCartQuantityUpdates();
+    initPractitionerOrderModalFix();
   };
 
   if (document.readyState === "loading") {

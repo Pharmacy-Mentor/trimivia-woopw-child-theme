@@ -252,7 +252,10 @@ if (!is_wp_error($service_terms) && !empty($service_terms)) {
 
 $cta_resolved_url = $cta_button_url;
 if ('' === $cta_resolved_url) {
-	$cta_resolved_url = get_theme_mod('trimvia_header_primary_button_link', home_url('/consultation/'));
+	$cta_resolved_url = get_theme_mod('trimvia_header_primary_button_link', home_url('/shop/'));
+}
+if (stripos((string) $cta_resolved_url, 'consultation') !== false) {
+	$cta_resolved_url = home_url('/shop/');
 }
 
 $legacy_icon        = function_exists('get_field') ? get_field('icon', $post_id) : '';

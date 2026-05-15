@@ -53,7 +53,7 @@ if (!defined('ABSPATH')) {
         <div class="sidebar-card--blue sidebar-card">
           <h4>Ready to Get Started?</h4>
           <p>Complete a free online consultation and a prescriber will review your suitability within hours.</p>
-          <a href="#" class="btn-cta" style="margin-top:16px;padding:12px 28px;font-size:14px;display:inline-flex;">Start Consultation Ã¢â€ â€™</a>
+          <a href="<?php echo esc_url(home_url('/shop/')); ?>" class="btn-cta" style="margin-top:16px;padding:12px 28px;font-size:14px;display:inline-flex;">Start Consultation &#8594;</a>
         </div>
         <div class="sidebar-card">
           <h4>Treatments We Offer</h4>

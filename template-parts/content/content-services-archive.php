@@ -74,12 +74,18 @@ if ('' === $cta_text) {
 
 $cta_btn_label = trim((string) $get('svc_archive_cta_button_label'));
 if ('' === $cta_btn_label) {
-	$cta_btn_label = __('Start Free Consultation', 'theme-woopm-child');
+	$cta_btn_label = __('Start Consultation', 'theme-woopm-child');
+}
+if (stripos($cta_btn_label, 'consultation') !== false) {
+	$cta_btn_label = __('Start Consultation', 'theme-woopm-child');
 }
 
 $cta_btn_url = trim((string) $get('svc_archive_cta_button_url'));
 if ('' === $cta_btn_url) {
-	$cta_btn_url = home_url('/consultation/');
+	$cta_btn_url = home_url('/shop/');
+}
+if (stripos($cta_btn_url, 'consultation') !== false) {
+	$cta_btn_url = home_url('/shop/');
 }
 
 $placeholder = function_exists('get_placeholder_image') ? get_placeholder_image() : '';

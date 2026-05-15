@@ -3,27 +3,28 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
+$is_shop = function_exists('is_shop') && is_shop();
 $page_id = get_the_ID();
-if (function_exists('is_shop') && is_shop() && function_exists('wc_get_page_id')) {
+if ($is_shop && function_exists('wc_get_page_id')) {
 	$shop_page_id = (int) wc_get_page_id('shop');
 	if ($shop_page_id > 0) {
 		$page_id = $shop_page_id;
 	}
 }
 
-$hero_title = 'Shop Treatments';
+$hero_title = __('Shop Treatments', 'theme-woopm-child');
 $hero_breadcrumb_current = __('Start Assessment', 'theme-woopm-child');
-$hero_description = 'Browse our full range of prescription weight loss treatments. Every order is reviewed by a UK-registered pharmacist prescriber before dispatch.';
-$products_heading = 'All Products';
+$hero_description = __('Browse our full range of prescription weight loss treatments. Every order is reviewed by a UK-registered pharmacist prescriber before dispatch.', 'theme-woopm-child');
+$products_heading = __('All Products', 'theme-woopm-child');
 $show_shop_trust = true;
 $show_after_products_details = true;
-$after_products_title = 'Need Help Choosing the Right Treatment?';
-$after_products_content = 'Our clinical team can guide you to the most suitable treatment based on your goals, medical history, and lifestyle.';
+$after_products_title = __('Need Help Choosing the Right Treatment?', 'theme-woopm-child');
+$after_products_content = __('Our clinical team can guide you to the most suitable treatment based on your goals, medical history, and lifestyle.', 'theme-woopm-child');
 $show_shop_cta = true;
-$shop_cta_title = 'Not sure which treatment is right for you?';
-$shop_cta_description = 'Start a free consultation and our prescribers will recommend the best option based on your health profile.';
-$shop_cta_button_label = 'Start Free Consultation';
-$shop_cta_button_url = home_url('/consultation/');
+$shop_cta_title = __('Not sure which treatment is right for you?', 'theme-woopm-child');
+$shop_cta_description = __('Start a free consultation and our prescribers will recommend the best option based on your health profile.', 'theme-woopm-child');
+$shop_cta_button_label = __('Start Consultation', 'theme-woopm-child');
+$shop_cta_button_url = home_url('/shop/');
 
 $shop_trust_items = array(
 	array(
@@ -48,7 +49,7 @@ $shop_trust_items = array(
 	),
 );
 
-if (function_exists('get_field') && $page_id) {
+if (function_exists('get_field') && $page_id > 0) {
 	$hero_title_value = trim((string) get_field('shop_hero_title', $page_id));
 	if ('' !== $hero_title_value) {
 		$hero_title = $hero_title_value;
@@ -140,40 +141,13 @@ if (function_exists('get_field') && $page_id) {
 	}
 }
 
-$sort_options = array(
-	'popular' => __('Most Popular', 'theme-woopm-child'),
-	'price_low' => __('Price: Low to High', 'theme-woopm-child'),
-	'price_high' => __('Price: High to Low', 'theme-woopm-child'),
-	'newest' => __('Newest First', 'theme-woopm-child'),
-);
-
-$active_sort = isset($_GET['sort']) ? sanitize_key((string) wp_unslash($_GET['sort'])) : 'popular';
-if (!array_key_exists($active_sort, $sort_options)) {
-	$active_sort = 'popular';
+$shop_products_count = 0;
+if (function_exists('wc_get_loop_prop')) {
+	$shop_products_count = (int) wc_get_loop_prop('total');
 }
-
-$shop_product_query_args = array(
-	'status' => 'publish',
-	'limit' => -1,
-	'catalog_visibility' => 'visible',
-);
-
-if ('price_low' === $active_sort) {
-	$shop_product_query_args['orderby'] = 'price';
-	$shop_product_query_args['order'] = 'ASC';
-} elseif ('price_high' === $active_sort) {
-	$shop_product_query_args['orderby'] = 'price';
-	$shop_product_query_args['order'] = 'DESC';
-} elseif ('newest' === $active_sort) {
-	$shop_product_query_args['orderby'] = 'date';
-	$shop_product_query_args['order'] = 'DESC';
-} else {
-	$shop_product_query_args['orderby'] = 'popularity';
-	$shop_product_query_args['order'] = 'DESC';
+if ($shop_products_count < 1 && isset($GLOBALS['wp_query']) && $GLOBALS['wp_query'] instanceof WP_Query) {
+	$shop_products_count = (int) $GLOBALS['wp_query']->found_posts;
 }
-
-$shop_products = function_exists('wc_get_products') ? wc_get_products($shop_product_query_args) : array();
-$shop_products_count = is_array($shop_products) ? count($shop_products) : 0;
 ?>
 <section class="page-hero page-hero--shop">
 	<div class="hero-noise"></div>
@@ -191,32 +165,58 @@ $shop_products_count = is_array($shop_products) ? count($shop_products) : 0;
 				<h2 class="stitle" style="font-size:28px;margin-bottom:4px;"><?php echo esc_html($products_heading); ?></h2>
 				<span class="shop-count"><?php echo esc_html(sprintf(_n('Showing %s treatment', 'Showing %s treatments', $shop_products_count, 'theme-woopm-child'), number_format_i18n($shop_products_count))); ?></span>
 			</div>
-			<form class="shop-sort" method="get" action="<?php echo esc_url(get_permalink($page_id)); ?>">
-				<label for="trimvia-shop-sort"><?php esc_html_e('Sort by:', 'theme-woopm-child'); ?></label>
-				<select id="trimvia-shop-sort" name="sort" onchange="this.form.submit()">
-					<?php foreach ($sort_options as $sort_value => $sort_label) : ?>
-						<option value="<?php echo esc_attr($sort_value); ?>" <?php selected($active_sort, $sort_value); ?>><?php echo esc_html($sort_label); ?></option>
-					<?php endforeach; ?>
-				</select>
-			</form>
+			<div class="shop-sort">
+				<?php do_action('woocommerce_before_shop_loop'); ?>
+			</div>
 		</div>
 
-		<?php if (!empty($shop_products)) : ?>
-			<div class="shop-grid">
-				<?php foreach ($shop_products as $shop_product) : ?>
-					<?php
-					if (!$shop_product instanceof WC_Product) {
-						continue;
-					}
-					get_template_part('template-parts/trimvia', 'shop-product-card', array('product' => $shop_product));
-					?>
-				<?php endforeach; ?>
+		<?php if ($is_shop) : ?>
+			<div class="row mb-4">
+				<div class="col-lg-4">
+					<?php echo do_shortcode('[wpf-filters id=2]'); ?>
+				</div>
+				<div class="col-lg-8">
+					<?php if (woocommerce_product_loop()) : ?>
+						<div class="shop-grid">
+							<?php while (have_posts()) : the_post(); ?>
+								<?php
+								global $product;
+								if (!$product instanceof WC_Product) {
+									$product = wc_get_product(get_the_ID());
+								}
+								if (!$product instanceof WC_Product) {
+									continue;
+								}
+								get_template_part('template-parts/trimvia', 'shop-product-card', array('product' => $product));
+								?>
+							<?php endwhile; ?>
+						</div>
+						<?php do_action('woocommerce_after_shop_loop'); ?>
+					<?php else : ?>
+						<?php do_action('woocommerce_no_products_found'); ?>
+					<?php endif; ?>
+				</div>
 			</div>
 		<?php else : ?>
-			<div class="shop-empty">
-				<h3><?php esc_html_e('No products found', 'theme-woopm-child'); ?></h3>
-				<p><?php esc_html_e('Please add products in WooCommerce to show them here.', 'theme-woopm-child'); ?></p>
-			</div>
+			<?php if (woocommerce_product_loop()) : ?>
+				<div class="shop-grid">
+					<?php while (have_posts()) : the_post(); ?>
+						<?php
+						global $product;
+						if (!$product instanceof WC_Product) {
+							$product = wc_get_product(get_the_ID());
+						}
+						if (!$product instanceof WC_Product) {
+							continue;
+						}
+						get_template_part('template-parts/trimvia', 'shop-product-card', array('product' => $product));
+						?>
+					<?php endwhile; ?>
+				</div>
+				<?php do_action('woocommerce_after_shop_loop'); ?>
+			<?php else : ?>
+				<?php do_action('woocommerce_no_products_found'); ?>
+			<?php endif; ?>
 		<?php endif; ?>
 
 		<?php if ($show_shop_trust && !empty($shop_trust_items)) : ?>

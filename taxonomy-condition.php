@@ -30,11 +30,9 @@ if (is_wp_error($term) || !$term) {
 $consultation_completed       = function_exists('has_consultation_for_condition') ? has_consultation_for_condition($term->slug) : false;
 $is_reorder                  = isset($_GET['is_reorder']) ? absint(wp_unslash($_GET['is_reorder'])) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 $reorder_order_id            = isset($_GET['order_id']) ? absint(wp_unslash($_GET['order_id'])) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-$old_consultation_complete   = false;
-
 if (is_user_logged_in() && 1 === $is_reorder && function_exists('get_user_latest_completed_consultation_order')) {
 	$user = wp_get_current_user();
-	$old_consultation_complete = (bool) get_user_latest_completed_consultation_order($user, $term->term_id, true, $reorder_order_id);
+	get_user_latest_completed_consultation_order($user, $term->term_id, true, $reorder_order_id);
 	$consultation_completed    = true;
 }
 
@@ -59,6 +57,10 @@ if ($consultation_completed) {
 			'term' => $term,
 		)
 	);
+
+	// Keep parent condition flow parity while preserving child theme design.
+	get_template_part('template-parts/order', 'steps');
+	get_template_part('template-parts/popular', 'categories');
 }
 
 get_footer();

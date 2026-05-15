@@ -1,0 +1,52 @@
+{
+    "key": "group_trimvia_product_single_tabs",
+    "title": "Single product — Trimvia tabs",
+    "fields": [
+        {
+            "key": "field_trimvia_prod_tab_info",
+            "label": "Treatment detail tabs",
+            "name": "",
+            "type": "message",
+            "message": "Optional content for the \"How it works\" and \"Safety\" tabs on the Trimvia single product layout. If left empty, sensible default copy is shown.",
+            "new_lines": "wpautop",
+            "esc_html": 0
+        },
+        {
+            "key": "field_trimvia_tab_how_it_works",
+            "label": "How it works (tab)",
+            "name": "trimvia_tab_how_it_works",
+            "type": "wysiwyg",
+            "tabs": "all",
+            "toolbar": "full",
+            "media_upload": 1,
+            "delay": 0
+        },
+        {
+            "key": "field_trimvia_tab_safety",
+            "label": "Safety (tab)",
+            "name": "trimvia_tab_safety",
+            "type": "wysiwyg",
+            "tabs": "all",
+            "toolbar": "full",
+            "media_upload": 1,
+            "delay": 0
+        }
+    ],
+    "location": [
+        [
+            {
+                "param": "post_type",
+                "operator": "==",
+                "value": "product"
+            }
+        ]
+    ],
+    "menu_order": 15,
+    "position": "normal",
+    "style": "default",
+    "label_placement": "top",
+    "instruction_placement": "label",
+    "active": true,
+    "description": "Overrides default Trimvia single-product tab copy per product.",
+    "show_in_rest": 0
+}

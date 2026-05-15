@@ -7,7 +7,7 @@ $hero_title          = 'Your weight loss journey,';
 $hero_title_emphasis = 'prescribed by experts.';
 $hero_subtitle       = 'Clinician-led consultations, prescription treatments, and ongoing support - all from the comfort of your home. Results you can see in weeks.';
 $hero_primary_cta    = array(
-    'url'    => '#',
+    'url'    => home_url('/shop/'),
     'title'  => 'Start Consultation',
     'target' => '',
 );
@@ -195,8 +195,8 @@ $cta_small_title        = 'Start Today';
 $cta_heading            = 'Take the first step towards a healthier you';
 $cta_description        = 'Our free online consultation takes just minutes. A prescriber will review your profile and recommend the right treatment delivered to your door.';
 $cta_button             = array(
-    'url'    => '#',
-    'title'  => 'Start Consultation Now',
+    'url'    => home_url('/shop/'),
+    'title'  => 'Start Consultation',
     'target' => '',
 );
 $cta_note               = 'GPhC-Regulated · Powered by Mayberry Pharmacy';
@@ -427,6 +427,20 @@ if (function_exists('get_field') && $home_page_id) {
     if (!$cta_media_image && is_numeric($cta_media_image_field)) {
         $cta_media_image = wp_get_attachment_image_url((int) $cta_media_image_field, 'large');
     }
+}
+
+if (isset($hero_primary_cta['title']) && stripos((string) $hero_primary_cta['title'], 'consultation') !== false) {
+    $hero_primary_cta['title'] = 'Start Consultation';
+}
+if (empty($hero_primary_cta['url']) || (isset($hero_primary_cta['url']) && stripos((string) $hero_primary_cta['url'], 'consultation') !== false)) {
+    $hero_primary_cta['url'] = home_url('/shop/');
+}
+
+if (isset($cta_button['title']) && stripos((string) $cta_button['title'], 'consultation') !== false) {
+    $cta_button['title'] = 'Start Consultation';
+}
+if (empty($cta_button['url']) || (isset($cta_button['url']) && stripos((string) $cta_button['url'], 'consultation') !== false)) {
+    $cta_button['url'] = home_url('/shop/');
 }
 ?>
 <section class="hero">

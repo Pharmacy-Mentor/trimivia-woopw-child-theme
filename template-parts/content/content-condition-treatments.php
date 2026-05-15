@@ -192,14 +192,14 @@ if ($show_products_intro_header && function_exists('get_field')) {
 
 <?php if ($show_about && function_exists('get_field') && get_field('condition_group_content', $term)) : ?>
 	<?php $condition_group = get_field('condition_group_content', $term); ?>
-	<section class="section-padding about-condition-content">
+	<section class="section-padding about-condition-content trimvia-condition-about">
 		<div class="container">
-			<div class="section-header-wrapper">
+			<div class="section-header-wrapper trimvia-condition-about__head">
 				<div class="row align-items-center">
 					<div class="col-lg-12 col-md-12 text-center">
-						<div class="content-block">
-							<h5><?php esc_html_e('About this condition', 'woocommerce'); ?></h5>
-							<h2 class="section-title"><?php echo esc_html(sprintf(__('About %s', 'woocommerce'), $term->name)); ?></h2>
+						<div class="content-block trimvia-condition-about__title-wrap">
+							<h5 class="trimvia-condition-about__kicker"><?php esc_html_e('About this condition', 'woocommerce'); ?></h5>
+							<h2 class="section-title trimvia-condition-about__title"><?php echo esc_html(sprintf(__('About %s', 'woocommerce'), $term->name)); ?></h2>
 						</div>
 					</div>
 				</div>
@@ -220,10 +220,10 @@ if ($show_products_intro_header && function_exists('get_field')) {
 						$block_index++;
 						$swap = ( $block_index % 2 === 0 );
 						?>
-					<div class="content-column">
+					<div class="content-column trimvia-condition-about__block">
 						<div class="row align-items-center">
 							<div class="col-lg-6 col-md-6 col-sm-12 <?php echo $swap ? 'order-md-2 order-1' : ''; ?>">
-								<div class="featured-image-wrapper">
+								<div class="featured-image-wrapper trimvia-condition-about__media">
 									<?php
 									if ($content_group_featured_img) {
 										if (is_array($content_group_featured_img) && !empty($content_group_featured_img['sizes']['large'])) {
@@ -241,7 +241,9 @@ if ($show_products_intro_header && function_exists('get_field')) {
 								</div>
 							</div>
 							<div class="col-lg-6 col-md-6 col-sm-12 <?php echo $swap ? 'order-md-1 order-2' : ''; ?>">
-								<?php echo $content_group_description; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- ACF WYSIWYG ?>
+								<div class="trimvia-condition-about__copy">
+									<?php echo $content_group_description; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- ACF WYSIWYG ?>
+								</div>
 							</div>
 						</div>
 					</div>

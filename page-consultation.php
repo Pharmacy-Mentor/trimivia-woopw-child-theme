@@ -3,6 +3,10 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
-get_header();
-get_template_part('template-parts/content/content', 'consultation');
-get_footer();
+/**
+ * Ensure the consultation slug uses the child consultation template.
+ *
+ * Without this hand-off, WordPress can load this page-{slug} file first and
+ * bypass the styled consultation flow in page-templates/consultation.php.
+ */
+require get_stylesheet_directory() . '/page-templates/consultation.php';

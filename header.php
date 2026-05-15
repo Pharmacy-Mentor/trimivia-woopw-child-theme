@@ -34,13 +34,32 @@ $header_menu_id        = absint(get_theme_mod('trimvia_header_primary_menu', 0))
 $header_icon_class     = trimvia_sanitize_icon_class(get_theme_mod('trimvia_header_icon_class', 'fa-solid fa-user'));
 $default_icon_link     = function_exists('wc_get_page_permalink') ? wc_get_page_permalink('myaccount') : home_url('/');
 $header_icon_link      = get_theme_mod('trimvia_header_icon_link', $default_icon_link);
+$header_cart_count     = (function_exists('WC') && WC()->cart) ? (int) WC()->cart->get_cart_contents_count() : 0;
+$header_icon_label     = sprintf(
+	/* translators: %s: cart item count. */
+	_n('Basket, %s item', 'Basket, %s items', $header_cart_count, 'theme-woopm-child'),
+	number_format_i18n($header_cart_count)
+);
 
-$default_secondary_link = function_exists('wc_get_page_permalink') ? wc_get_page_permalink('myaccount') : wp_login_url();
+$account_page_link      = function_exists('wc_get_page_permalink') ? wc_get_page_permalink('myaccount') : wp_login_url();
+$default_secondary_link = $account_page_link;
 $secondary_text         = get_theme_mod('trimvia_header_secondary_button_text', __('Login', 'theme-woopm-child'));
 $secondary_link         = get_theme_mod('trimvia_header_secondary_button_link', $default_secondary_link);
 
-$primary_text = get_theme_mod('trimvia_header_primary_button_text', __('Start Consultation', 'theme-woopm-child'));
-$primary_link = get_theme_mod('trimvia_header_primary_button_link', home_url('/consultation/'));
+if (is_user_logged_in()) {
+	$secondary_text = __('My Account', 'theme-woopm-child');
+	$secondary_link = $account_page_link;
+}
+
+$primary_text = trim((string) get_theme_mod('trimvia_header_primary_button_text', __('Start Consultation', 'theme-woopm-child')));
+if ($primary_text === '' || stripos($primary_text, 'consultation') !== false) {
+	$primary_text = __('Start Consultation', 'theme-woopm-child');
+}
+
+$primary_link = trim((string) get_theme_mod('trimvia_header_primary_button_link', home_url('/shop/')));
+if ($primary_link === '' || stripos($primary_link, 'consultation') !== false) {
+	$primary_link = home_url('/shop/');
+}
 
 $header_classes = 'header';
 if (!empty($sticky_header_logo_url)) {
@@ -96,8 +115,9 @@ if (!empty($sticky_header_logo_url)) {
 		</nav>
 		<div class="header-actions">
 			<?php if (!empty($header_icon_class) && !empty($header_icon_link)) : ?>
-				<a href="<?php echo esc_url($header_icon_link); ?>" class="btn-basket custom-header-icon" aria-label="Quick action">
+				<a href="<?php echo esc_url($header_icon_link); ?>" class="btn-basket custom-header-icon" aria-label="<?php echo esc_attr($header_icon_label); ?>">
 					<i class="<?php echo esc_attr($header_icon_class); ?>" aria-hidden="true"></i>
+					<?php echo trimvia_header_cart_count_badge(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 				</a>
 			<?php endif; ?>
 			<?php if (!empty($secondary_text) && !empty($secondary_link)) : ?>

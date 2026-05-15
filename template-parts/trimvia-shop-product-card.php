@@ -69,6 +69,10 @@ if ($shop_product->is_type('variable')) {
 	$product_price_value = (float) $shop_product->get_variation_price('min', true);
 }
 
+$consultation_required = function_exists('trimvia_is_product_consultation_required')
+	? trimvia_is_product_consultation_required($shop_product)
+	: false;
+
 $loop_button_text = method_exists($shop_product, 'add_to_cart_text')
 	? $shop_product->add_to_cart_text()
 	: __('Select options', 'woocommerce');
@@ -77,10 +81,12 @@ $product_button_text = $loop_button_text;
 if ($shop_product->is_type('variable')) {
 	$read_more_label = __('Read more', 'woocommerce');
 	$select_options_label = __('Select options', 'woocommerce');
-	if ($loop_button_text === $read_more_label) {
+	if ($consultation_required) {
+		$product_button_text = __('Start Assessment', 'theme-woopm-child');
+	} elseif ($loop_button_text === $read_more_label) {
 		$product_button_text = $loop_button_text;
 	} elseif ($loop_button_text === $select_options_label || 'Select options' === $loop_button_text) {
-		$product_button_text = __('Start Assessment', 'theme-woopm-child');
+		$product_button_text = __('View product', 'theme-woopm-child');
 	} else {
 		$product_button_text = $loop_button_text;
 	}
@@ -97,6 +103,14 @@ if ($shop_product->is_type('variable')) {
 $product_button_url = method_exists($shop_product, 'add_to_cart_url')
 	? $shop_product->add_to_cart_url()
 	: $product_link;
+
+if (function_exists('trimvia_get_product_entry_url')) {
+	$product_button_url = trimvia_get_product_entry_url($shop_product, $product_button_url);
+}
+
+if ($consultation_required) {
+	$product_button_text = __('Start Assessment', 'theme-woopm-child');
+}
 ?>
 <article class="product-card rv">
 	<div class="product-img">

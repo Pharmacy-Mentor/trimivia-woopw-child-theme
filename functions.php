@@ -120,6 +120,42 @@ function trimvia_sanitize_icon_class($value)
 }
 
 /**
+ * Header cart count badge markup. Kept as one helper so WooCommerce fragments
+ * can refresh the same element after AJAX add-to-cart events.
+ *
+ * @return string
+ */
+function trimvia_header_cart_count_badge()
+{
+	$count = (function_exists('WC') && WC()->cart) ? (int) WC()->cart->get_cart_contents_count() : 0;
+	$class = 'trimvia-cart-count-badge';
+	if (0 === $count) {
+		$class .= ' is-empty';
+	}
+
+	return sprintf(
+		'<span class="%1$s" data-cart-count="%2$d" aria-hidden="true">%3$s</span>',
+		esc_attr($class),
+		esc_attr($count),
+		esc_html(number_format_i18n($count))
+	);
+}
+
+/**
+ * Keep the header cart count in sync after WooCommerce AJAX add-to-cart.
+ *
+ * @param array<string,string> $fragments Existing cart fragments.
+ * @return array<string,string>
+ */
+function trimvia_header_cart_count_fragment($fragments)
+{
+	$fragments['.trimvia-cart-count-badge'] = trimvia_header_cart_count_badge();
+
+	return $fragments;
+}
+add_filter('woocommerce_add_to_cart_fragments', 'trimvia_header_cart_count_fragment');
+
+/**
  * Add nav-item class to top-level menu items that have dropdowns (mega menu CSS).
  *
  * @param array    $classes CSS classes.
@@ -360,6 +396,55 @@ function trimvia_enqueue_customizer_control_assets()
 add_action('customize_controls_enqueue_scripts', 'trimvia_enqueue_customizer_control_assets');
 
 /**
+ * Hide parent-theme Customizer options and keep child options visible.
+ *
+ * This removes parent-only sections/controls from the Customizer UI.
+ * It does not delete saved values from the database.
+ *
+ * @param WP_Customize_Manager $wp_customize Customizer manager instance.
+ */
+function trimvia_hide_parent_customizer_options($wp_customize)
+{
+	// Parent sections registered in class-pharmacy-customize.php.
+	$parent_sections = array(
+		'options',
+		'footer_options',
+		'theme_color_section',
+		'theme_fonts_section',
+	);
+
+	foreach ($parent_sections as $section_id) {
+		$wp_customize->remove_section($section_id);
+	}
+
+	// Parent controls that may live in core sections (for example Site Identity).
+	$parent_controls = array(
+		'footer_custom_logo',
+		'placeholder_image',
+		'placeholder_avatar',
+	);
+	foreach ($parent_controls as $control_id) {
+		$wp_customize->remove_control($control_id);
+	}
+
+	// Defensive cleanup for parent settings with predictable prefixes.
+	$parent_setting_prefixes = array(
+		'theme_',
+		'pharmacy_',
+	);
+
+	foreach ($wp_customize->settings() as $setting_id => $setting_obj) {
+		foreach ($parent_setting_prefixes as $prefix) {
+			if (0 === strpos((string) $setting_id, $prefix)) {
+				$wp_customize->remove_setting($setting_id);
+				break;
+			}
+		}
+	}
+}
+add_action('customize_register', 'trimvia_hide_parent_customizer_options', 999);
+
+/**
  * Sanitize selected nav menu ID.
  *
  * @param mixed $value Selected value.
@@ -593,7 +678,7 @@ function trimvia_register_header_customizer_options($wp_customize)
 	$wp_customize->add_setting(
 		'trimvia_header_primary_button_link',
 		array(
-			'default'           => home_url('/consultation/'),
+			'default'           => home_url('/shop/'),
 			'sanitize_callback' => 'esc_url_raw',
 		)
 	);
@@ -1924,9 +2009,183 @@ function trimvia_child_body_classes($classes)
 	if (is_post_type_archive('service')) {
 		$classes[] = 'trimvia-services-archive-archive';
 	}
+	if (function_exists('is_product') && is_product()) {
+		$classes[] = 'trimvia-single-product-page';
+	}
+	if (function_exists('is_account_page') && is_account_page()) {
+		$classes[] = 'trimvia-account-page';
+	}
+	if (function_exists('is_cart') && is_cart()) {
+		$classes[] = 'trimvia-cart-page';
+	}
+	if (function_exists('is_checkout') && is_checkout()) {
+		$classes[] = 'trimvia-checkout-page';
+	}
 	return $classes;
 }
 add_filter('body_class', 'trimvia_child_body_classes');
+
+/**
+ * The parent theme wraps cart contents in Bootstrap row/column hooks. The child cart template
+ * already provides its own full-width layout, so remove those wrappers on cart pages only.
+ */
+function trimvia_disable_parent_cart_layout_hooks()
+{
+	if (!function_exists('is_cart') || !is_cart()) {
+		return;
+	}
+
+	remove_action('woocommerce_before_cart', 'woo_add_row_open', 20);
+	remove_action('woocommerce_before_cart', 'woo_add_primary_column_open', 21);
+	remove_action('woocommerce_after_cart_table', 'woo_add_cart_page_div_close', 10);
+	remove_action('woocommerce_after_cart_table', 'woo_add_sidebar_wrapper_open', 11);
+	remove_action('woocommerce_after_cart', 'woo_add_cart_page_div_close');
+	remove_action('woocommerce_after_cart', 'woo_add_cart_page_div_close');
+	remove_action('woocommerce_after_cart', 'custom_cross_sells_row', 15);
+}
+add_action('wp', 'trimvia_disable_parent_cart_layout_hooks', 5);
+
+/**
+ * The parent checkout template injects Bootstrap row/column wrappers around the
+ * default WooCommerce checkout. The Trimvia checkout template has its own grid,
+ * so remove those wrappers on checkout pages only.
+ */
+function trimvia_disable_parent_checkout_layout_hooks()
+{
+	if (!function_exists('is_checkout') || !is_checkout()) {
+		return;
+	}
+
+	remove_action('woocommerce_checkout_before_customer_details', 'woo_add_row_open', 20);
+	remove_action('woocommerce_checkout_before_customer_details', 'woo_add_primary_column_open', 21);
+	remove_action('woocommerce_checkout_before_order_review_heading', 'woo_add_cart_page_div_close', 16);
+	remove_action('woocommerce_checkout_before_order_review_heading', 'woo_add_sidebar_wrapper_open', 17);
+	remove_action('woocommerce_after_checkout_form', 'woo_add_cart_page_div_close');
+	remove_action('woocommerce_after_checkout_form', 'woo_add_cart_page_div_close');
+}
+add_action('wp', 'trimvia_disable_parent_checkout_layout_hooks', 5);
+
+/**
+ * Remove Woo sidebar on shop/catalog listing pages in child layouts.
+ */
+function trimvia_disable_woo_shop_sidebar()
+{
+	if (!function_exists('is_shop') || !function_exists('is_product_taxonomy')) {
+		return;
+	}
+
+	if (is_shop() || is_product_taxonomy() || is_post_type_archive('product')) {
+		remove_action('woocommerce_sidebar', 'woocommerce_get_sidebar', 10);
+	}
+}
+add_action('wp', 'trimvia_disable_woo_shop_sidebar', 20);
+
+/**
+ * Render cart cross-sells with the same card design used on the Shop page.
+ */
+function trimvia_cart_cross_sells_row()
+{
+	if (!function_exists('is_cart') || !is_cart() || !function_exists('WC') || !WC()->cart || WC()->cart->is_empty()) {
+		return;
+	}
+
+	$cross_sell_ids = array_values(array_filter(array_map('absint', WC()->cart->get_cross_sells())));
+	if (empty($cross_sell_ids) || !function_exists('wc_get_products')) {
+		return;
+	}
+
+	$cross_sell_products = wc_get_products(
+		array(
+			'include'            => $cross_sell_ids,
+			'status'             => 'publish',
+			'limit'              => 3,
+			'orderby'            => 'include',
+			'catalog_visibility' => 'visible',
+		)
+	);
+
+	if (empty($cross_sell_products)) {
+		return;
+	}
+	?>
+	<section class="page-section trimvia-cart-cross-sells">
+		<div class="container">
+			<div class="shop-header rv">
+				<div>
+					<h2 class="stitle"><?php esc_html_e('You may also be interested in', 'woocommerce'); ?></h2>
+					<span class="shop-count"><?php esc_html_e('Recommended treatments from our shop', 'theme-woopm-child'); ?></span>
+				</div>
+			</div>
+			<div class="shop-grid">
+				<?php foreach ($cross_sell_products as $cross_sell_product) : ?>
+					<?php
+					if (!$cross_sell_product instanceof WC_Product) {
+						continue;
+					}
+
+					get_template_part('template-parts/trimvia', 'shop-product-card', array('product' => $cross_sell_product));
+					?>
+				<?php endforeach; ?>
+			</div>
+		</div>
+	</section>
+	<?php
+}
+add_action('woocommerce_after_cart', 'trimvia_cart_cross_sells_row', 15);
+
+/**
+ * Allowed SVG tags for small inline account navigation icons.
+ *
+ * @return array<string,array<string,bool>>
+ */
+function trimvia_account_allowed_svg()
+{
+	return array(
+		'svg' => array(
+			'viewbox' => true,
+			'viewBox' => true,
+			'fill' => true,
+			'stroke' => true,
+			'aria-hidden' => true,
+			'class' => true,
+			'width' => true,
+			'height' => true,
+		),
+		'path' => array(
+			'd' => true,
+			'fill' => true,
+			'stroke' => true,
+		),
+		'polyline' => array(
+			'points' => true,
+			'fill' => true,
+			'stroke' => true,
+		),
+		'line' => array(
+			'x1' => true,
+			'y1' => true,
+			'x2' => true,
+			'y2' => true,
+			'stroke' => true,
+		),
+		'circle' => array(
+			'cx' => true,
+			'cy' => true,
+			'r' => true,
+			'fill' => true,
+			'stroke' => true,
+		),
+		'rect' => array(
+			'x' => true,
+			'y' => true,
+			'width' => true,
+			'height' => true,
+			'rx' => true,
+			'fill' => true,
+			'stroke' => true,
+		),
+	);
+}
 
 /**
  * Parent theme registers load_condition_tax_script on wp_enqueue_scripts; it prints inline JS
@@ -1934,3 +2193,750 @@ add_filter('body_class', 'trimvia_child_body_classes');
  * on condition archives. Layout uses the child grid instead.
  */
 remove_action('wp_enqueue_scripts', 'load_condition_tax_script', 10);
+
+/**
+ * Trimvia single product: strip default WooCommerce summary/gallery hooks so we can render the
+ * HTML-theme layout in woocommerce/content-single-product.php.
+ *
+ * Account/login URLs are unchanged: the child header uses wc_get_page_permalink( 'myaccount' )
+ * (Customizer "Secondary Button Link"); parent WooCommerce templates handle my-account forms.
+ */
+function trimvia_prepare_single_product_hooks()
+{
+	if (!function_exists('is_product') || !is_product()) {
+		return;
+	}
+
+	// Keep default WooCommerce single-product rendering unless a custom layout
+	// is explicitly enabled by code.
+	if (!apply_filters('trimvia_use_custom_single_product_layout', false)) {
+		return;
+	}
+
+	remove_action('woocommerce_before_single_product_summary', 'woocommerce_show_product_sale_flash', 10);
+	remove_action('woocommerce_before_single_product_summary', 'woocommerce_show_product_images', 20);
+
+	remove_action('woocommerce_single_product_summary', 'woocommerce_template_single_title', 5);
+	remove_action('woocommerce_single_product_summary', 'woocommerce_template_single_rating', 10);
+	remove_action('woocommerce_single_product_summary', 'woocommerce_template_single_price', 10);
+	remove_action('woocommerce_single_product_summary', 'woocommerce_template_single_excerpt', 20);
+	remove_action('woocommerce_single_product_summary', 'woocommerce_template_single_add_to_cart', 30);
+	remove_action('woocommerce_single_product_summary', 'woocommerce_template_single_meta', 40);
+	remove_action('woocommerce_single_product_summary', 'woocommerce_template_single_sharing', 50);
+	remove_action('woocommerce_single_product_summary', array('WC_Structured_Data', 'generate_product_data'), 60);
+	remove_action('woocommerce_single_product_summary', 'custom_show_stock_status', 25);
+
+	remove_action('woocommerce_after_single_product_summary', 'woocommerce_output_product_data_tabs', 10);
+	remove_action('woocommerce_after_single_product_summary', 'woocommerce_upsell_display', 15);
+	remove_action('woocommerce_after_single_product_summary', 'woocommerce_output_related_products', 20);
+}
+add_action('wp', 'trimvia_prepare_single_product_hooks', 20);
+
+/**
+ * Core wp_die() markup includes a global `body { max-width:700px; … }` rule. If that stylesheet is ever
+ * printed on a normal front-end request (plugin conflict, buffering bug), WooCommerce single product
+ * pages look like the grey admin “error” box. Neutralise those rules only on single product views.
+ */
+function trimvia_single_product_neutralize_wp_die_styles()
+{
+	if (!function_exists('is_product') || !is_product()) {
+		return;
+	}
+	echo '<style id="trimvia-neutralize-wp-die-leak">';
+	echo 'html{background:var(--off-white,#f8f9fc)!important;}';
+	echo 'body.single-product.trimvia-single-product-page{max-width:none!important;width:100%!important;margin:0!important;padding:0!important;border:none!important;box-shadow:none!important;-webkit-box-shadow:none!important;background:transparent!important;color:inherit!important;font-family:inherit!important;}';
+	echo 'body#error-page.single-product.trimvia-single-product-page{max-width:none!important;width:100%!important;margin:0!important;padding:0!important;border:none!important;box-shadow:none!important;-webkit-box-shadow:none!important;background:transparent!important;}';
+	echo 'body.single-product.trimvia-single-product-page #error-page{max-width:none!important;margin:0!important;padding:0!important;border:none!important;box-shadow:none!important;background:transparent!important;}';
+	echo '</style>';
+}
+add_action('wp_head', 'trimvia_single_product_neutralize_wp_die_styles', 99999);
+
+/**
+ * Single product tabs: mirror HTML prototype “Treatment details” reliably.
+ *
+ * - WooCommerce only registers the Description tab when the long description is filled; many products
+ *   only use the short description — add an Overview tab from short description when needed.
+ * - Parent theme (woocommerce-product-tabs.php) removes Additional information at priority 98; restore
+ *   it when the product has attributes or dimensions so buyers still see product data.
+ * - If nothing else registered any tab, output a minimal Overview panel so the section is never blank.
+ */
+function trimvia_single_product_tabs_overview_from_short_description($tabs)
+{
+	if (!function_exists('is_product') || !is_product()) {
+		return $tabs;
+	}
+
+	$product = wc_get_product(get_queried_object_id());
+	if (!$product instanceof WC_Product) {
+		return $tabs;
+	}
+
+	$long_plain = trim(wp_strip_all_tags((string) $product->get_description()));
+	$short_plain = trim(wp_strip_all_tags((string) $product->get_short_description()));
+
+	if ('' === $long_plain && '' !== $short_plain && !isset($tabs['description'])) {
+		$tabs['description'] = array(
+			'title'    => __('Overview', 'theme-woopm-child'),
+			'priority' => 10,
+			'callback' => 'trimvia_single_product_tab_render_short_description',
+		);
+	}
+
+	return $tabs;
+}
+add_filter('woocommerce_product_tabs', 'trimvia_single_product_tabs_overview_from_short_description', 15);
+
+/**
+ * @param string $key Tab key.
+ * @param array  $tab Tab args.
+ */
+function trimvia_single_product_tab_render_short_description($key, $tab)
+{
+	global $product;
+
+	if (!$product instanceof WC_Product) {
+		return;
+	}
+
+	$short = trim((string) $product->get_short_description());
+	if ('' === $short) {
+		return;
+	}
+
+	echo '<div class="woocommerce-product-details__short-description">';
+	echo wp_kses_post(wpautop(wptexturize($short)));
+	echo '</div>';
+}
+
+/**
+ * @param array $tabs Tabs.
+ * @return array
+ */
+function trimvia_single_product_tabs_restore_additional_information($tabs)
+{
+	if (!function_exists('is_product') || !is_product()) {
+		return $tabs;
+	}
+
+	if (isset($tabs['additional_information'])) {
+		return $tabs;
+	}
+
+	$product = wc_get_product(get_queried_object_id());
+	if (!$product instanceof WC_Product) {
+		return $tabs;
+	}
+
+	$show_dimensions = apply_filters('wc_product_enable_dimensions_display', $product->has_weight() || $product->has_dimensions());
+	$attribute_count = $product->get_attributes();
+	$has_visible_attrs = !empty($attribute_count);
+
+	if ($has_visible_attrs || $show_dimensions) {
+		$tabs['additional_information'] = array(
+			'title'    => __('Additional information', 'woocommerce'),
+			'priority' => 20,
+			'callback' => 'woocommerce_product_additional_information_tab',
+		);
+	}
+
+	return $tabs;
+}
+add_filter('woocommerce_product_tabs', 'trimvia_single_product_tabs_restore_additional_information', 101);
+
+/**
+ * @param string $key Tab key.
+ * @param array  $tab Tab args.
+ */
+function trimvia_single_product_tab_render_fallback_overview($key, $tab)
+{
+	global $product;
+
+	if (!$product instanceof WC_Product) {
+		return;
+	}
+
+	$long  = trim((string) $product->get_description());
+	$short = trim((string) $product->get_short_description());
+
+	if ('' !== wp_strip_all_tags($long)) {
+		echo wp_kses_post(wpautop(wptexturize($long)));
+
+		return;
+	}
+
+	if ('' !== wp_strip_all_tags($short)) {
+		echo wp_kses_post(wpautop(wptexturize($short)));
+
+		return;
+	}
+
+	echo '<p class="trimvia-product-details-placeholder">';
+	esc_html_e('Add a full description, short description, or custom product tabs in the product editor to display treatment details here.', 'theme-woopm-child');
+	echo '</p>';
+}
+
+/**
+ * @param array $tabs Tabs.
+ * @return array
+ */
+function trimvia_single_product_tabs_ensure_minimum($tabs)
+{
+	if (!function_exists('is_product') || !is_product()) {
+		return $tabs;
+	}
+
+	if (!empty($tabs)) {
+		return $tabs;
+	}
+
+	$tabs['trimvia-overview'] = array(
+		'title'    => __('Overview', 'theme-woopm-child'),
+		'priority' => 10,
+		'callback' => 'trimvia_single_product_tab_render_fallback_overview',
+	);
+
+	return $tabs;
+}
+add_filter('woocommerce_product_tabs', 'trimvia_single_product_tabs_ensure_minimum', 10000);
+
+/**
+ * Rename WooCommerce “Description” tab label to match HTML prototype.
+ *
+ * @param array $tabs Tabs.
+ * @return array
+ */
+function trimvia_single_product_rename_description_tab($tabs)
+{
+	if (isset($tabs['description']['title'])) {
+		$tabs['description']['title'] = __('Overview', 'theme-woopm-child');
+	}
+
+	return $tabs;
+}
+add_filter('woocommerce_product_tabs', 'trimvia_single_product_rename_description_tab', 97);
+
+/**
+ * Add fixed “How it works” and “Safety” tabs (ACF optional fields or filtered defaults).
+ *
+ * @param array $tabs Tabs.
+ * @return array
+ */
+function trimvia_single_product_add_journey_tabs($tabs)
+{
+	if (!function_exists('is_product') || !is_product()) {
+		return $tabs;
+	}
+
+	if (!isset($tabs['trimvia_how_it_works'])) {
+		$tabs['trimvia_how_it_works'] = array(
+			'title'    => __('How it works', 'theme-woopm-child'),
+			'priority' => 16,
+			'callback' => 'trimvia_single_product_tab_how_it_works_render',
+		);
+	}
+
+	if (!isset($tabs['trimvia_safety'])) {
+		$tabs['trimvia_safety'] = array(
+			'title'    => __('Safety', 'theme-woopm-child'),
+			'priority' => 17,
+			'callback' => 'trimvia_single_product_tab_safety_render',
+		);
+	}
+
+	return $tabs;
+}
+add_filter('woocommerce_product_tabs', 'trimvia_single_product_add_journey_tabs', 17);
+
+/**
+ * @param string $key Tab key.
+ * @param array  $tab Tab definition.
+ */
+function trimvia_single_product_tab_how_it_works_render($key, $tab)
+{
+	global $product;
+
+	if (!$product instanceof WC_Product) {
+		return;
+	}
+
+	$html = '';
+	if (function_exists('get_field')) {
+		$html = get_field('trimvia_tab_how_it_works', $product->get_id());
+	}
+
+	if ('' !== trim((string) $html)) {
+		echo wp_kses_post($html);
+
+		return;
+	}
+
+	$default_paras = array(
+		__('After checkout you complete a structured health questionnaire. A UK-registered prescriber reviews your responses and may contact you if clarification is needed.', 'theme-woopm-child'),
+		__('If approved, your prescription is sent to our partner pharmacy for dispensing and dispatch. You receive tracking details when your order ships.', 'theme-woopm-child'),
+	);
+
+	$default = '';
+	foreach ($default_paras as $para) {
+		$default .= '<p>' . esc_html($para) . '</p>';
+	}
+
+	echo wp_kses_post(apply_filters('trimvia_product_tab_how_content', $default, $product));
+}
+
+/**
+ * @param string $key Tab key.
+ * @param array  $tab Tab definition.
+ */
+function trimvia_single_product_tab_safety_render($key, $tab)
+{
+	global $product;
+
+	if (!$product instanceof WC_Product) {
+		return;
+	}
+
+	$html = '';
+	if (function_exists('get_field')) {
+		$html = get_field('trimvia_tab_safety', $product->get_id());
+	}
+
+	if ('' !== trim((string) $html)) {
+		echo wp_kses_post($html);
+
+		return;
+	}
+
+	$default_paras = array(
+		__('Report suspected side effects via the Yellow Card scheme. Your prescriber will discuss common side effects, warnings, and monitoring before treatment starts.', 'theme-woopm-child'),
+		__('This website does not replace the summary of product characteristics or patient information leaflet supplied with your medicine — always read those documents and follow clinical advice.', 'theme-woopm-child'),
+	);
+
+	$default = '';
+	foreach ($default_paras as $para) {
+		$default .= '<p>' . esc_html($para) . '</p>';
+	}
+
+	echo wp_kses_post(apply_filters('trimvia_product_tab_safety_content', $default, $product));
+}
+
+/**
+ * Map selected FAQ posts (ACF) into the bottom accordion when the FAQ tab is not used alone.
+ *
+ * @param array       $items   FAQ rows {question, answer}.
+ * @param WC_Product|null $product Product.
+ * @return array
+ */
+function trimvia_single_product_faq_items_from_acf($items, $product)
+{
+	if (!empty($items) || !$product instanceof WC_Product || !function_exists('get_field')) {
+		return $items;
+	}
+
+	if (get_field('enable_faq_tab', $product->get_id())) {
+		return $items;
+	}
+
+	$faq_ids = get_field('select_faqs', $product->get_id());
+	if (!is_array($faq_ids) || empty($faq_ids)) {
+		return $items;
+	}
+
+	foreach ($faq_ids as $faq_id) {
+		$faq_id = absint($faq_id);
+		if ($faq_id < 1) {
+			continue;
+		}
+		$post_type = get_post_type($faq_id);
+		if (!$post_type || !is_string($post_type)) {
+			continue;
+		}
+
+		$items[] = array(
+			'question' => get_the_title($faq_id),
+			'answer'   => get_post_field('post_content', $faq_id),
+		);
+	}
+
+	return $items;
+}
+add_filter('trimvia_single_product_faq_items', 'trimvia_single_product_faq_items_from_acf', 8, 2);
+
+/**
+ * Generic FAQs when no FAQ tab, no ACF selection, and filter did not pre-fill items.
+ *
+ * @param array           $items   FAQ rows.
+ * @param WC_Product|null $product Product.
+ * @return array
+ */
+function trimvia_single_product_faq_items_defaults($items, $product)
+{
+	if (!empty($items) || !$product instanceof WC_Product) {
+		return $items;
+	}
+
+	if (function_exists('get_field') && get_field('enable_faq_tab', $product->get_id())) {
+		return $items;
+	}
+
+	return array(
+		array(
+			'question' => __('Do I need a prescription?', 'theme-woopm-child'),
+			'answer'     => __('Prescription-only medicines require a prescription issued after a clinical assessment. An independent prescriber reviews your details and only approves treatment when it is medically appropriate.', 'theme-woopm-child'),
+		),
+		array(
+			'question' => __('How quickly will my order arrive?', 'theme-woopm-child'),
+			'answer'     => __('After approval, pharmacy processing and dispatch normally follow the service timelines shown at checkout. Rural postcodes may require an extra delivery day.', 'theme-woopm-child'),
+		),
+		array(
+			'question' => __('Can I change dose or strength later?', 'theme-woopm-child'),
+			'answer'     => __('Dose changes must always be clinician-led. Contact our clinical team or book a follow-up before altering strength or frequency.', 'theme-woopm-child'),
+		),
+	);
+}
+add_filter('trimvia_single_product_faq_items', 'trimvia_single_product_faq_items_defaults', 100, 2);
+
+/**
+ * Related products grid density on Trimvia single product layout.
+ *
+ * @param array $args Arguments.
+ * @return array
+ */
+function trimvia_single_product_related_products_args($args)
+{
+	if (!function_exists('is_product') || !is_product()) {
+		return $args;
+	}
+
+	$args['posts_per_page'] = 3;
+	$args['columns']        = 3;
+
+	return $args;
+}
+add_filter('woocommerce_output_related_products_args', 'trimvia_single_product_related_products_args');
+
+/**
+ * Upsells layout on single product.
+ *
+ * @param array $args Arguments.
+ * @return array
+ */
+function trimvia_single_product_upsells_args($args)
+{
+	if (!function_exists('is_product') || !is_product()) {
+		return $args;
+	}
+
+	$args['posts_per_page'] = 3;
+	$args['columns']        = 3;
+
+	return $args;
+}
+add_filter('woocommerce_upsell_display_args', 'trimvia_single_product_upsells_args');
+
+/**
+ * Section headings for upsells / related on single product.
+ *
+ * @param string $heading Heading text.
+ * @return string
+ */
+function trimvia_single_product_related_heading($heading)
+{
+	if (!function_exists('is_product') || !is_product()) {
+		return $heading;
+	}
+
+	return __('Related treatments', 'theme-woopm-child');
+}
+add_filter('woocommerce_product_related_products_heading', 'trimvia_single_product_related_heading');
+
+/**
+ * @param string $heading Heading text.
+ * @return string
+ */
+function trimvia_single_product_upsells_heading($heading)
+{
+	if (!function_exists('is_product') || !is_product()) {
+		return $heading;
+	}
+
+	return __('Often prescribed together', 'theme-woopm-child');
+}
+add_filter('woocommerce_product_upsells_products_heading', 'trimvia_single_product_upsells_heading');
+
+/**
+ * Match single-product HTML prototype CTA copy.
+ *
+ * @param string           $text    Default button text.
+ * @param WC_Product|false $product Product object.
+ * @return string
+ */
+function trimvia_single_product_add_to_cart_text($text, $product)
+{
+	if (!function_exists('is_product') || !is_product()) {
+		return $text;
+	}
+
+	return __('Start assessment for this treatment', 'theme-woopm-child');
+}
+add_filter('woocommerce_product_single_add_to_cart_text', 'trimvia_single_product_add_to_cart_text', 20, 2);
+
+/**
+ * Match parent consultation gate behavior in loop cards/buttons.
+ *
+ * @param string           $text    Existing CTA text.
+ * @param WC_Product|false $product Product object.
+ * @return string
+ */
+function trimvia_loop_product_add_to_cart_text($text, $product)
+{
+	if (!$product instanceof WC_Product) {
+		return $text;
+	}
+
+	if (trimvia_is_product_consultation_required($product)) {
+		return __('Start Assessment', 'theme-woopm-child');
+	}
+
+	return $text;
+}
+add_filter('woocommerce_product_add_to_cart_text', 'trimvia_loop_product_add_to_cart_text', 30, 2);
+
+/**
+ * Ensure loop add-to-cart URLs route to consultation entry when required.
+ *
+ * @param string     $url     Existing CTA URL.
+ * @param WC_Product $product Product object.
+ * @return string
+ */
+function trimvia_loop_product_add_to_cart_url($url, $product)
+{
+	if (!$product instanceof WC_Product) {
+		return $url;
+	}
+
+	return trimvia_get_product_entry_url($product, (string) $url);
+}
+add_filter('woocommerce_product_add_to_cart_url', 'trimvia_loop_product_add_to_cart_url', 30, 2);
+
+/**
+ * Resolve a primary condition slug for a product.
+ *
+ * @param int|WC_Product $product Product ID or object.
+ * @return string
+ */
+function trimvia_get_product_primary_condition_slug($product)
+{
+	$product_id = 0;
+	if ($product instanceof WC_Product) {
+		$product_id = (int) $product->get_id();
+	} elseif (is_numeric($product)) {
+		$product_id = (int) $product;
+	}
+
+	if ($product_id < 1) {
+		return '';
+	}
+
+	$terms = get_the_terms($product_id, 'condition');
+	if (empty($terms) || is_wp_error($terms)) {
+		return '';
+	}
+
+	$primary = reset($terms);
+	if (!$primary instanceof WP_Term) {
+		return '';
+	}
+
+	return sanitize_title((string) $primary->slug);
+}
+
+/**
+ * Whether a product should be gated behind the consultation/treatment entry step.
+ *
+ * Mirrors parent behavior: prescription products require the consultation flow
+ * until consultation session data exists.
+ *
+ * @param int|WC_Product $product Product ID or object.
+ * @return bool
+ */
+function trimvia_is_product_consultation_required($product)
+{
+	$product_id = 0;
+	if ($product instanceof WC_Product) {
+		$product_id = (int) $product->get_id();
+	} elseif (is_numeric($product)) {
+		$product_id = (int) $product;
+	}
+
+	if ($product_id < 1) {
+		return false;
+	}
+
+	$prescription_flag = '';
+	if (function_exists('get_field')) {
+		$prescription_flag = strtolower(trim((string) get_field('is_prescription_product', $product_id)));
+	}
+
+	$is_prescription_product = in_array($prescription_flag, array('yes', '1', 'true', 'plines', 'on', 'y'), true);
+	if (!$is_prescription_product && '' !== $prescription_flag) {
+		$is_prescription_product = !in_array($prescription_flag, array('no', '0', 'false', 'off', 'n'), true);
+	}
+
+	// ACF field not set: auto-detect by condition taxonomy.
+	// Any product assigned to at least one condition term is treated as requiring consultation.
+	if (!$is_prescription_product && '' === $prescription_flag) {
+		$condition_terms = wp_get_post_terms($product_id, 'condition', array('fields' => 'ids'));
+		$is_prescription_product = !is_wp_error($condition_terms) && !empty($condition_terms);
+	}
+
+	if (!$is_prescription_product) {
+		return false;
+	}
+
+	$condition_slug = trimvia_get_product_primary_condition_slug($product_id);
+	if ('' !== $condition_slug && function_exists('has_consultation_for_condition')) {
+		// Keep consultation eligibility condition-specific.
+		return !has_consultation_for_condition($condition_slug);
+	}
+
+	$has_consultation_session = false;
+	if (function_exists('WC') && WC()->session && !empty(WC()->session->get('cflp_form_data'))) {
+		$has_consultation_session = true;
+	} elseif (!empty($_SESSION['wp_cflp_form_data'])) {
+		$has_consultation_session = true;
+	}
+
+	return !$has_consultation_session;
+}
+
+/**
+ * Resolve the condition archive ("treatments") URL for a product.
+ *
+ * @param int|WC_Product $product Product ID or object.
+ * @return string
+ */
+function trimvia_get_product_treatments_url($product)
+{
+	$condition_slug = trimvia_get_product_primary_condition_slug($product);
+	if ('' === $condition_slug) {
+		return '';
+	}
+
+	$condition_term = get_term_by('slug', $condition_slug, 'condition');
+	if (!$condition_term instanceof WP_Term) {
+		return '';
+	}
+
+	$term_link = get_term_link($condition_term);
+	if (is_wp_error($term_link)) {
+		return '';
+	}
+
+	return (string) $term_link;
+}
+
+/**
+ * Product CTA destination for shop/archive/single contexts.
+ *
+ * - Normal products keep their default Woo URL.
+ * - Prescription products without consultation session follow parent flow and
+ *   go to the treatment/condition page first (fallback: consultation URL).
+ *
+ * @param int|WC_Product $product      Product ID or object.
+ * @param string         $fallback_url Default URL when no gating is required.
+ * @return string
+ */
+function trimvia_get_product_entry_url($product, $fallback_url = '')
+{
+	$resolved_fallback = (string) $fallback_url;
+	if ('' === $resolved_fallback) {
+		if ($product instanceof WC_Product && method_exists($product, 'add_to_cart_url')) {
+			$resolved_fallback = (string) $product->add_to_cart_url();
+		} elseif ($product instanceof WC_Product) {
+			$resolved_fallback = (string) $product->get_permalink();
+		}
+	}
+
+	if (!trimvia_is_product_consultation_required($product)) {
+		return $resolved_fallback;
+	}
+
+	// Match parent theme behavior: go directly to consultation page, not condition archive.
+	$condition_slug = trimvia_get_product_primary_condition_slug($product);
+	if ('' !== $condition_slug) {
+		return trimvia_get_consultation_url($condition_slug);
+	}
+
+	// Fallback: condition archive if no slug resolved.
+	$treatments_url = trimvia_get_product_treatments_url($product);
+	if ('' !== $treatments_url) {
+		return $treatments_url;
+	}
+
+	return $resolved_fallback;
+}
+
+/**
+ * Build consultation URL and append condition context when valid.
+ *
+ * Always resolves to an on-site consultation route. If Customizer URL is missing,
+ * external, or not a consultation path, fallback to /consultation/.
+ *
+ * @param string $condition_slug Optional condition slug.
+ * @return string
+ */
+function trimvia_get_consultation_url($condition_slug = '')
+{
+	$default_consultation_url = home_url('/consultation/');
+	$base_url = trim((string) get_theme_mod('trimvia_header_primary_button_link', $default_consultation_url));
+	if ('' === $base_url) {
+		$base_url = $default_consultation_url;
+	}
+
+	$base_parts = wp_parse_url($base_url);
+	$home_parts = wp_parse_url(home_url('/'));
+
+	$is_same_host = true;
+	if (!empty($base_parts['host']) && !empty($home_parts['host'])) {
+		$is_same_host = strtolower((string) $base_parts['host']) === strtolower((string) $home_parts['host']);
+	}
+	$base_path = isset($base_parts['path']) ? strtolower((string) $base_parts['path']) : '';
+	$is_consultation_path = false !== strpos($base_path, 'consultation');
+
+	if (!$is_same_host || !$is_consultation_path) {
+		$base_url = $default_consultation_url;
+	}
+
+	$condition_slug = sanitize_title((string) $condition_slug);
+	if ('' === $condition_slug) {
+		return $base_url;
+	}
+
+	return add_query_arg('condition-slug', $condition_slug, $base_url);
+}
+
+/**
+ * Best-effort condition slug from current frontend context.
+ *
+ * @return string
+ */
+function trimvia_get_current_condition_slug_context()
+{
+	if (!empty($_GET['condition-slug'])) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		return sanitize_title(wp_unslash($_GET['condition-slug']));
+	}
+
+	if (is_tax('condition')) {
+		$term = get_queried_object();
+		if ($term instanceof WP_Term) {
+			return sanitize_title((string) $term->slug);
+		}
+	}
+
+	if (function_exists('is_product') && is_product()) {
+		$product_id = (int) get_queried_object_id();
+		return trimvia_get_product_primary_condition_slug($product_id);
+	}
+
+	return '';
+}
