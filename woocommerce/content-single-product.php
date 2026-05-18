@@ -9,6 +9,13 @@ defined('ABSPATH') || exit;
 
 global $product;
 
+// Safety guard: prevent duplicate rendering when parent/child template loaders
+// both trigger the single-product content template in the same request.
+if (!empty($GLOBALS['trimvia_single_product_content_rendered'])) {
+	return;
+}
+$GLOBALS['trimvia_single_product_content_rendered'] = true;
+
 do_action('woocommerce_before_single_product');
 
 if (post_password_required()) {
@@ -32,6 +39,7 @@ if ('' === $hero_description) {
 $condition_terms = get_the_terms($product_id, 'condition');
 $condition_term  = (!empty($condition_terms) && !is_wp_error($condition_terms)) ? reset($condition_terms) : null;
 $condition_link  = ($condition_term instanceof WP_Term) ? get_term_link($condition_term) : '';
+$condition_slug  = ($condition_term instanceof WP_Term) ? sanitize_title((string) $condition_term->slug) : '';
 
 $category_label = trim(wp_strip_all_tags(wc_get_product_category_list($product_id, ' · ')));
 $is_prescription_value = function_exists('get_field') ? strtolower(trim((string) get_field('is_prescription_product', $product_id))) : '';
@@ -52,6 +60,9 @@ $stock_text = ($product instanceof WC_Product && $product->is_in_stock())
 
 $stock_class = ($product instanceof WC_Product && $product->is_in_stock()) ? 'single-product-stock' : 'single-product-stock single-product-stock--out';
 $plines_class = ('plines' === $is_prescription_value) ? 'plines-products' : '';
+$consultation_url = function_exists('trimvia_get_consultation_url')
+	? trimvia_get_consultation_url($condition_slug)
+	: home_url('/consultation/');
 ?>
 <section class="page-hero page-hero--single">
 	<div class="hero-noise"></div>
@@ -60,6 +71,10 @@ $plines_class = ('plines' === $is_prescription_value) ? 'plines-products' : '';
 			<a href="<?php echo esc_url(home_url('/')); ?>"><?php esc_html_e('Home', 'theme-woopm-child'); ?></a>
 			<span>&rsaquo;</span>
 			<a href="<?php echo esc_url($shop_url); ?>"><?php esc_html_e('Shop', 'theme-woopm-child'); ?></a>
+			<?php if ($condition_term instanceof WP_Term && !is_wp_error($condition_link) && '' !== (string) $condition_link) : ?>
+				<span>&rsaquo;</span>
+				<a href="<?php echo esc_url($condition_link); ?>"><?php echo esc_html($condition_term->name); ?></a>
+			<?php endif; ?>
 			<span>&rsaquo;</span>
 			<span><?php echo esc_html($product_title); ?></span>
 		</div>
@@ -233,8 +248,8 @@ if (!empty($tabs)) :
 		<div class="trimvia-single-product-cta-inner">
 			<h2 class="stitle"><?php esc_html_e('Not sure which treatment is right for you?', 'theme-woopm-child'); ?></h2>
 			<p class="sdesc"><?php esc_html_e('Start a free consultation and our prescribers will recommend the best option based on your health profile.', 'theme-woopm-child'); ?></p>
-			<a href="<?php echo esc_url(home_url('/shop/')); ?>" class="btn-cta">
-				<?php esc_html_e('Start Consultation', 'theme-woopm-child'); ?>
+			<a href="<?php echo esc_url($consultation_url); ?>" class="btn-cta">
+				<?php esc_html_e('Start Free Consultation', 'theme-woopm-child'); ?>
 				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"></path></svg>
 			</a>
 		</div>

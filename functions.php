@@ -10,6 +10,51 @@ if (!defined('ABSPATH')) {
 require_once get_stylesheet_directory() . '/inc/class-trimvia-nav-walker.php';
 
 /**
+ * Parent-template compatibility helper.
+ * Some parent templates call get_placeholder_image(); define a safe fallback
+ * in child theme so include() of parent templates cannot fatally error.
+ */
+if (!function_exists('get_placeholder_image')) {
+	function get_placeholder_image($return_url = true, $size = 'medium', $loading = 'lazy')
+	{
+		$placeholder_id = (int) get_theme_mod('placeholder_image');
+		if ($placeholder_id < 1) {
+			return $return_url ? '' : '';
+		}
+
+		if ($return_url) {
+			$url = wp_get_attachment_image_url($placeholder_id, $size);
+			return $url ? $url : '';
+		}
+
+		return (string) wp_get_attachment_image(
+			$placeholder_id,
+			$size,
+			false,
+			array('loading' => $loading)
+		);
+	}
+}
+
+/**
+ * Keep legacy frontend scripts stable (signature, practitioner dashboard, modal scripts).
+ */
+function trimvia_force_jquery_compatibility()
+{
+	if (is_admin()) {
+		return;
+	}
+
+	wp_enqueue_script('jquery');
+	wp_add_inline_script(
+		'jquery',
+		'window.$ = window.jQuery; window.admin = window.admin || {}; if (!window.admin.ajax) { window.admin.ajax = "' . esc_url_raw(admin_url('admin-ajax.php')) . '"; }',
+		'after'
+	);
+}
+add_action('wp_enqueue_scripts', 'trimvia_force_jquery_compatibility', 999999);
+
+/**
  * Enqueue parent + child assets.
  */
 function trimvia_child_enqueue_assets()
@@ -55,7 +100,7 @@ function trimvia_child_enqueue_assets()
 	wp_enqueue_script(
 		'theme-woopw-child-common',
 		get_stylesheet_directory_uri() . '/assets/js/common.js',
-		array(),
+		array('jquery'),
 		filemtime(get_stylesheet_directory() . '/assets/js/common.js'),
 		true
 	);
@@ -235,7 +280,7 @@ function trimvia_sanitize_logo_image_value($value)
  */
 function trimvia_sanitize_textarea($value)
 {
-	return sanitize_textarea_field((string) $value);
+	return wp_kses_post((string) $value);
 }
 
 /**
@@ -1158,7 +1203,7 @@ function trimvia_register_footer_customizer_options($wp_customize)
 		'trimvia_footer_description',
 		array(
 			'default'           => __('Transform your health with confidence. Expert care, proven treatments, and a journey tailored to you.', 'theme-woopm-child'),
-			'sanitize_callback' => 'trimvia_sanitize_textarea',
+			'sanitize_callback' => 'sanitize_text_field',
 		)
 	);
 
@@ -1320,14 +1365,15 @@ function trimvia_register_footer_customizer_options($wp_customize)
 		'trimvia_footer_copyright',
 		array(
 			'default'           => __('© 2026 Trimvia. All rights reserved.', 'theme-woopm-child'),
-			'sanitize_callback' => 'sanitize_text_field',
+			'sanitize_callback' => 'trimvia_sanitize_textarea',
 		)
 	);
 	$wp_customize->add_control(
 		'trimvia_footer_copyright',
 		array(
-			'type'    => 'text',
+			'type'    => 'textarea',
 			'label'   => __('Copyright Text', 'theme-woopm-child'),
+			'description' => __('Supports links/HTML and line breaks (Enter key).', 'theme-woopm-child'),
 			'section' => 'trimvia_footer_options',
 		)
 	);
@@ -1336,14 +1382,15 @@ function trimvia_register_footer_customizer_options($wp_customize)
 		'trimvia_footer_right_label_one',
 		array(
 			'default'           => __('GPhC Registered', 'theme-woopm-child'),
-			'sanitize_callback' => 'sanitize_text_field',
+			'sanitize_callback' => 'trimvia_sanitize_textarea',
 		)
 	);
 	$wp_customize->add_control(
 		'trimvia_footer_right_label_one',
 		array(
-			'type'    => 'text',
+			'type'    => 'textarea',
 			'label'   => __('Right Label 1', 'theme-woopm-child'),
+			'description' => __('Supports links/HTML and line breaks (Enter key).', 'theme-woopm-child'),
 			'section' => 'trimvia_footer_options',
 		)
 	);
@@ -1352,14 +1399,15 @@ function trimvia_register_footer_customizer_options($wp_customize)
 		'trimvia_footer_right_label_two',
 		array(
 			'default'           => __('ICO Registered', 'theme-woopm-child'),
-			'sanitize_callback' => 'sanitize_text_field',
+			'sanitize_callback' => 'trimvia_sanitize_textarea',
 		)
 	);
 	$wp_customize->add_control(
 		'trimvia_footer_right_label_two',
 		array(
-			'type'    => 'text',
+			'type'    => 'textarea',
 			'label'   => __('Right Label 2', 'theme-woopm-child'),
+			'description' => __('Supports links/HTML and line breaks (Enter key).', 'theme-woopm-child'),
 			'section' => 'trimvia_footer_options',
 		)
 	);
@@ -1376,6 +1424,7 @@ function trimvia_register_footer_customizer_options($wp_customize)
 		array(
 			'type'    => 'textarea',
 			'label'   => __('Bottom Footer Description', 'theme-woopm-child'),
+			'description' => __('Supports links/HTML and line breaks (Enter key).', 'theme-woopm-child'),
 			'section' => 'trimvia_footer_options',
 		)
 	);
@@ -2940,3 +2989,41 @@ function trimvia_get_current_condition_slug_context()
 
 	return '';
 }
+
+/**
+ * Ensure custom practitioner endpoint is always available from child theme.
+ */
+function trimvia_register_practitioner_orders_endpoint()
+{
+	add_rewrite_endpoint('practitioner-orders', EP_ROOT | EP_PAGES);
+}
+add_action('init', 'trimvia_register_practitioner_orders_endpoint');
+
+/**
+ * Make sure WordPress recognizes practitioner-orders query var.
+ *
+ * @param array $vars Query vars.
+ * @return array
+ */
+function trimvia_add_practitioner_orders_query_var($vars)
+{
+	$vars[] = 'practitioner-orders';
+	return $vars;
+}
+add_filter('query_vars', 'trimvia_add_practitioner_orders_query_var');
+
+/**
+ * One-time rewrite flush after registering custom account endpoints.
+ * Prevents practitioner-orders URL from failing until permalinks are resaved.
+ */
+function trimvia_flush_rewrite_rules_once_for_account_endpoints()
+{
+	$flag = get_option('trimvia_practitioner_endpoint_flushed', '0');
+	if ('1' === (string) $flag) {
+		return;
+	}
+
+	flush_rewrite_rules(false);
+	update_option('trimvia_practitioner_endpoint_flushed', '1', false);
+}
+add_action('init', 'trimvia_flush_rewrite_rules_once_for_account_endpoints', 30);

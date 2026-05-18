@@ -34,7 +34,7 @@ $logout_url = function_exists('wc_logout_url') ? wc_logout_url() : wp_logout_url
 			<li class="<?php echo esc_attr(wc_get_account_menu_item_classes($endpoint)); ?>">
 				<a href="<?php echo esc_url(wc_get_account_endpoint_url($endpoint)); ?>">
 					<?php echo wp_kses($icons[$endpoint] ?? $default_icon, trimvia_account_allowed_svg()); ?>
-					<?php echo esc_html(is_array($label) && isset($label['title']) ? $label['title'] : $label); ?>
+					<span class="menu-label"><?php echo esc_html(is_array($label) && isset($label['title']) ? $label['title'] : $label); ?></span>
 				</a>
 			</li>
 		<?php endforeach; ?>

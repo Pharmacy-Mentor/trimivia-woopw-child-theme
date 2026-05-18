@@ -92,10 +92,6 @@ $count_label    = sprintf(
 					?>
 				<?php endwhile; ?>
 			</div>
-
-			<div class="trimvia-shop-pagination">
-				<?php do_action('woocommerce_after_shop_loop'); ?>
-			</div>
 		<?php else : ?>
 			<?php do_action('woocommerce_no_products_found'); ?>
 		<?php endif; ?>

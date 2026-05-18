@@ -44,7 +44,7 @@ $bottom_note_text = get_theme_mod('trimvia_footer_bottom_description', __('Trimv
 				<div class="logo-text footer-logo-text"><strong><?php echo esc_html($footer_logo_text_primary); ?></strong><span><?php echo esc_html($footer_logo_text_secondary); ?></span></div>
 			<?php endif; ?>
 			<?php if (!empty($footer_description)) : ?>
-				<p><?php echo esc_html($footer_description); ?></p>
+				<p><?php echo wp_kses_post(nl2br($footer_description)); ?></p>
 			<?php endif; ?>
 			<?php if (!empty($footer_email)) : ?>
 				<a href="mailto:<?php echo esc_attr($footer_email); ?>" class="footer-email">
@@ -134,18 +134,18 @@ $bottom_note_text = get_theme_mod('trimvia_footer_bottom_description', __('Trimv
 		</div>
 	</div>
 	<div class="footer-bottom">
-		<span><?php echo esc_html($copyright_text); ?></span>
+		<span><?php echo wp_kses_post(nl2br(html_entity_decode((string) $copyright_text, ENT_QUOTES, 'UTF-8'))); ?></span>
 		<div class="f-badges">
 			<?php if (!empty($right_label_one)) : ?>
-				<span class="f-badge"><?php echo esc_html($right_label_one); ?></span>
+				<span class="f-badge"><?php echo wp_kses_post(nl2br(html_entity_decode((string) $right_label_one, ENT_QUOTES, 'UTF-8'))); ?></span>
 			<?php endif; ?>
 			<?php if (!empty($right_label_two)) : ?>
-				<span class="f-badge"><?php echo esc_html($right_label_two); ?></span>
+				<span class="f-badge"><?php echo wp_kses_post(nl2br(html_entity_decode((string) $right_label_two, ENT_QUOTES, 'UTF-8'))); ?></span>
 			<?php endif; ?>
 		</div>
 	</div>
 	<?php if (!empty($bottom_note_text)) : ?>
-		<div class="f-legal"><p><?php echo esc_html($bottom_note_text); ?></p></div>
+		<div class="f-legal"><p><?php echo wp_kses_post(nl2br(html_entity_decode((string) $bottom_note_text, ENT_QUOTES, 'UTF-8'))); ?></p></div>
 	<?php endif; ?>
 </footer>
 <?php wp_footer(); ?>

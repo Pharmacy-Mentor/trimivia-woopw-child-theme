@@ -11,9 +11,17 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
+if ('product' === get_post_type()) {
+	$child_product_template = trailingslashit(get_stylesheet_directory()) . 'woocommerce/single-product.php';
+	if (file_exists($child_product_template)) {
+		include $child_product_template;
+		return;
+	}
+}
+
 if ('post' !== get_post_type()) {
 	$parent_single_template = trailingslashit(get_template_directory()) . 'single.php';
-	if (file_exists($parent_single_template)) {
+	if (file_exists($parent_single_template) && function_exists('get_placeholder_image')) {
 		include $parent_single_template;
 		return;
 	}

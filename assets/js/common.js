@@ -1,6 +1,194 @@
 (() => {
   document.documentElement.classList.add("js");
 
+  const ensureLegacyAdminAjaxGlobal = () => {
+    const defaultAjaxUrl = "/wp-admin/admin-ajax.php";
+    const fromTrimvia =
+      window.trimviaConsultation &&
+      typeof window.trimviaConsultation.ajaxUrl === "string" &&
+      window.trimviaConsultation.ajaxUrl
+        ? window.trimviaConsultation.ajaxUrl
+        : "";
+
+    if (!window.admin || typeof window.admin !== "object") {
+      window.admin = {};
+    }
+
+    if (!window.admin.ajax || typeof window.admin.ajax !== "string") {
+      window.admin.ajax = fromTrimvia || defaultAjaxUrl;
+    }
+  };
+
+  const ensureLegacyJqueryModalSupport = () => {
+    const jq = window.jQuery;
+    if (!jq || !jq.fn) return;
+    if (typeof jq.fn.modal === "function") return;
+
+    const getBackdrop = () => document.querySelector(".modal-backdrop");
+
+    const showModal = (modal) => {
+      if (!modal) return;
+      modal.classList.add("show");
+      modal.style.display = "block";
+      modal.setAttribute("aria-hidden", "false");
+      document.body.classList.add("modal-open");
+
+      if (!getBackdrop()) {
+        const backdrop = document.createElement("div");
+        backdrop.className = "modal-backdrop fade show";
+        document.body.appendChild(backdrop);
+      }
+    };
+
+    const hideModal = (modal) => {
+      if (!modal) return;
+      modal.classList.remove("show");
+      modal.style.display = "none";
+      modal.setAttribute("aria-hidden", "true");
+      document.body.classList.remove("modal-open");
+      const backdrop = getBackdrop();
+      if (backdrop) {
+        backdrop.remove();
+      }
+    };
+
+    jq.fn.modal = function modalCompat(action) {
+      return this.each(function eachModal() {
+        const node = this;
+        if (action === "hide") {
+          hideModal(node);
+          return;
+        }
+        showModal(node);
+      });
+    };
+  };
+
+  const ensureGetOrderPrescriptionDataFallback = () => {
+    if (typeof window.get_order_prescription_data === "function") return;
+
+    const jq = window.jQuery;
+    if (!jq) {
+      window.get_order_prescription_data = () => {
+        if (typeof window.orderModal === "function") window.orderModal("show");
+      };
+      return;
+    }
+
+    const resolveAjaxUrl = () => {
+      if (window.admin && window.admin.ajax) return window.admin.ajax;
+      if (window.trimviaConsultation && window.trimviaConsultation.ajaxUrl) return window.trimviaConsultation.ajaxUrl;
+      return "/wp-admin/admin-ajax.php";
+    };
+
+    const resolveModal = () =>
+      document.getElementById("practitioner-order-modal") ||
+      document.getElementById("practitioner-order-prescription-modal") ||
+      document.getElementById("prescription-extra-content-modal") ||
+      document.getElementById("prescriber-order-modal");
+
+    const renderIntoModal = (html) => {
+      if (!html || typeof html !== "string") return;
+      const modal = resolveModal();
+      if (!modal) return;
+
+      const target =
+        modal.querySelector(".template-wrapper") ||
+        modal.querySelector(".practitioner-order-under-review-wrapper") ||
+        modal.querySelector(".practitioner-prescription-wrapper") ||
+        modal.querySelector(".modal-body");
+
+      if (target) target.innerHTML = html;
+    };
+
+    window.get_order_prescription_data = function getOrderPrescriptionDataFallback(orderId, actionType, eventOrElement) {
+      const ajaxUrl = resolveAjaxUrl();
+      const payload = {
+        order_id: orderId || 0,
+        action_type: actionType || "view-prescriptions",
+      };
+
+      const openModal = () => {
+        if (typeof window.orderModal === "function") {
+          window.orderModal("show");
+        }
+      };
+
+      // Try the most likely AJAX action names used by parent/custom plugins.
+      const actions = [
+        "get_order_prescription_data",
+        "get_prescription_data",
+        "practitioner_order_prescription_data",
+      ];
+
+      let requested = false;
+      actions.forEach((actionName) => {
+        if (requested) return;
+        requested = true;
+        jq
+          .ajax({
+            type: "POST",
+            url: ajaxUrl,
+            dataType: "json",
+            data: { ...payload, action: actionName },
+          })
+          .done((response) => {
+            if (response && typeof response === "object") {
+              if (typeof response.html === "string") renderIntoModal(response.html);
+              if (typeof response.data === "string") renderIntoModal(response.data);
+            } else if (typeof response === "string") {
+              renderIntoModal(response);
+            }
+          })
+          .always(() => {
+            openModal();
+          });
+      });
+
+      if (eventOrElement && typeof eventOrElement.preventDefault === "function") {
+        eventOrElement.preventDefault();
+      }
+
+      // Open quickly even if endpoint differs.
+      window.setTimeout(openModal, 60);
+    };
+  };
+
+  // Global compatibility for legacy practitioner scripts that call orderModal()
+  // before/without child initializers.
+  if (typeof window.orderModal !== "function") {
+    window.orderModal = (state) => {
+      const modal =
+        document.getElementById("practitioner-order-modal") ||
+        document.getElementById("practitioner-order-prescription-modal") ||
+        document.getElementById("prescription-extra-content-modal") ||
+        document.getElementById("prescriber-order-modal");
+      if (!modal) return;
+
+      const shouldShow = state !== "hide";
+
+      // Prefer Bootstrap modal API when present.
+      if (window.bootstrap && typeof window.bootstrap.Modal === "function") {
+        const instance = window.bootstrap.Modal.getOrCreateInstance(modal);
+        if (shouldShow) {
+          instance.show();
+        } else {
+          instance.hide();
+        }
+        return;
+      }
+
+      // Fallback behavior (no bootstrap JS available).
+      modal.classList.toggle("show", shouldShow);
+      modal.style.display = shouldShow ? "block" : "none";
+      modal.setAttribute("aria-hidden", shouldShow ? "false" : "true");
+      document.body.classList.toggle("modal-open", shouldShow);
+      if (!shouldShow) {
+        document.querySelectorAll(".modal-backdrop").forEach((node) => node.remove());
+      }
+    };
+  }
+
   const initHeaderScroll = () => {
     const header = document.getElementById("header");
     if (!header) return;
@@ -252,8 +440,13 @@
   };
 
   const initPractitionerOrderModalFix = () => {
-    const actionSelector = '.practitioner-order-action[data-action_type="view-prescriptions"]';
-    const modalId = "practitioner-order-modal";
+    const actionSelector = '.practitioner-order-action, a[data-action_type="view-prescriptions"]';
+    const modalIds = [
+      "practitioner-order-modal",
+      "practitioner-order-prescription-modal",
+      "prescription-extra-content-modal",
+      "prescriber-order-modal",
+    ];
     const closeSelector = [
       "#practitioner-order-modal .close",
       "#practitioner-order-modal button.close",
@@ -262,7 +455,13 @@
       "#practitioner-order-modal [data-bs-dismiss='modal']",
     ].join(", ");
 
-    const getModal = () => document.getElementById(modalId);
+    const getModal = () => {
+      for (const id of modalIds) {
+        const node = document.getElementById(id);
+        if (node) return node;
+      }
+      return null;
+    };
 
     const syncBackdrops = () => {
       const backdrops = Array.from(document.querySelectorAll(".modal-backdrop"));
@@ -317,12 +516,32 @@
       Array.from(document.querySelectorAll(".modal-backdrop")).forEach((backdrop) => backdrop.remove());
     };
 
+    // Keep behavior aligned with legacy flow.
+    window.orderModal = (state) => {
+      if ("hide" === state) {
+        hideModal();
+        return;
+      }
+      makeModalInteractive();
+    };
+
     document.addEventListener("click", (event) => {
       const actionButton = event.target.closest(actionSelector);
-      if (actionButton) {
-        window.requestAnimationFrame(makeModalInteractive);
-        window.setTimeout(makeModalInteractive, 120);
-      }
+      if (!actionButton) return;
+
+      // Let parent flow run first (it usually injects modal content),
+      // then recover only if modal did not open.
+      window.setTimeout(() => {
+        const modal = getModal();
+        if (!modal) return;
+        const isVisible =
+          modal.classList.contains("show") ||
+          modal.style.display === "block" ||
+          modal.getAttribute("aria-hidden") === "false";
+        if (!isVisible) {
+          window.orderModal("show");
+        }
+      }, 120);
     });
 
     document.addEventListener("click", (event) => {
@@ -349,6 +568,9 @@
   };
 
   const initCommon = () => {
+    ensureLegacyAdminAjaxGlobal();
+    ensureLegacyJqueryModalSupport();
+    ensureGetOrderPrescriptionDataFallback();
     initHeaderScroll();
     initMobileMenu();
     initRevealOnScroll();

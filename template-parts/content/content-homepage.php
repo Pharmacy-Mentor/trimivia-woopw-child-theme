@@ -20,6 +20,7 @@ $hero_rating_score   = '4.8';
 $hero_rating_label   = 'Google Reviews';
 $hero_pills          = array('GPhC Registered', 'Next-Day Delivery', 'UK Prescribers');
 $hero_bg_url         = '';
+$hero_bg_mobile_url  = '';
 
 if (function_exists('get_field')) {
     $slide_query = new WP_Query(
@@ -77,6 +78,11 @@ if (function_exists('get_field')) {
 
         if (function_exists('trimvia_acf_image_url')) {
             $hero_bg_url = trimvia_acf_image_url($hero_bg_field, 'full');
+        }
+
+        $hero_bg_mobile_field = get_field('hero_bg_image_mobile', $slide_id);
+        if (function_exists('trimvia_acf_image_url')) {
+            $hero_bg_mobile_url = trimvia_acf_image_url($hero_bg_mobile_field, 'full');
         }
 
         $primary_cta = get_field('hero_primary_cta', $slide_id);
@@ -442,6 +448,18 @@ if (isset($cta_button['title']) && stripos((string) $cta_button['title'], 'consu
 if (empty($cta_button['url']) || (isset($cta_button['url']) && stripos((string) $cta_button['url'], 'consultation') !== false)) {
     $cta_button['url'] = home_url('/shop/');
 }
+
+$hero_img_style_parts = array();
+if (!empty($hero_bg_url)) {
+    $hero_img_style_parts[] = "--hero-desktop-bg:url('" . esc_url($hero_bg_url) . "')";
+}
+if (!empty($hero_bg_mobile_url)) {
+    $hero_img_style_parts[] = "--hero-mobile-bg:url('" . esc_url($hero_bg_mobile_url) . "')";
+}
+$hero_img_style_attr = '';
+if (!empty($hero_img_style_parts)) {
+    $hero_img_style_attr = ' style="' . esc_attr(implode(';', $hero_img_style_parts)) . '"';
+}
 ?>
 <section class="hero">
   <div class="hero-bg">
@@ -450,7 +468,7 @@ if (empty($cta_button['url']) || (isset($cta_button['url']) && stripos((string) 
     <div class="hero-noise"></div><div class="hero-grid"></div>
   </div>
   <div class="hero-glow"></div>
-  <div class="hero-img"<?php echo $hero_bg_url ? ' style="background-image:url(' . esc_url($hero_bg_url) . ')"' : ''; ?>><div class="hero-img-overlay"></div></div>
+  <div class="hero-img"<?php echo $hero_img_style_attr; ?>><div class="hero-img-overlay"></div></div>
   <div class="hero-content">
     <h1><?php echo esc_html($hero_title); ?> <em><?php echo esc_html($hero_title_emphasis); ?></em></h1>
     <p class="hero-sub"><?php echo esc_html($hero_subtitle); ?></p>

@@ -148,6 +148,52 @@ if (function_exists('wc_get_loop_prop')) {
 if ($shop_products_count < 1 && isset($GLOBALS['wp_query']) && $GLOBALS['wp_query'] instanceof WP_Query) {
 	$shop_products_count = (int) $GLOBALS['wp_query']->found_posts;
 }
+
+$query_post_type = '';
+if (isset($GLOBALS['wp_query']) && $GLOBALS['wp_query'] instanceof WP_Query) {
+	$query_post_type = $GLOBALS['wp_query']->get('post_type');
+}
+
+$native_query_has_products = false;
+if (isset($GLOBALS['wp_query']) && $GLOBALS['wp_query'] instanceof WP_Query && is_array($GLOBALS['wp_query']->posts)) {
+	foreach ($GLOBALS['wp_query']->posts as $native_query_post) {
+		if ($native_query_post instanceof WP_Post && 'product' === $native_query_post->post_type) {
+			$native_query_has_products = true;
+			break;
+		}
+	}
+}
+
+$is_query_product_type = false;
+if (is_array($query_post_type)) {
+	$is_query_product_type = in_array('product', $query_post_type, true);
+} elseif (is_string($query_post_type) && '' !== $query_post_type) {
+	$is_query_product_type = ('product' === $query_post_type);
+} elseif (function_exists('is_shop') && is_shop()) {
+	$is_query_product_type = $native_query_has_products;
+}
+
+$render_native_product_loop = $is_query_product_type && $native_query_has_products && woocommerce_product_loop();
+$use_fallback_product_query = false;
+$fallback_product_query = null;
+if (!$render_native_product_loop) {
+	$fallback_paged = max(1, (int) get_query_var('paged'), (int) get_query_var('page'));
+	$fallback_product_query = new WP_Query(
+		array(
+			'post_type'      => 'product',
+			'post_status'    => 'publish',
+			'posts_per_page' => (int) apply_filters('loop_shop_per_page', 12),
+			'paged'          => $fallback_paged,
+			'orderby'        => 'date',
+			'order'          => 'DESC',
+		)
+	);
+
+	if ($fallback_product_query->have_posts()) {
+		$use_fallback_product_query = true;
+		$shop_products_count = (int) $fallback_product_query->found_posts;
+	}
+}
 ?>
 <section class="page-hero page-hero--shop">
 	<div class="hero-noise"></div>
@@ -170,53 +216,50 @@ if ($shop_products_count < 1 && isset($GLOBALS['wp_query']) && $GLOBALS['wp_quer
 			</div>
 		</div>
 
-		<?php if ($is_shop) : ?>
-			<div class="row mb-4">
-				<div class="col-lg-4">
-					<?php echo do_shortcode('[wpf-filters id=2]'); ?>
-				</div>
-				<div class="col-lg-8">
-					<?php if (woocommerce_product_loop()) : ?>
-						<div class="shop-grid">
-							<?php while (have_posts()) : the_post(); ?>
-								<?php
-								global $product;
-								if (!$product instanceof WC_Product) {
-									$product = wc_get_product(get_the_ID());
-								}
-								if (!$product instanceof WC_Product) {
-									continue;
-								}
-								get_template_part('template-parts/trimvia', 'shop-product-card', array('product' => $product));
-								?>
-							<?php endwhile; ?>
-						</div>
-						<?php do_action('woocommerce_after_shop_loop'); ?>
-					<?php else : ?>
-						<?php do_action('woocommerce_no_products_found'); ?>
-					<?php endif; ?>
-				</div>
+		<?php if ($render_native_product_loop || $use_fallback_product_query) : ?>
+			<div class="shop-grid">
+				<?php while (($use_fallback_product_query ? $fallback_product_query->have_posts() : ($render_native_product_loop ? have_posts() : false))) : ?>
+					<?php
+					if ($use_fallback_product_query) {
+						$fallback_product_query->the_post();
+					} else {
+						the_post();
+					}
+					global $product;
+					if (!$product instanceof WC_Product) {
+						$product = wc_get_product(get_the_ID());
+					}
+					if (!$product instanceof WC_Product) {
+						continue;
+					}
+					get_template_part('template-parts/trimvia', 'shop-product-card', array('product' => $product));
+					?>
+				<?php endwhile; ?>
+			</div>
+
+			<div class="trimvia-shop-pagination">
+				<?php if ($use_fallback_product_query && $fallback_product_query instanceof WP_Query) : ?>
+					<?php
+					echo wp_kses_post(
+						paginate_links(
+							array(
+								'total'      => (int) $fallback_product_query->max_num_pages,
+								'current'    => max(1, (int) get_query_var('paged'), (int) get_query_var('page')),
+								'type'       => 'list',
+								'prev_text'  => __('Prev', 'theme-woopm-child'),
+								'next_text'  => __('Next', 'theme-woopm-child'),
+								'mid_size'   => 1,
+							)
+						)
+					);
+					wp_reset_postdata();
+					?>
+				<?php else : ?>
+					<?php do_action('woocommerce_after_shop_loop'); ?>
+				<?php endif; ?>
 			</div>
 		<?php else : ?>
-			<?php if (woocommerce_product_loop()) : ?>
-				<div class="shop-grid">
-					<?php while (have_posts()) : the_post(); ?>
-						<?php
-						global $product;
-						if (!$product instanceof WC_Product) {
-							$product = wc_get_product(get_the_ID());
-						}
-						if (!$product instanceof WC_Product) {
-							continue;
-						}
-						get_template_part('template-parts/trimvia', 'shop-product-card', array('product' => $product));
-						?>
-					<?php endwhile; ?>
-				</div>
-				<?php do_action('woocommerce_after_shop_loop'); ?>
-			<?php else : ?>
-				<?php do_action('woocommerce_no_products_found'); ?>
-			<?php endif; ?>
+			<?php do_action('woocommerce_no_products_found'); ?>
 		<?php endif; ?>
 
 		<?php if ($show_shop_trust && !empty($shop_trust_items)) : ?>

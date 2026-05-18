@@ -19,9 +19,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly
 }
 
-get_header( 'shop' ); ?>
+get_header(); ?>
 <div class="woo-single-product-wrapper">
-	
+
 	<?php
 		remove_action('woocommerce_before_main_content', 'woocommerce_breadcrumb', 20);
 		/**
@@ -52,6 +52,6 @@ get_header( 'shop' ); ?>
 </div>
 
 <?php
-get_footer( 'shop' );
+get_footer();
 
 /* Omit closing PHP tag at the end of PHP files to avoid "headers already sent" issues. */

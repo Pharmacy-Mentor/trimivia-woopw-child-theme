@@ -59,6 +59,18 @@ a { text-decoration: none; color: inherit; } button { cursor: pointer; border: n
 .nav .menu { list-style: none; display: flex; align-items: center; gap: 32px; margin: 0; padding: 0; }
 .nav .menu > li { list-style: none; position: relative; }
 
+/* Keep header/menu typography consistent on single product */
+body.single-product .header .nav a,
+body.single-product .header .nav .menu > li > a,
+body.single-product .header .btn-ghost,
+body.single-product .header .btn-accent,
+body.single-product .header .btn-basket {
+  font-family: var(--fb) !important;
+  font-size: 15px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
+}
+
 /* WordPress dropdown menus (.sub-menu) — desktop */
 .nav .sub-menu {
   list-style: none;
@@ -461,7 +473,10 @@ body.mobile-nav-open .mobile-nav-panel {
 .hero-img {
   position: absolute; inset: 0;
   z-index: 1;
-  background: url('../images/hero-background.jpg') center center / cover no-repeat;
+  background-image: var(--hero-desktop-bg, url('../images/hero-background.jpg'));
+  background-position: center center;
+  background-size: cover;
+  background-repeat: no-repeat;
 }
 .hero-img-overlay {
   position: absolute; inset: 0;
@@ -469,6 +484,12 @@ body.mobile-nav-open .mobile-nav-panel {
 }
 @media (max-width: 1024px) {
   .hero-img-overlay { background: linear-gradient(to bottom, rgba(6,14,36,0.85) 0%, rgba(6,14,36,0.6) 100%); }
+}
+@media (max-width: 767px) {
+  .hero-img {
+    background-image: var(--hero-mobile-bg, var(--hero-desktop-bg, url('../images/hero-background.jpg')));
+    background-position: center top;
+  }
 }
 .hero-gradient { position: absolute; inset: -50%; width: 200%; height: 200%; background: radial-gradient(ellipse 40% 50% at 20% 50%, rgba(26,86,232,0.35) 0%, transparent 100%), radial-gradient(ellipse 35% 40% at 75% 25%, rgba(15,59,166,0.45) 0%, transparent 100%), radial-gradient(ellipse 25% 30% at 55% 80%, rgba(26,86,232,0.1) 0%, transparent 100%); animation: gShift 20s ease-in-out infinite; }
 @keyframes gShift { 0%,100% { transform: translate(0,0); } 33% { transform: translate(2%,-2%); } 66% { transform: translate(-1%,1.5%); } }
@@ -686,9 +707,11 @@ body.mobile-nav-open .mobile-nav-panel {
 .f-col .f-menu li { list-style: none; }
 .f-col .f-menu li a { display: block; font-size: 14px; color: rgba(255,255,255,0.75); padding: 5px 0; transition: all 0.3s; }
 .f-col .f-menu li a:hover { color: #fff; padding-left: 4px; }
-.footer-bottom { max-width: 1280px; margin: 0 auto; padding: 24px 40px; border-top: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: 300; flex-wrap: wrap; gap: 12px; }
-.f-badges { display: flex; gap: 10px; }
+.footer-bottom { max-width: 1280px; margin: 0 auto; padding: 24px 40px; border-top: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: 300; flex-wrap: nowrap; gap: 12px; }
+.f-badges { display: flex; gap: 10px; margin-left: auto; justify-content: flex-end; flex-wrap: wrap; }
 .f-badge { padding: 5px 14px; border-radius: 6px; background: rgba(255,255,255,0.04); font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.25); text-transform: uppercase; letter-spacing: 1px; }
+.f-badge a { color: inherit; text-transform: none; letter-spacing: 0; text-decoration: underline; }
+.f-badge a:hover { color: rgba(255,255,255,0.9); }
 .f-legal { max-width: 1280px; margin: 0 auto; padding: 20px 40px 36px; }
 .f-legal p { font-size: 11px; color: rgba(255,255,255,0.18); line-height: 1.7; font-weight: 300; }
 
@@ -789,6 +812,8 @@ body.mobile-nav-open .mobile-nav-panel {
   .container, .header-inner, .hero-content, .cta-inner { padding-left: 24px; padding-right: 24px; }
   .steps, .team-row, .tg { grid-template-columns: 1fr; }
   .footer-grid { grid-template-columns: 1fr; }
+  .footer-bottom { flex-wrap: wrap; }
+  .f-badges { width: 100%; margin-left: 0; justify-content: flex-start; }
   .hero h1 { font-size: 38px; }
   .hero-btns { flex-direction: column; align-items: flex-start; }
   .hero-proof { flex-direction: column; align-items: flex-start; gap: 16px; }
@@ -1101,6 +1126,31 @@ body.mobile-nav-open .mobile-nav-panel {
 
 .shop-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
 
+/* Page template shop fallback layout (when Bootstrap grid styles are absent) */
+body.page-template-page-shop-php .row.mb-4,
+body.page-template-page-shop .row.mb-4 {
+  display: grid;
+  grid-template-columns: minmax(250px, 320px) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+body.page-template-page-shop-php .row.mb-4 > [class*="col-"],
+body.page-template-page-shop .row.mb-4 > [class*="col-"] {
+  width: auto;
+  max-width: none;
+}
+
+body.page-template-page-shop-php .row.mb-4 .wpfMainWrapper,
+body.page-template-page-shop .row.mb-4 .wpfMainWrapper {
+  border: 1px solid var(--g100);
+  border-radius: 16px;
+  padding: 16px;
+  background: #fff;
+  max-height: 70vh;
+  overflow: auto;
+}
+
 /* Condition products block header — ACF-driven; matches Shop / page-section typography */
 .condition-products-section-head {
   text-align: center;
@@ -1390,9 +1440,13 @@ body.mobile-nav-open .mobile-nav-panel {
 .shop-trust { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin: 0; }
 .shop-grid + .shop-trust--after-products,
 .shop-empty + .shop-trust--after-products { margin-top: 56px; }
+.trimvia-shop-pagination + .shop-trust--after-products { margin-top: 56px; }
+.woocommerce-pagination + .shop-trust--after-products { margin-top: 56px; }
 .shop-trust--after-products + .shop-after-products { margin-top: 28px; }
 .shop-grid + .shop-after-products,
 .shop-empty + .shop-after-products { margin-top: 56px; }
+.trimvia-shop-pagination + .shop-after-products { margin-top: 56px; }
+.woocommerce-pagination + .shop-after-products { margin-top: 56px; }
 .shop-trust-item { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 28px 20px; background: var(--white); border-radius: var(--rl); border: 1px solid var(--g100); }
 .shop-trust-icon { width: 48px; height: 48px; border-radius: 14px; background: var(--blue-pale); display: flex; align-items: center; justify-content: center; margin-bottom: 14px; }
 .shop-trust-icon svg { width: 22px; height: 22px; color: var(--blue); }
@@ -1405,8 +1459,90 @@ body.mobile-nav-open .mobile-nav-panel {
 .shop-after-products { margin-top: 0; padding: 36px; border: 1px solid var(--g100); border-radius: var(--rxl); background: linear-gradient(180deg, #ffffff 0%, #f8faff 100%); }
 .shop-after-products .stitle { font-size: clamp(28px, 3vw, 38px); margin-bottom: 14px; }
 .shop-after-products-content p:last-child { margin-bottom: 0; }
-.trimvia-shop-pagination { margin-top: 32px; display: flex; justify-content: center; }
+.trimvia-shop-pagination {
+  margin-top: 34px;
+  margin-bottom: 8px;
+  padding-top: 8px;
+  clear: both;
+  display: flex;
+  justify-content: center;
+}
+.shop-grid + .woocommerce-pagination,
+.shop-empty + .woocommerce-pagination {
+  margin-top: 34px;
+  margin-bottom: 56px;
+  padding-top: 8px;
+  clear: both;
+  float: none;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
 .trimvia-shop-pagination .woocommerce-pagination { margin: 0; }
+.trimvia-shop-pagination ul.page-numbers,
+.trimvia-shop-pagination .woocommerce-pagination ul.page-numbers {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+}
+.trimvia-shop-pagination ul.page-numbers li,
+.trimvia-shop-pagination .woocommerce-pagination ul.page-numbers li {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.trimvia-shop-pagination ul.page-numbers li::before,
+.trimvia-shop-pagination ul.page-numbers li::after,
+.trimvia-shop-pagination .woocommerce-pagination ul.page-numbers li::before,
+.trimvia-shop-pagination .woocommerce-pagination ul.page-numbers li::after {
+  content: none !important;
+}
+.trimvia-shop-pagination .page-numbers a,
+.trimvia-shop-pagination .page-numbers span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--g200);
+  background: #fff;
+  color: var(--g700);
+  font-family: var(--fb);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.15s ease;
+}
+.trimvia-shop-pagination .page-numbers .current,
+.trimvia-shop-pagination .page-numbers span.current {
+  background: var(--blue);
+  border-color: var(--blue);
+  color: #fff;
+  box-shadow: 0 6px 18px rgba(26, 86, 232, 0.26);
+}
+.trimvia-shop-pagination .page-numbers a:hover {
+  background: var(--blue-dark);
+  border-color: var(--blue-dark);
+  color: #fff;
+  transform: translateY(-1px);
+}
+.trimvia-shop-pagination a.prev.page-numbers,
+.trimvia-shop-pagination a.next.page-numbers {
+  padding: 0 14px;
+  min-width: 52px;
+  font-weight: 700;
+}
+.trimvia-shop-pagination span.page-numbers.dots {
+  border-style: dashed;
+  border-color: var(--g300);
+  color: var(--g500);
+}
 .trimvia-shop-cta { border-radius: calc(var(--rxl) - 8px); border: 1px solid rgba(255, 255, 255, 0.16); overflow: hidden; }
 .trimvia-shop-cta .orb-1 { top: -30%; right: -20%; opacity: 0.4; }
 .trimvia-shop-cta .orb-2 { bottom: -30%; left: -15%; opacity: 0.25; }
@@ -1844,13 +1980,22 @@ body.mobile-nav-open .mobile-nav-panel {
   font-family: var(--fb);
   font-size: clamp(17px, 2vw, 20px);
   font-weight: 700;
-  color: var(--g900);
+  color: #1a56e8 !important;
 }
 .trimvia-consult-woo-form form.cflp-form .content-wrapper.section-title h4 {
   font-family: var(--fb);
   font-weight: 600;
-  color: var(--blue-dark);
+  color: #1a56e8 !important;
   font-size: 15px;
+}
+.trimvia-consult-woo-form form.cflp-form .content-wrapper.section-title.text-center h4.mb-3 span.question-pointer {
+  color: #1a56e8 !important;
+}
+.trimvia-consult-woo-form form.cflp-form span.count-group,
+.trimvia-consult-woo-form form.cflp-form span.sidebar-count-group {
+  background: #1a56e8 !important;
+  border-color: #1a56e8 !important;
+  color: #fff !important;
 }
 .trimvia-consult-woo-form form.cflp-form input[type="text"],
 .trimvia-consult-woo-form form.cflp-form input[type="email"],
@@ -1894,6 +2039,8 @@ body.mobile-nav-open .mobile-nav-panel {
   .shop-trust { grid-template-columns: repeat(2, 1fr); }
   .shop-after-products { padding: 30px; }
   .trimvia-shop-cta-inner { padding: 62px 28px; }
+  body.page-template-page-shop-php .row.mb-4,
+  body.page-template-page-shop .row.mb-4 { grid-template-columns: 1fr; }
   .consult-grid { grid-template-columns: 1fr; }
   .consult-sidebar { position: static; }
   .trimvia-consult-woo-card__grid {
@@ -2549,9 +2696,28 @@ body.tax-condition.consultation-completed #treatments .price .woocommerce-Price-
 
 .account-page-grid {
   display: grid;
-  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
-  gap: 40px;
+  grid-template-columns: minmax(240px, 280px) minmax(0, 1fr);
+  gap: 28px;
   align-items: start;
+}
+
+/* Allow prescriber dashboard and other wide content to use full column width */
+.woocommerce-account .trimvia-account-content .container {
+  max-width: none !important;
+  width: 100%;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.trimvia-account-content {
+  min-width: 0;
+}
+
+.trimvia-account-page .woocommerce-MyAccount-navigation,
+.trimvia-account-page .woocommerce-MyAccount-content {
+  float: none !important;
+  width: 100% !important;
+  margin: 0 !important;
 }
 
 .account-nav-wrap {
@@ -2598,7 +2764,8 @@ body.tax-condition.consultation-completed #treatments .price .woocommerce-Price-
 }
 
 .account-nav a {
-  display: flex;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
@@ -2606,9 +2773,16 @@ body.tax-condition.consultation-completed #treatments .price .woocommerce-Price-
   font-size: 14px;
   font-weight: 600;
   line-height: 1.35;
+  word-break: normal;
+  overflow-wrap: normal;
   color: var(--g700);
   text-decoration: none;
   transition: background 0.2s, color 0.2s;
+}
+
+.account-nav a .menu-label {
+  white-space: normal;
+  word-break: keep-all;
 }
 
 .account-nav > li:first-child > a {
@@ -2937,6 +3111,47 @@ body.tax-condition.consultation-completed #treatments .price .woocommerce-Price-
   width: 100%;
 }
 
+/* Keep custom practitioner tables usable on narrower desktop widths */
+.trimvia-account-content .table-responsive,
+.trimvia-account-content .dataTables_wrapper {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* Normalize practitioner table separators so pseudo-lines do not bleed */
+body.woocommerce-account .woo-practitioner-orders-wrapper table tbody td::before,
+body.woocommerce-account .practitioner-order-completed-wrapper table tbody td::before {
+  content: none !important;
+}
+
+/* Add breathing room between practitioner records */
+body.woocommerce-account .woo-practitioner-orders-wrapper table,
+body.woocommerce-account .practitioner-order-completed-wrapper table {
+  border-collapse: separate;
+  border-spacing: 0 10px;
+}
+
+body.woocommerce-account .woo-practitioner-orders-wrapper table tbody td,
+body.woocommerce-account .practitioner-order-completed-wrapper table tbody td {
+  background: #fff;
+  border-top: 1px solid #eef1f8;
+  border-bottom: 1px solid #eef1f8;
+}
+
+body.woocommerce-account .woo-practitioner-orders-wrapper table tbody tr td:first-child,
+body.woocommerce-account .practitioner-order-completed-wrapper table tbody tr td:first-child {
+  border-left: 1px solid #eef1f8;
+  border-top-left-radius: 12px;
+  border-bottom-left-radius: 12px;
+}
+
+body.woocommerce-account .woo-practitioner-orders-wrapper table tbody tr td:last-child,
+body.woocommerce-account .practitioner-order-completed-wrapper table tbody tr td:last-child {
+  border-right: 1px solid #eef1f8;
+  border-top-right-radius: 12px;
+  border-bottom-right-radius: 12px;
+}
+
 .trimvia-account-content .button,
 .trimvia-account-content button.button {
   border-radius: 50px;
@@ -3086,10 +3301,44 @@ body.tax-condition.consultation-completed #treatments .price .woocommerce-Price-
 
 .trimvia-account-content .woocommerce-MyAccount-orders .woocommerce-orders-table__cell-order-actions .button,
 .trimvia-account-content .woocommerce-MyAccount-orders .woocommerce-orders-table__cell-order-actions a.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
   min-height: 40px;
   padding: 10px 16px !important;
   font-size: 13px !important;
   box-shadow: none;
+  margin: 2px 8px 2px 0;
+}
+
+.trimvia-account-content .woocommerce-MyAccount-orders .woocommerce-orders-table__cell-order-actions .button:last-child,
+.trimvia-account-content .woocommerce-MyAccount-orders .woocommerce-orders-table__cell-order-actions a.button:last-child {
+  margin-right: 0;
+}
+
+/* Action button icons for account orders */
+.trimvia-account-content .woocommerce-MyAccount-orders .woocommerce-orders-table__cell-order-actions .button::before,
+.trimvia-account-content .woocommerce-MyAccount-orders .woocommerce-orders-table__cell-order-actions a.button::before {
+  font-family: "Font Awesome 6 Free";
+  font-weight: 900;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.trimvia-account-content .woocommerce-MyAccount-orders .woocommerce-orders-table__cell-order-actions .button.view::before,
+.trimvia-account-content .woocommerce-MyAccount-orders .woocommerce-orders-table__cell-order-actions a.button.view::before {
+  content: "\f06e";
+}
+
+.trimvia-account-content .woocommerce-MyAccount-orders .woocommerce-orders-table__cell-order-actions .button.reorder::before,
+.trimvia-account-content .woocommerce-MyAccount-orders .woocommerce-orders-table__cell-order-actions a.button.reorder::before {
+  content: "\f2f1";
+}
+
+.trimvia-account-content .woocommerce-MyAccount-orders .woocommerce-orders-table__cell-order-actions .button.invoice::before,
+.trimvia-account-content .woocommerce-MyAccount-orders .woocommerce-orders-table__cell-order-actions a.button.invoice::before {
+  content: "\f15c";
 }
 
 /* Practitioner order action links (e.g. "Review & Sign") */
@@ -3462,13 +3711,76 @@ body.modal-open {
   padding-right: 0 !important;
 }
 
-/* Practitioner review modal: force interactive/open behavior */
-body.woocommerce-account #practitioner-order-modal,
-body.woocommerce-account #practitioner-order-modal.show {
+/* Practitioner review modal: default hidden, open only on .show */
+body.woocommerce-account #practitioner-order-modal {
+  display: none;
   z-index: 1062 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  overflow-y: auto !important;
+}
+
+body.woocommerce-account #practitioner-order-prescription-modal {
+  display: none;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Extra modal used by practitioner flow: keep hidden until explicitly opened */
+body.woocommerce-account #prescription-extra-content-modal {
+  display: none;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+body.woocommerce-account #practitioner-order-modal.show {
+  display: block;
   opacity: 1 !important;
   pointer-events: auto !important;
+}
+
+body.woocommerce-account #practitioner-order-prescription-modal.show {
+  display: block;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+body.woocommerce-account #prescription-extra-content-modal.show {
+  display: block;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* Force practitioner overlays to behave like true modals (not inline blocks) */
+body.woocommerce-account #practitioner-order-modal.show,
+body.woocommerce-account #practitioner-order-prescription-modal.show,
+body.woocommerce-account #prescription-extra-content-modal.show {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 1062 !important;
   overflow-y: auto !important;
+  background: rgba(5, 16, 44, 0.52);
+  padding: 20px 14px;
+}
+
+body.woocommerce-account #practitioner-order-modal.show .modal-dialog,
+body.woocommerce-account #practitioner-order-prescription-modal.show .modal-dialog,
+body.woocommerce-account #prescription-extra-content-modal.show .modal-dialog {
+  margin: 20px auto !important;
+  max-width: min(1250px, calc(100vw - 28px)) !important;
+}
+
+body.woocommerce-account #practitioner-order-modal.show .modal-content,
+body.woocommerce-account #practitioner-order-prescription-modal.show .modal-content,
+body.woocommerce-account #prescription-extra-content-modal.show .modal-content {
+  max-height: calc(100vh - 60px);
+  overflow-y: auto !important;
+}
+
+/* Prevent hidden modal markup from leaking into page flow */
+body.woocommerce-account .modal.fade:not(.show),
+body.woocommerce-account .modal:not(.show) {
+  display: none !important;
 }
 
 body.woocommerce-account #practitioner-order-modal .modal-dialog {
@@ -3503,6 +3815,53 @@ body.woocommerce-account .modal-backdrop,
 body.woocommerce-account .modal-backdrop.show {
   z-index: 1040 !important;
   opacity: 0.55 !important;
+}
+
+/* Practitioner orders pagination */
+body.woocommerce-account .woo-practitioner-orders-wrapper nav.pagination,
+body.woocommerce-account .practitioner-order-completed-wrapper nav.pagination,
+body.woocommerce-account .practitioner-order-section nav.pagination {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 18px 0 6px;
+}
+
+body.woocommerce-account .woo-practitioner-orders-wrapper .page-numbers,
+body.woocommerce-account .practitioner-order-completed-wrapper .page-numbers,
+body.woocommerce-account .practitioner-order-section .page-numbers {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--g200);
+  background: #fff;
+  color: var(--g700);
+  font-family: var(--fb);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none !important;
+}
+
+body.woocommerce-account .woo-practitioner-orders-wrapper .page-numbers.current,
+body.woocommerce-account .practitioner-order-completed-wrapper .page-numbers.current,
+body.woocommerce-account .practitioner-order-section .page-numbers.current {
+  background: var(--blue);
+  border-color: var(--blue);
+  color: #fff;
+}
+
+body.woocommerce-account .woo-practitioner-orders-wrapper a.page-numbers:hover,
+body.woocommerce-account .practitioner-order-completed-wrapper a.page-numbers:hover,
+body.woocommerce-account .practitioner-order-section a.page-numbers:hover {
+  background: var(--blue-dark);
+  border-color: var(--blue-dark);
+  color: #fff;
 }
 
 @media (max-width: 991px) {
@@ -3772,15 +4131,36 @@ body.woocommerce-account .modal-backdrop.show {
 
 .trimvia-account-page .woocommerce form .form-row label,
 .trimvia-account-page .woocommerce form label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  display: block;
   margin: 0 0 8px;
   font-family: var(--fb);
   font-size: 13px;
   font-weight: 600;
   line-height: 1.35;
   color: var(--g800);
+}
+
+/* Keep account endpoint forms vertical: label above field */
+.trimvia-account-page .woocommerce-MyAccount-content form .form-row:not(.woocommerce-form__label-for-checkbox),
+.trimvia-account-page .woocommerce-MyAccount-content form p.form-row:not(.woocommerce-form__label-for-checkbox) {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  width: 100%;
+  clear: both;
+}
+
+.trimvia-account-page .woocommerce-MyAccount-content form .form-row:not(.woocommerce-form__label-for-checkbox) > label,
+.trimvia-account-page .woocommerce-MyAccount-content form p.form-row:not(.woocommerce-form__label-for-checkbox) > label {
+  display: block;
+  width: 100%;
+  margin-bottom: 0;
+}
+
+.trimvia-account-page .woocommerce-MyAccount-content form .form-row:not(.woocommerce-form__label-for-checkbox) .woocommerce-input-wrapper,
+.trimvia-account-page .woocommerce-MyAccount-content form p.form-row:not(.woocommerce-form__label-for-checkbox) .woocommerce-input-wrapper {
+  width: 100%;
 }
 
 .trimvia-account-page .woocommerce form .required {
@@ -5103,7 +5483,40 @@ body.woocommerce-account .modal-backdrop.show {
   gap: 12px 16px;
 }
 
+/* Keep checkout labels above fields for consistent form rhythm */
+.trimvia-checkout-page .woocommerce-billing-fields__field-wrapper .form-row,
+.trimvia-checkout-page .woocommerce-shipping-fields__field-wrapper .form-row,
+.trimvia-checkout-page .woocommerce-additional-fields__field-wrapper .form-row,
+.trimvia-checkout-page .woocommerce-additional-fields .form-row {
+  display: block;
+}
+
+.trimvia-checkout-page .woocommerce-billing-fields__field-wrapper .form-row > label,
+.trimvia-checkout-page .woocommerce-shipping-fields__field-wrapper .form-row > label,
+.trimvia-checkout-page .woocommerce-additional-fields__field-wrapper .form-row > label,
+.trimvia-checkout-page .woocommerce-additional-fields .form-row > label {
+  display: inline-flex;
+  margin: 0 0 8px;
+  max-width: none;
+  line-height: 1.35;
+}
+
+.trimvia-checkout-page .woocommerce-additional-fields__field-wrapper {
+  display: block;
+}
+
+.trimvia-checkout-page #order_comments_field,
+.trimvia-checkout-page #order_comments_field .woocommerce-input-wrapper {
+  width: 100%;
+}
+
+.trimvia-checkout-page #order_comments {
+  width: 100% !important;
+  min-height: 120px;
+}
+
 .trimvia-checkout-page .form-row {
+  display: block !important;
   margin: 0 0 10px;
   padding: 0;
 }
@@ -5139,6 +5552,13 @@ body.woocommerce-account .modal-backdrop.show {
 .trimvia-checkout-page .woocommerce form .form-row .woocommerce-input-wrapper {
   display: block;
   width: 100%;
+}
+
+/* Reset generic global form-row flex rules on checkout only */
+.trimvia-checkout-page .woocommerce form .form-row input,
+.trimvia-checkout-page .woocommerce form .form-row select,
+.trimvia-checkout-page .woocommerce form .form-row textarea {
+  flex: initial !important;
 }
 
 .trimvia-checkout-page #billing_first_name_field input,
@@ -5522,6 +5942,7 @@ body.woocommerce-account .modal-backdrop.show {
   .trimvia-checkout-summary {
     position: static;
   }
+
 }
 
 @media (max-width: 640px) {
@@ -5554,6 +5975,32 @@ body.woocommerce-account .modal-backdrop.show {
 /* -------------------------------------------------------------------------
    Single product (WooCommerce) — matches HTML Theme single-product layout
    ------------------------------------------------------------------------- */
+
+/* Typography guard: keep single-product fonts consistent with child theme */
+body.single-product.trimvia-single-product-page,
+body.single-product.trimvia-single-product-page .woo-single-product-wrapper,
+body.single-product.trimvia-single-product-page .woo-single-product-wrapper p,
+body.single-product.trimvia-single-product-page .woo-single-product-wrapper li,
+body.single-product.trimvia-single-product-page .woo-single-product-wrapper span,
+body.single-product.trimvia-single-product-page .woo-single-product-wrapper label,
+body.single-product.trimvia-single-product-page .woo-single-product-wrapper td,
+body.single-product.trimvia-single-product-page .woo-single-product-wrapper th,
+body.single-product.trimvia-single-product-page .woo-single-product-wrapper a,
+body.single-product.trimvia-single-product-page .woo-single-product-wrapper input,
+body.single-product.trimvia-single-product-page .woo-single-product-wrapper select,
+body.single-product.trimvia-single-product-page .woo-single-product-wrapper textarea,
+body.single-product.trimvia-single-product-page .woo-single-product-wrapper button {
+  font-family: var(--fb) !important;
+}
+
+body.single-product.trimvia-single-product-page .page-hero--single h1,
+body.single-product.trimvia-single-product-page .single-product-title,
+body.single-product.trimvia-single-product-page .stitle,
+body.single-product.trimvia-single-product-page .woo-single-product-wrapper h1,
+body.single-product.trimvia-single-product-page .woo-single-product-wrapper h2,
+body.single-product.trimvia-single-product-page .woo-single-product-wrapper h3 {
+  font-family: var(--fd) !important;
+}
 
 .trimvia-single-product-page .single-product-layout {
   display: grid;
