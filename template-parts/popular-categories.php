@@ -9,9 +9,38 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
+$term = isset($args['term']) ? $args['term'] : null;
+if ($term instanceof WP_Term && function_exists('trimvia_condition_field_visible')) {
+	if (!trimvia_condition_field_visible('cond_popular_categories_visibility', $term)) {
+		return;
+	}
+}
+
 $front_page_id = (int) get_option('page_on_front');
 $popular_categories = function_exists('get_field') ? get_field('popular_categories', $front_page_id) : array();
 if (!is_array($popular_categories) || empty($popular_categories)) {
+	return;
+}
+
+$popular_categories = array_values(
+	array_filter(
+		$popular_categories,
+		function ($popular_term) use ($term) {
+			if (
+				$term instanceof WP_Term
+				&& $popular_term instanceof WP_Term
+				&& (int) $term->term_id === (int) $popular_term->term_id
+			) {
+				return false;
+			}
+
+			return $popular_term instanceof WP_Term
+				&& function_exists('trimvia_condition_has_visible_products')
+				&& trimvia_condition_has_visible_products($popular_term);
+		}
+	)
+);
+if (empty($popular_categories)) {
 	return;
 }
 
@@ -36,16 +65,17 @@ $description = function_exists('get_field') ? (string) get_field('cat_short_desc
 		</div>
 
 		<div class="shop-grid">
-			<?php foreach ($popular_categories as $term) : ?>
+			<?php foreach ($popular_categories as $popular_term) : ?>
 				<?php
-				if (!$term instanceof WP_Term) {
+				if (!$popular_term instanceof WP_Term) {
 					continue;
 				}
-				$term_link = get_term_link($term->term_id);
+				$term_link = get_term_link($popular_term->term_id);
 				if (is_wp_error($term_link)) {
 					continue;
 				}
-				$term_featured_image_id = function_exists('get_field') ? (int) get_field('featured_image', $term) : 0;
+				$product_count          = function_exists('trimvia_get_condition_visible_product_count') ? trimvia_get_condition_visible_product_count($popular_term) : (int) $popular_term->count;
+				$term_featured_image_id = function_exists('get_field') ? (int) get_field('featured_image', $popular_term) : 0;
 				?>
 				<article class="product-card rv trimvia-category-card">
 					<a class="product-img" href="<?php echo esc_url($term_link); ?>">
@@ -61,15 +91,15 @@ $description = function_exists('get_field') ? (string) get_field('cat_short_desc
 					</a>
 					<div class="product-body">
 						<div class="product-type"><?php esc_html_e('Condition', 'theme-woopm-child'); ?></div>
-						<h3><a href="<?php echo esc_url($term_link); ?>"><?php echo esc_html($term->name); ?></a></h3>
-						<p><?php echo esc_html(wp_trim_words(wp_strip_all_tags((string) $term->description), 26, '...')); ?></p>
+						<h3><a href="<?php echo esc_url($term_link); ?>"><?php echo esc_html($popular_term->name); ?></a></h3>
+						<p><?php echo esc_html(wp_trim_words(wp_strip_all_tags((string) $popular_term->description), 26, '...')); ?></p>
 						<div class="product-footer">
 							<div class="trimvia-post-card-tax">
 								<?php
 								printf(
 									/* translators: %s: term count */
-									esc_html(_n('%s treatment', '%s treatments', (int) $term->count, 'theme-woopm-child')),
-									esc_html(number_format_i18n((int) $term->count))
+									esc_html(_n('%s treatment', '%s treatments', $product_count, 'theme-woopm-child')),
+									esc_html(number_format_i18n($product_count))
 								);
 								?>
 							</div>

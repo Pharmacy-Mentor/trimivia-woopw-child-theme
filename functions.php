@@ -8,6 +8,84 @@ if (!defined('ABSPATH')) {
 }
 
 require_once get_stylesheet_directory() . '/inc/class-trimvia-nav-walker.php';
+require_once get_stylesheet_directory() . '/inc/blog-content-images.php';
+require_once get_stylesheet_directory() . '/inc/prescriber-modal-enrichment.php';
+
+/**
+ * Theme supports required for WordPress and Yoast SEO document titles.
+ */
+function trimvia_child_theme_setup()
+{
+	add_theme_support('title-tag');
+}
+add_action('after_setup_theme', 'trimvia_child_theme_setup', 0);
+
+/**
+ * Match parent theme WooCommerce gallery support (zoom, lightbox, slider).
+ */
+function trimvia_child_woocommerce_support()
+{
+	add_theme_support('woocommerce');
+	add_theme_support('wc-product-gallery-zoom');
+	add_theme_support('wc-product-gallery-lightbox');
+	add_theme_support('wc-product-gallery-slider');
+}
+add_action('after_setup_theme', 'trimvia_child_woocommerce_support', 11);
+
+/**
+ * Fallback document title when Yoast/meta filters leave the title empty.
+ *
+ * @param string $title Current document title.
+ * @return string
+ */
+function trimvia_document_title_fallback($title)
+{
+	if (is_admin()) {
+		return $title;
+	}
+
+	$title = is_string($title) ? trim(wp_strip_all_tags($title)) : '';
+	if ('' !== $title) {
+		return $title;
+	}
+
+	if (function_exists('YoastSEO')) {
+		try {
+			$yoast_title = YoastSEO()->meta->for_current_page()->title;
+			$yoast_title = is_string($yoast_title) ? trim(wp_strip_all_tags($yoast_title)) : '';
+			if ('' !== $yoast_title) {
+				return $yoast_title;
+			}
+		} catch (Throwable $e) {
+			// Yoast meta unavailable for this request.
+		}
+	}
+
+	if (is_singular()) {
+		$singular_title = trim(get_the_title());
+		if ('' !== $singular_title) {
+			return $singular_title;
+		}
+	}
+
+	if (is_home() && !is_front_page()) {
+		$posts_page_id = (int) get_option('page_for_posts');
+		if ($posts_page_id > 0) {
+			$posts_page_title = trim(get_the_title($posts_page_id));
+			if ('' !== $posts_page_title) {
+				return $posts_page_title;
+			}
+		}
+	}
+
+	$site_name = trim((string) get_bloginfo('name', 'display'));
+	if ('' !== $site_name) {
+		return $site_name;
+	}
+
+	return 'Trimvia';
+}
+add_filter('pre_get_document_title', 'trimvia_document_title_fallback', 100);
 
 /**
  * Parent-template compatibility helper.
@@ -55,12 +133,139 @@ function trimvia_force_jquery_compatibility()
 add_action('wp_enqueue_scripts', 'trimvia_force_jquery_compatibility', 999999);
 
 /**
+ * Stop parent theme Customizer fonts from overriding Trimvia typography.
+ */
+function trimvia_disable_parent_theme_fonts()
+{
+	remove_action('wp_head', 'theme_fonts_customize_css');
+	remove_action('wp_enqueue_scripts', 'theme_fonts_scripts');
+}
+add_action('after_setup_theme', 'trimvia_disable_parent_theme_fonts', 20);
+
+/**
+ * Preconnect to Google font files served from gstatic.
+ *
+ * @param array  $urls          URLs to print for resource hints.
+ * @param string $relation_type The relation type the URLs are printed for.
+ * @return array
+ */
+function trimvia_font_resource_hints($urls, $relation_type)
+{
+	if ('preconnect' === $relation_type) {
+		$urls[] = array(
+			'href'        => 'https://fonts.gstatic.com',
+			'crossorigin' => 'anonymous',
+		);
+	}
+
+	return $urls;
+}
+add_filter('wp_resource_hints', 'trimvia_font_resource_hints', 10, 2);
+
+/**
+ * Whether Bootstrap modal assets are needed (consultation popup, prescriber modals).
+ *
+ * @return bool
+ */
+function trimvia_needs_bootstrap_modal_assets()
+{
+	if (function_exists('is_order_received_page') && is_order_received_page()) {
+		return true;
+	}
+
+	if (function_exists('is_account_page') && is_account_page()) {
+		if (function_exists('is_wc_endpoint_url') && is_wc_endpoint_url('view-order')) {
+			return true;
+		}
+
+		if (trimvia_user_has_prescriber_access()) {
+			return true;
+		}
+	}
+
+	if (trimvia_is_order_tracking_page()) {
+		return true;
+	}
+
+	return false;
+}
+
+/**
+ * Whether the current page is the public order tracking page.
+ *
+ * @return bool
+ */
+function trimvia_is_order_tracking_page()
+{
+	if (!function_exists('is_page') || !is_page()) {
+		return false;
+	}
+
+	$page = get_queried_object();
+	if (!$page instanceof WP_Post) {
+		return false;
+	}
+
+	if ('track-your-order' === $page->post_name) {
+		return true;
+	}
+
+	return has_shortcode($page->post_content, 'woocommerce_order_tracking');
+}
+
+/**
+ * Enqueue parent Bootstrap 4 assets used by WooPW consultation/prescriber modals.
+ *
+ * @param WP_Theme $parent_theme Parent theme object.
+ * @param array    $style_deps   Style handles to append bootstrap CSS to.
+ * @return array Script handles required by child common.js.
+ */
+function trimvia_enqueue_bootstrap_modal_assets($parent_theme, array &$style_deps)
+{
+	$script_deps = array();
+	$parent_bootstrap_css = get_template_directory() . '/assets/css/bootstrap.min.css';
+	$parent_bootstrap_js  = get_template_directory() . '/assets/js/bootstrap.min.js';
+
+	if (file_exists($parent_bootstrap_css) && !wp_style_is('trimvia-parent-bootstrap', 'enqueued')) {
+		wp_enqueue_style(
+			'trimvia-parent-bootstrap',
+			get_template_directory_uri() . '/assets/css/bootstrap.min.css',
+			array(),
+			$parent_theme->get('Version')
+		);
+		$style_deps[] = 'trimvia-parent-bootstrap';
+	}
+
+	if (file_exists($parent_bootstrap_js) && !wp_script_is('trimvia-parent-bootstrap', 'enqueued')) {
+		wp_enqueue_script(
+			'trimvia-popper',
+			'https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js',
+			array(),
+			'1.16.1',
+			true
+		);
+
+		wp_enqueue_script(
+			'trimvia-parent-bootstrap',
+			get_template_directory_uri() . '/assets/js/bootstrap.min.js',
+			array('jquery', 'trimvia-popper'),
+			$parent_theme->get('Version'),
+			true
+		);
+		$script_deps[] = 'trimvia-parent-bootstrap';
+	}
+
+	return $script_deps;
+}
+
+/**
  * Enqueue parent + child assets.
  */
 function trimvia_child_enqueue_assets()
 {
 	$parent_theme = wp_get_theme(get_template());
 	$child_theme = wp_get_theme();
+	$fonts_path   = get_stylesheet_directory() . '/assets/css/trimvia-fonts.css';
 
 	wp_enqueue_style(
 		'theme-woopw-parent-style',
@@ -77,18 +282,66 @@ function trimvia_child_enqueue_assets()
 	);
 
 	wp_enqueue_style(
+		'theme-woopw-child-fonts',
+		get_stylesheet_directory_uri() . '/assets/css/trimvia-fonts.css',
+		array(),
+		file_exists($fonts_path) ? filemtime($fonts_path) : $child_theme->get('Version')
+	);
+
+	$child_responsive_deps = array('theme-woopw-child-style', 'theme-woopw-child-fonts');
+	$common_script_deps    = array('jquery');
+
+	// Parent Bootstrap 4 — required for WooPW consultation modal (thank you / view order) and prescriber popups.
+	if (trimvia_needs_bootstrap_modal_assets()) {
+		$bootstrap_script_deps = trimvia_enqueue_bootstrap_modal_assets($parent_theme, $child_responsive_deps);
+		$common_script_deps    = array_merge($common_script_deps, $bootstrap_script_deps);
+	}
+
+	$is_prescriber_account =
+		function_exists('is_account_page')
+		&& is_account_page()
+		&& trimvia_user_has_prescriber_access();
+
+	// cflp-prescriber-dashboard is only registered for prescribers/admins. Adding it as a
+	// dependency for everyone prevents WordPress from printing theme-woopw-child-responsive.
+	if ($is_prescriber_account) {
+		$child_responsive_deps[] = 'cflp-prescriber-dashboard';
+	}
+
+	wp_enqueue_style(
 		'theme-woopw-child-responsive',
 		get_stylesheet_directory_uri() . '/assets/css/style.css',
-		array('theme-woopw-child-style'),
+		$child_responsive_deps,
 		filemtime(get_stylesheet_directory() . '/assets/css/style.css')
 	);
 
+	$consultation_modal_css = get_stylesheet_directory() . '/assets/css/consultation-modal.css';
 	wp_enqueue_style(
-		'theme-woopw-child-google-fonts',
-		'https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,500;1,600;1,700&family=Outfit:wght@200;300;400;500;600;700;800&display=swap',
-		array(),
-		null
+		'trimvia-consultation-modal',
+		get_stylesheet_directory_uri() . '/assets/css/consultation-modal.css',
+		array('theme-woopw-child-responsive'),
+		file_exists($consultation_modal_css) ? filemtime($consultation_modal_css) : $child_theme->get('Version')
 	);
+
+	if (function_exists('is_account_page') && is_account_page()) {
+		if ($is_prescriber_account) {
+			$prescriber_modal_css = get_stylesheet_directory() . '/assets/css/prescriber-modal-parent.css';
+			wp_enqueue_style(
+				'trimvia-prescriber-modal-parent',
+				get_stylesheet_directory_uri() . '/assets/css/prescriber-modal-parent.css',
+				array('theme-woopw-child-responsive', 'cflp-prescriber-dashboard'),
+				file_exists($prescriber_modal_css) ? filemtime($prescriber_modal_css) : $child_theme->get('Version')
+			);
+		}
+
+		$signature_modal_css = get_stylesheet_directory() . '/assets/css/signature-modal.css';
+		wp_enqueue_style(
+			'trimvia-signature-modal',
+			get_stylesheet_directory_uri() . '/assets/css/signature-modal.css',
+			array('theme-woopw-child-responsive'),
+			file_exists($signature_modal_css) ? filemtime($signature_modal_css) : $child_theme->get('Version')
+		);
+	}
 
 	wp_enqueue_style(
 		'trimvia-font-awesome',
@@ -100,7 +353,7 @@ function trimvia_child_enqueue_assets()
 	wp_enqueue_script(
 		'theme-woopw-child-common',
 		get_stylesheet_directory_uri() . '/assets/js/common.js',
-		array('jquery'),
+		array_values(array_unique($common_script_deps)),
 		filemtime(get_stylesheet_directory() . '/assets/js/common.js'),
 		true
 	);
@@ -124,13 +377,6 @@ function trimvia_child_enqueue_assets()
 
 	if (is_page('consultation')) {
 		wp_enqueue_script(
-			'trimvia-consultation-steps',
-			get_stylesheet_directory_uri() . '/assets/js/consultation-steps.js',
-			array(),
-			filemtime(get_stylesheet_directory() . '/assets/js/consultation-steps.js'),
-			true
-		);
-		wp_enqueue_script(
 			'trimvia-gravity-consult',
 			get_stylesheet_directory_uri() . '/assets/js/trimvia-gravity-consult.js',
 			array('jquery'),
@@ -146,7 +392,25 @@ function trimvia_child_enqueue_assets()
 		);
 	}
 }
-add_action('wp_enqueue_scripts', 'trimvia_child_enqueue_assets', 100);
+add_action('wp_enqueue_scripts', 'trimvia_child_enqueue_assets', 110);
+
+/**
+ * Ensure WooPW prescriber dashboard JS runs after Bootstrap modal plugin.
+ */
+function trimvia_prescriber_dashboard_script_deps()
+{
+	if (!wp_script_is('cflp-prescriber-dashboard', 'registered')) {
+		return;
+	}
+
+	if (wp_script_is('trimvia-parent-bootstrap', 'registered')) {
+		$deps = wp_scripts()->registered['cflp-prescriber-dashboard']->deps;
+		if (!in_array('trimvia-parent-bootstrap', $deps, true)) {
+			wp_scripts()->registered['cflp-prescriber-dashboard']->deps[] = 'trimvia-parent-bootstrap';
+		}
+	}
+}
+add_action('wp_enqueue_scripts', 'trimvia_prescriber_dashboard_script_deps', 111);
 
 /**
  * Sanitize Font Awesome class list.
@@ -949,6 +1213,81 @@ function trimvia_get_public_condition_treatments_term_for_search()
 }
 
 /**
+ * Products that are publishable on the front end for a condition term.
+ *
+ * @param WP_Term|int $term Condition term or term ID.
+ * @param array       $args Optional wc_get_products overrides.
+ * @return array
+ */
+function trimvia_get_condition_visible_products($term, $args = array())
+{
+	$term_id = $term instanceof WP_Term ? (int) $term->term_id : absint($term);
+	if ($term_id < 1 || !function_exists('wc_get_products')) {
+		return array();
+	}
+
+	$query = wp_parse_args(
+		$args,
+		array(
+			'status'             => 'publish',
+			'limit'              => -1,
+			'catalog_visibility' => 'visible',
+			'orderby'            => 'menu_order',
+			'order'              => 'ASC',
+		)
+	);
+
+	$query['tax_query'] = array(
+		array(
+			'taxonomy' => 'condition',
+			'field'    => 'term_id',
+			'terms'    => array($term_id),
+		),
+	);
+
+	$products = wc_get_products($query);
+
+	return is_array($products) ? $products : array();
+}
+
+/**
+ * Whether a condition has at least one visible published product.
+ *
+ * @param WP_Term|int $term Condition term or term ID.
+ * @return bool
+ */
+function trimvia_condition_has_visible_products($term)
+{
+	return !empty(
+		trimvia_get_condition_visible_products(
+			$term,
+			array(
+				'limit'  => 1,
+				'return' => 'ids',
+			)
+		)
+	);
+}
+
+/**
+ * Visible published product count for a condition.
+ *
+ * @param WP_Term|int $term Condition term or term ID.
+ * @return int
+ */
+function trimvia_get_condition_visible_product_count($term)
+{
+	return count(
+		trimvia_get_condition_visible_products(
+			$term,
+			array(
+				'return' => 'ids',
+			)
+		)
+	);
+}
+
+/**
  * AJAX: return shop card HTML for products in a condition, optionally filtered by search string.
  */
 function trimvia_ajax_condition_treatments_search()
@@ -1028,6 +1367,9 @@ add_action('wp_ajax_nopriv_trimvia_condition_treatments_search', 'trimvia_ajax_c
  */
 function trimvia_enqueue_condition_treatments_search()
 {
+	// Hero search was removed from condition pages; skip loading unused AJAX filter script.
+	return;
+
 	$term = trimvia_get_public_condition_treatments_term_for_search();
 	if (!$term instanceof WP_Term) {
 		return;
@@ -2042,6 +2384,55 @@ function trimvia_service_cpt_enable_archive($args, $post_type)
 add_filter('register_post_type_args', 'trimvia_service_cpt_enable_archive', 99, 2);
 
 /**
+ * Whether the current page is the WP 2FA user setup page.
+ *
+ * @return bool
+ */
+function trimvia_is_wp2fa_setup_page()
+{
+	if (!is_singular('page')) {
+		return false;
+	}
+
+	$post = get_queried_object();
+	if (!$post instanceof WP_Post) {
+		return false;
+	}
+
+	if (has_shortcode($post->post_content, 'wp-2fa-setup-form')) {
+		return true;
+	}
+
+	if (class_exists('\WP2FA\WP2FA')) {
+		$page_id = (int) \WP2FA\WP2FA::get_wp2fa_setting('custom-user-page-id');
+		if ($page_id > 0 && (int) $post->ID === $page_id) {
+			return true;
+		}
+	}
+
+	return (bool) preg_match('/(?:^|-)2fa(?:-|$)/i', (string) $post->post_name);
+}
+
+/**
+ * Intro copy for the 2FA setup hero.
+ *
+ * @return string
+ */
+function trimvia_get_2fa_page_intro_text()
+{
+	$default = __('Add two-factor authentication to strengthen the security of your user account.', 'theme-woopm-child');
+
+	if (class_exists('\WP2FA\WP2FA')) {
+		$plugin_text = \WP2FA\WP2FA::get_wp2fa_white_label_setting('user-profile-form-preamble-desc', true);
+		if (is_string($plugin_text) && '' !== trim(wp_strip_all_tags($plugin_text))) {
+			return trim(wp_strip_all_tags($plugin_text));
+		}
+	}
+
+	return $default;
+}
+
+/**
  * Add page-specific body classes.
  *
  * @param string[] $classes Existing classes.
@@ -2051,6 +2442,7 @@ function trimvia_child_body_classes($classes)
 {
 	if (is_page('consultation')) {
 		$classes[] = 'consultation-page';
+		$classes[] = 'cflp-multistep-v2';
 	}
 	if (is_page_template('page-templates/services-trimvia.php')) {
 		$classes[] = 'trimvia-services-archive-page';
@@ -2064,15 +2456,194 @@ function trimvia_child_body_classes($classes)
 	if (function_exists('is_account_page') && is_account_page()) {
 		$classes[] = 'trimvia-account-page';
 	}
+	if (trimvia_is_wp2fa_setup_page()) {
+		$classes[] = 'trimvia-2fa-page';
+		$classes[] = 'trimvia-account-page';
+	}
 	if (function_exists('is_cart') && is_cart()) {
 		$classes[] = 'trimvia-cart-page';
 	}
-	if (function_exists('is_checkout') && is_checkout()) {
+	if (function_exists('is_checkout') && is_checkout() && !(function_exists('is_order_received_page') && is_order_received_page())) {
 		$classes[] = 'trimvia-checkout-page';
+	}
+	if (function_exists('is_wc_endpoint_url') && is_wc_endpoint_url('order-pay')) {
+		$classes[] = 'trimvia-order-pay-page';
+	}
+	if (function_exists('is_order_received_page') && is_order_received_page()) {
+		$classes[] = 'trimvia-order-received-page';
+	}
+	if (is_tax('condition')) {
+		$classes[] = 'trimvia-condition-page';
+	}
+	if (is_page('all-conditions')) {
+		$classes[] = 'trimvia-all-conditions-page';
 	}
 	return $classes;
 }
 add_filter('body_class', 'trimvia_child_body_classes');
+
+/**
+ * Replace WooPW bootstrap registration notice with Trimvia auth card styling.
+ */
+function trimvia_registration_login_notice()
+{
+	$notice_text = get_option('woopw_registration_notice');
+	$text        = $notice_text
+		? wp_kses_post($notice_text)
+		: esc_html__('Please take 2 minutes to sign up in order to view & start an online consultation.', 'woopw');
+	?>
+	<div class="trimvia-auth-notice woop-notice" role="status">
+		<div class="trimvia-auth-notice-icon" aria-hidden="true">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+		</div>
+		<p><?php echo $text; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- kses/escaped above. ?></p>
+	</div>
+	<?php
+}
+
+/**
+ * Swap WooPW login notice output on the guest account page.
+ */
+function trimvia_replace_woopw_registration_notice()
+{
+	if (!function_exists('is_account_page') || !is_account_page() || is_user_logged_in()) {
+		return;
+	}
+
+	global $wp_filter;
+
+	if (!isset($wp_filter['woocommerce_before_customer_login_form'])) {
+		return;
+	}
+
+	foreach ($wp_filter['woocommerce_before_customer_login_form']->callbacks as $priority => $callbacks) {
+		foreach ($callbacks as $callback) {
+			if (
+				!empty($callback['function'])
+				&& is_array($callback['function'])
+				&& is_object($callback['function'][0])
+				&& 'render_text_before_form' === $callback['function'][1]
+			) {
+				remove_action('woocommerce_before_customer_login_form', $callback['function'], (int) $priority);
+			}
+		}
+	}
+
+	add_action('woocommerce_before_customer_login_form', 'trimvia_registration_login_notice', 10);
+}
+add_action('wp', 'trimvia_replace_woopw_registration_notice', 20);
+
+/**
+ * Read a billing/shipping field from a customer or order object.
+ *
+ * @param WC_Customer|WC_Order $source  Data source.
+ * @param string               $type    Address type.
+ * @param string               $field   Field suffix.
+ * @return string
+ */
+function trimvia_get_address_field_value($source, $type, $field)
+{
+	$method = 'get_' . $type . '_' . $field;
+
+	if (is_object($source) && is_callable(array($source, $method))) {
+		return trim((string) $source->$method());
+	}
+
+	return '';
+}
+
+/**
+ * Build structured address rows for Trimvia account/order layouts.
+ *
+ * @param WC_Customer|WC_Order $source Address source.
+ * @param string               $type   billing|shipping.
+ * @return array{name:string,address_lines:string[],phone:string,email:string}
+ */
+function trimvia_get_address_detail_rows($source, $type = 'billing')
+{
+	$first_name = trimvia_get_address_field_value($source, $type, 'first_name');
+	$last_name  = trimvia_get_address_field_value($source, $type, 'last_name');
+	$company    = trimvia_get_address_field_value($source, $type, 'company');
+	$name       = trim($first_name . ' ' . $last_name);
+
+	if ('' === $name) {
+		$name = $company;
+		$company = '';
+	}
+
+	$address_lines = array_filter(
+		array(
+			$company,
+			trimvia_get_address_field_value($source, $type, 'address_1'),
+			trimvia_get_address_field_value($source, $type, 'address_2'),
+			trimvia_get_address_field_value($source, $type, 'city'),
+			trimvia_get_address_field_value($source, $type, 'state'),
+			trimvia_get_address_field_value($source, $type, 'postcode'),
+		)
+	);
+
+	$country_code = trimvia_get_address_field_value($source, $type, 'country');
+	if ($country_code && function_exists('WC') && WC()->countries && !empty(WC()->countries->countries[$country_code])) {
+		$address_lines[] = WC()->countries->countries[$country_code];
+	}
+
+	return array(
+		'name'          => $name,
+		'address_lines' => array_values($address_lines),
+		'phone'         => trimvia_get_address_field_value($source, $type, 'phone'),
+		'email'         => 'billing' === $type ? trimvia_get_address_field_value($source, $type, 'email') : '',
+	);
+}
+
+/**
+ * Render address rows with icons for name, address, phone, and email.
+ *
+ * @param WC_Customer|WC_Order $source Address source.
+ * @param string               $type   billing|shipping.
+ * @return void
+ */
+function trimvia_render_address_detail_rows($source, $type = 'billing')
+{
+	$rows = trimvia_get_address_detail_rows($source, $type);
+
+	$icons = array(
+		'name'    => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+		'address' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>',
+		'phone'   => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.86.33 1.7.62 2.5a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.58-1.18a2 2 0 0 1 2.11-.45c.8.29 1.64.5 2.5.62A2 2 0 0 1 22 16.92z"/></svg>',
+		'email'   => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>',
+	);
+	?>
+		<?php if (!empty($rows['name'])) : ?>
+			<p class="trimvia-address-line trimvia-address-line--name">
+				<span class="trimvia-address-line__icon" aria-hidden="true"><?php echo $icons['name']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></span>
+				<span class="trimvia-address-line__content"><?php echo esc_html($rows['name']); ?></span>
+			</p>
+		<?php endif; ?>
+
+		<?php if (!empty($rows['address_lines'])) : ?>
+			<p class="trimvia-address-line trimvia-address-line--address">
+				<span class="trimvia-address-line__icon" aria-hidden="true"><?php echo $icons['address']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></span>
+				<span class="trimvia-address-line__content">
+					<?php echo wp_kses_post(implode('<br>', array_map('esc_html', $rows['address_lines']))); ?>
+				</span>
+			</p>
+		<?php endif; ?>
+
+		<?php if (!empty($rows['phone'])) : ?>
+			<p class="trimvia-address-line trimvia-address-line--phone woocommerce-customer-details--phone">
+				<span class="trimvia-address-line__icon" aria-hidden="true"><?php echo $icons['phone']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></span>
+				<span class="trimvia-address-line__content"><?php echo esc_html($rows['phone']); ?></span>
+			</p>
+		<?php endif; ?>
+
+		<?php if (!empty($rows['email'])) : ?>
+			<p class="trimvia-address-line trimvia-address-line--email woocommerce-customer-details--email">
+				<span class="trimvia-address-line__icon" aria-hidden="true"><?php echo $icons['email']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></span>
+				<span class="trimvia-address-line__content"><a href="mailto:<?php echo esc_attr($rows['email']); ?>"><?php echo esc_html($rows['email']); ?></a></span>
+			</p>
+		<?php endif; ?>
+	<?php
+}
 
 /**
  * The parent theme wraps cart contents in Bootstrap row/column hooks. The child cart template
@@ -2095,6 +2666,58 @@ function trimvia_disable_parent_cart_layout_hooks()
 add_action('wp', 'trimvia_disable_parent_cart_layout_hooks', 5);
 
 /**
+ * Wrap cart notices in Trimvia markup for consistent icon/text/button styling.
+ */
+function trimvia_prepare_cart_notices()
+{
+	if (!function_exists('is_cart') || !is_cart()) {
+		return;
+	}
+
+	remove_action('woocommerce_before_cart', 'woocommerce_output_all_notices', 10);
+	add_action('woocommerce_before_cart', 'trimvia_output_cart_notices', 10);
+}
+
+function trimvia_output_cart_notices()
+{
+	if (!function_exists('woocommerce_output_all_notices')) {
+		return;
+	}
+
+	echo '<div class="trimvia-wc-notices trimvia-cart-notices">';
+	woocommerce_output_all_notices();
+	echo '</div>';
+}
+add_action('wp', 'trimvia_prepare_cart_notices', 20);
+
+/**
+ * Remove specific callbacks from a WooCommerce hook priority bucket.
+ *
+ * @param string   $hook_name     Hook name.
+ * @param int      $priority      Hook priority.
+ * @param callable $should_remove Callback predicate.
+ * @return void
+ */
+function trimvia_remove_checkout_hook_callbacks($hook_name, $priority, $should_remove)
+{
+	global $wp_filter;
+
+	if (!isset($wp_filter[ $hook_name ]->callbacks[ $priority ])) {
+		return;
+	}
+
+	foreach ($wp_filter[ $hook_name ]->callbacks[ $priority ] as $hook_id => $hook) {
+		if ($should_remove($hook['function'])) {
+			unset($wp_filter[ $hook_name ]->callbacks[ $priority ][ $hook_id ]);
+		}
+	}
+
+	if (empty($wp_filter[ $hook_name ]->callbacks[ $priority ])) {
+		unset($wp_filter[ $hook_name ]->callbacks[ $priority ]);
+	}
+}
+
+/**
  * The parent checkout template injects Bootstrap row/column wrappers around the
  * default WooCommerce checkout. The Trimvia checkout template has its own grid,
  * so remove those wrappers on checkout pages only.
@@ -2111,8 +2734,368 @@ function trimvia_disable_parent_checkout_layout_hooks()
 	remove_action('woocommerce_checkout_before_order_review_heading', 'woo_add_sidebar_wrapper_open', 17);
 	remove_action('woocommerce_after_checkout_form', 'woo_add_cart_page_div_close');
 	remove_action('woocommerce_after_checkout_form', 'woo_add_cart_page_div_close');
+
+	// Parent theme outputs shipping methods on this hook; Trimvia renders them once in the sidebar.
+	trimvia_remove_checkout_hook_callbacks(
+		'woocommerce_checkout_before_order_review_heading',
+		10,
+		static function ($callback) {
+			return $callback instanceof Closure;
+		}
+	);
+
+	// WooPW registers GP on `new WOOPW_FRONTEND_GP()`, not get_instance(), so remove by method name.
+	trimvia_remove_checkout_hook_callbacks(
+		'woocommerce_checkout_before_order_review_heading',
+		15,
+		static function ($callback) {
+			return is_array($callback)
+				&& isset($callback[1])
+				&& 'render_inform_your_gp_section' === $callback[1];
+		}
+	);
 }
-add_action('wp', 'trimvia_disable_parent_checkout_layout_hooks', 5);
+add_action('wp', 'trimvia_disable_parent_checkout_layout_hooks', 20);
+
+/**
+ * Order pay must submit as a normal POST (WC_Form_Handler::pay_action), not via
+ * wc-checkout.js AJAX. The pay form must not use the checkout form classes.
+ *
+ * @return void
+ */
+function trimvia_dequeue_checkout_script_on_order_pay()
+{
+	if (function_exists('is_wc_endpoint_url') && is_wc_endpoint_url('order-pay')) {
+		wp_dequeue_script('wc-checkout');
+	}
+}
+add_action('wp_enqueue_scripts', 'trimvia_dequeue_checkout_script_on_order_pay', 999999);
+
+/**
+ * Output delivery/shipping method options in checkout (parent inc/woocommerce.php flow).
+ *
+ * @return void
+ */
+function trimvia_checkout_render_delivery_methods()
+{
+	if (!function_exists('WC') || !WC()->cart) {
+		return;
+	}
+
+	if (!WC()->cart->needs_shipping() || !WC()->cart->show_shipping()) {
+		return;
+	}
+
+	do_action('woocommerce_review_order_before_shipping');
+
+	echo '<div class="trimvia-checkout-delivery-methods checkout-delivery-methods-wrapper">';
+	if (function_exists('wc_cart_totals_shipping_html')) {
+		wc_cart_totals_shipping_html();
+	}
+	echo '</div>';
+
+	do_action('woocommerce_review_order_after_shipping');
+}
+add_action('woocommerce_checkout_before_order_review_heading', 'trimvia_checkout_render_delivery_methods', 10);
+
+/**
+ * Whether a shipping method ID is local pickup.
+ *
+ * @param string $method_id Chosen shipping method ID.
+ * @return bool
+ */
+function trimvia_checkout_is_local_pickup_method($method_id)
+{
+	$method_id = (string) $method_id;
+
+	return '' !== $method_id && 0 === strpos($method_id, 'local_pickup');
+}
+
+/**
+ * Whether the currently chosen checkout shipping method is local pickup.
+ *
+ * @return bool
+ */
+function trimvia_checkout_chosen_method_is_local_pickup()
+{
+	if (!function_exists('WC') || !WC()->session) {
+		return false;
+	}
+
+	$chosen_methods = WC()->session->get('chosen_shipping_methods');
+
+	if (empty($chosen_methods[0])) {
+		return false;
+	}
+
+	return trimvia_checkout_is_local_pickup_method($chosen_methods[0]);
+}
+
+/**
+ * Render WooPW GP checkout markup only in the Trimvia checkout panel.
+ *
+ * @return string
+ */
+function trimvia_checkout_get_gp_section_markup()
+{
+	if (!function_exists('WC') || !WC()->session || !class_exists('WOOPW_FRONTEND_GP')) {
+		return '';
+	}
+
+	$gp_frontend = WOOPW_FRONTEND_GP::get_instance();
+
+	if (!is_object($gp_frontend) || !method_exists($gp_frontend, 'render_inform_your_gp_section')) {
+		return '';
+	}
+
+	ob_start();
+	$gp_frontend->render_inform_your_gp_section();
+
+	return trim((string) ob_get_clean());
+}
+
+/**
+ * Resolve a logged-in patient's saved GP for checkout.
+ *
+ * Matches the WooPW admin flow: account default (`_current_gp_details`) first,
+ * then the most recent order with `_order_consultation_gp_info`.
+ *
+ * @param int $user_id User ID. Defaults to current user.
+ * @return array<string,mixed>|null {
+ *     @type string $source  `account` or `order`.
+ *     @type int    $post_id Linked `woo-gp-services` post ID when available.
+ *     @type string $name    GP surgery name.
+ *     @type string $address GP surgery address.
+ *     @type string $email   GP surgery email.
+ * }
+ */
+function trimvia_get_saved_patient_gp($user_id = 0)
+{
+	$user_id = $user_id ? absint($user_id) : get_current_user_id();
+	if (!$user_id) {
+		return null;
+	}
+
+	$prefix        = function_exists('gp_meta_prefix') ? gp_meta_prefix() : '';
+	$current_gp_id = absint(get_user_meta($user_id, '_current_gp_details', true));
+
+	if ($current_gp_id) {
+		$gp_post = get_post($current_gp_id);
+		if ($gp_post && 'woo-gp-services' === $gp_post->post_type) {
+			return array(
+				'source'  => 'account',
+				'post_id' => $current_gp_id,
+				'name'    => sanitize_text_field($gp_post->post_title),
+				'address' => sanitize_text_field(get_post_meta($current_gp_id, $prefix . 'address', true)),
+				'email'   => sanitize_text_field(get_post_meta($current_gp_id, $prefix . 'email', true)),
+			);
+		}
+	}
+
+	if (!function_exists('wc_get_orders')) {
+		return null;
+	}
+
+	$orders = wc_get_orders(
+		array(
+			'limit'       => 10,
+			'orderby'     => 'date',
+			'order'       => 'DESC',
+			'customer_id' => $user_id,
+			'return'      => 'objects',
+		)
+	);
+
+	foreach ($orders as $previous_order) {
+		if (!$previous_order instanceof WC_Order) {
+			continue;
+		}
+
+		$previous_gp = $previous_order->get_meta('_order_consultation_gp_info');
+		if (!is_array($previous_gp) || empty($previous_gp['gp_surgery_name'])) {
+			continue;
+		}
+
+		$name    = sanitize_text_field((string) $previous_gp['gp_surgery_name']);
+		$address = isset($previous_gp['gp_surgery_address']) ? sanitize_text_field((string) $previous_gp['gp_surgery_address']) : '';
+		$email   = isset($previous_gp['gp_surgery_email']) ? sanitize_text_field((string) $previous_gp['gp_surgery_email']) : '';
+
+		if ('' === trim($name) && '' === trim($address)) {
+			continue;
+		}
+
+		$post_id = 0;
+		if ('' !== $address) {
+			$existing_posts = get_posts(
+				array(
+					'post_type'      => 'woo-gp-services',
+					'post_status'    => array('draft', 'publish', 'private'),
+					'posts_per_page' => 1,
+					'fields'         => 'ids',
+					'meta_query'     => array(
+						array(
+							'key'     => $prefix . 'address',
+							'value'   => $address,
+							'compare' => '=',
+						),
+					),
+				)
+			);
+
+			if (!empty($existing_posts[0])) {
+				$post_id = absint($existing_posts[0]);
+			}
+		}
+
+		return array(
+			'source'  => 'order',
+			'post_id' => $post_id,
+			'name'    => $name,
+			'address' => $address,
+			'email'   => $email,
+		);
+	}
+
+	return null;
+}
+
+/**
+ * Persist saved/previous GP details when WooPW cannot resolve `_current_gp_details`.
+ *
+ * @param WC_Order        $order Order object.
+ * @param array<string,mixed> $data  Posted checkout data.
+ * @return void
+ */
+function trimvia_checkout_save_saved_gp_details($order, $data)
+{
+	unset($data);
+
+	if (empty($_POST['inform_gp']) || 'yes' !== $_POST['inform_gp']) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		return;
+	}
+
+	if (empty($_POST['gp_surgery']) || 'current' !== $_POST['gp_surgery']) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		return;
+	}
+
+	if (empty($_POST['gp_surgery_consent'])) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		return;
+	}
+
+	if (!$order instanceof WC_Order) {
+		return;
+	}
+
+	if ($order->get_meta('_order_consultation_gp_info')) {
+		return;
+	}
+
+	$user_id = absint($order->get_user_id());
+	if (!$user_id) {
+		return;
+	}
+
+	$saved_gp = trimvia_get_saved_patient_gp($user_id);
+	if (!$saved_gp || ('' === trim($saved_gp['name']) && '' === trim($saved_gp['address']))) {
+		return;
+	}
+
+	$consent = sanitize_text_field(wp_unslash($_POST['gp_surgery_consent'])); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+	$gp_data = array(
+		'gp_surgery_name'    => $saved_gp['name'],
+		'gp_surgery_email'   => $saved_gp['email'],
+		'gp_surgery_address' => $saved_gp['address'],
+		'gp_consent'         => $consent,
+	);
+
+	$order->update_meta_data('_order_consultation_gp_info', $gp_data);
+
+	$user = get_userdata($user_id);
+	$note = sprintf(
+		'Patient\'s GP details are currently set to their saved details:<br/>GP Surgery Name: %1$s<br/>Address: %2$s',
+		esc_html($gp_data['gp_surgery_name']),
+		esc_html($gp_data['gp_surgery_address'])
+	);
+
+	$order->add_meta_data(
+		'_order_gp_notification_note',
+		array(
+			'note'    => $note,
+			'user_id' => $user_id,
+			'user'    => $user ? trim($user->first_name . ' ' . $user->last_name) : '',
+			'sent_on' => time(),
+		)
+	);
+	$order->update_meta_data('_order_gp_automatic_send', 1);
+
+	if (!empty($saved_gp['post_id'])) {
+		update_user_meta($user_id, '_current_gp_details', absint($saved_gp['post_id']));
+	}
+}
+add_action('woocommerce_checkout_create_order', 'trimvia_checkout_save_saved_gp_details', 11, 2);
+
+/**
+ * Collect a separate delivery address only when a ship-to method is selected.
+ *
+ * @param bool $checked Default checked state.
+ * @return bool
+ */
+function trimvia_checkout_ship_to_different_address_checked($checked)
+{
+	if (function_exists('is_checkout') && is_checkout() && !is_wc_endpoint_url()) {
+		return !trimvia_checkout_chosen_method_is_local_pickup();
+	}
+
+	return (bool) $checked;
+}
+add_filter('woocommerce_ship_to_different_address_checked', 'trimvia_checkout_ship_to_different_address_checked', 20);
+
+/**
+ * Use explicit autocomplete tokens so payment autofill does not populate delivery fields.
+ *
+ * @param array<string, array<string, mixed>> $fields Checkout fields.
+ * @return array<string, array<string, mixed>>
+ */
+function trimvia_checkout_field_autocomplete($fields)
+{
+	if (!function_exists('is_checkout') || !is_checkout() || is_wc_endpoint_url()) {
+		return $fields;
+	}
+
+	$autocomplete_map = array(
+		'billing_first_name'  => 'billing given-name',
+		'billing_last_name'   => 'billing family-name',
+		'billing_company'     => 'billing organization',
+		'billing_address_1'   => 'billing address-line1',
+		'billing_address_2'   => 'billing address-line2',
+		'billing_city'        => 'billing address-level2',
+		'billing_state'       => 'billing address-level1',
+		'billing_postcode'    => 'billing postal-code',
+		'billing_country'     => 'billing country',
+		'billing_phone'       => 'billing tel',
+		'billing_email'       => 'billing email',
+		'shipping_first_name' => 'shipping given-name',
+		'shipping_last_name'  => 'shipping family-name',
+		'shipping_company'    => 'shipping organization',
+		'shipping_address_1'  => 'shipping address-line1',
+		'shipping_address_2'  => 'shipping address-line2',
+		'shipping_city'       => 'shipping address-level2',
+		'shipping_state'      => 'shipping address-level1',
+		'shipping_postcode'   => 'shipping postal-code',
+		'shipping_country'    => 'shipping country',
+	);
+
+	foreach ($autocomplete_map as $field_key => $token) {
+		$group = 0 === strpos($field_key, 'shipping_') ? 'shipping' : 'billing';
+
+		if (isset($fields[ $group ][ $field_key ])) {
+			$fields[ $group ][ $field_key ]['autocomplete'] = $token;
+		}
+	}
+
+	return $fields;
+}
+add_filter('woocommerce_checkout_fields', 'trimvia_checkout_field_autocomplete', 20);
 
 /**
  * Remove Woo sidebar on shop/catalog listing pages in child layouts.
@@ -2237,6 +3220,453 @@ function trimvia_account_allowed_svg()
 }
 
 /**
+ * Resolve My Account navigation URL for standard and plugin card menu items.
+ *
+ * WooPW plugin cards (e.g. patient-history, prescription-upload) store button links
+ * in the menu item array. When the child theme registers a matching WooCommerce
+ * endpoint (see prescription-upload block in functions.php), this helper prefers
+ * wc_get_account_endpoint_url() so links stay under /my-account/.
+ *
+ * @param string       $endpoint Menu endpoint key.
+ * @param string|array $nav_item Menu label or plugin card definition.
+ * @return string
+ */
+function trimvia_get_account_menu_item_url($endpoint, $nav_item)
+{
+	if ('dashboard' === $endpoint) {
+		return wc_get_page_permalink('myaccount');
+	}
+
+	if (function_exists('WC') && WC()->query) {
+		$query_vars = WC()->query->get_query_vars();
+		if (isset($query_vars[$endpoint])) {
+			return wc_get_account_endpoint_url($endpoint);
+		}
+	}
+
+	if (is_array($nav_item) && !empty($nav_item['buttons']) && is_array($nav_item['buttons'])) {
+		foreach ($nav_item['buttons'] as $button) {
+			if (!empty($button['link'])) {
+				return $button['link'];
+			}
+		}
+	}
+
+	return wc_get_account_endpoint_url($endpoint);
+}
+
+/**
+ * Patient Prescription Upload (WooPW add-on) — DISABLED FOR NOW.
+ *
+ * Flow when enabled:
+ * 1. WooPW keeps this add-on off unless `enable_patient_rx_upload` returns true
+ *    (see Plugin/woopw/includes/addons/class-addon-manager.php).
+ * 2. When on, Addon Manager loads patient-rx-upload/, which registers the
+ *    [woopw_patient_prescription_upload] shortcode and upload form handlers.
+ * 3. WooPW patient dashboard always adds a "Prescription Upload" My Account menu
+ *    card (Plugin/woopw/includes/frontend/class-frontend-patient-dashboard.php).
+ * 4. This child theme normally registers /my-account/prescription-upload/ and
+ *    renders that shortcode on the endpoint instead of a separate WP page.
+ * 5. woocommerce/myaccount/navigation.php supplies the sidebar icon for that item.
+ *
+ * Turned off because the endpoint only showed the raw shortcode text (add-on UI
+ * not rendering). To re-enable: uncomment the block below and visit Settings →
+ * Permalinks once so rewrite rules refresh.
+ */
+// add_filter('enable_patient_rx_upload', '__return_true');
+//
+// function trimvia_register_prescription_upload_endpoint()
+// {
+// 	add_rewrite_endpoint('prescription-upload', EP_ROOT | EP_PAGES);
+// }
+// add_action('init', 'trimvia_register_prescription_upload_endpoint', 20);
+//
+// function trimvia_add_prescription_upload_query_var($vars)
+// {
+// 	$vars['prescription-upload'] = 'prescription-upload';
+// 	return $vars;
+// }
+// add_filter('woocommerce_get_query_vars', 'trimvia_add_prescription_upload_query_var');
+//
+// function trimvia_render_prescription_upload_endpoint()
+// {
+// 	echo '<div class="trimvia-prescription-upload">';
+//
+// 	if (shortcode_exists('woopw_patient_prescription_upload')) {
+// 		echo do_shortcode('[woopw_patient_prescription_upload]'); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+// 	} else {
+// 		echo '<p class="woocommerce-info">' . esc_html__('Prescription upload is unavailable right now. Please contact the care team for help.', 'theme-woopm-child') . '</p>';
+// 	}
+//
+// 	echo '</div>';
+// }
+// add_action('woocommerce_account_prescription-upload_endpoint', 'trimvia_render_prescription_upload_endpoint');
+
+/**
+ * Hide Prescription Upload from My Account while the add-on is disabled above.
+ *
+ * WooPW still registers the menu card even when the add-on is off; remove it so
+ * patients are not sent to a page that only prints the shortcode.
+ *
+ * @param array<string,mixed> $items Account menu items.
+ * @return array<string,mixed>
+ */
+function trimvia_remove_prescription_upload_menu_item($items)
+{
+	unset($items['prescription-upload']);
+
+	return $items;
+}
+add_filter('woocommerce_account_menu_items', 'trimvia_remove_prescription_upload_menu_item', 20);
+
+/**
+ * Prescriber My Account sidebar: Dashboard first, then Prescriber Orders Dashboard.
+ *
+ * WooPW removes the default dashboard item; restore it so prescribers can return
+ * to the main account overview before the practitioner orders endpoint.
+ *
+ * @param array<string,mixed> $items Account menu items.
+ * @return array<string,mixed>
+ */
+function trimvia_prescriber_account_menu_items($items)
+{
+	if (!trimvia_user_has_prescriber_access()) {
+		return $items;
+	}
+
+	unset($items['dashboard']);
+
+	$ordered = array(
+		'dashboard' => __('Dashboard', 'theme-woopm-child'),
+	);
+
+	if (isset($items['practitioner-orders'])) {
+		$ordered['practitioner-orders'] = $items['practitioner-orders'];
+		unset($items['practitioner-orders']);
+	}
+
+	return $ordered + $items;
+}
+add_filter('woocommerce_account_menu_items', 'trimvia_prescriber_account_menu_items', 25);
+
+/**
+ * Shared card section opener for edit-account clinical fields.
+ *
+ * @param string $title Section title.
+ * @param string $description Optional helper text.
+ * @param string $icon_svg Inline SVG markup.
+ */
+function trimvia_account_form_section_open($title, $description, $icon_svg)
+{
+	?>
+	<div class="trimvia-account-form-section">
+		<div class="trimvia-account-form-section-head">
+			<span class="trimvia-account-form-section-icon" aria-hidden="true">
+				<?php echo wp_kses($icon_svg, trimvia_account_allowed_svg()); ?>
+			</span>
+			<div class="trimvia-account-form-section-copy">
+				<h3><?php echo esc_html($title); ?></h3>
+				<?php if ($description) : ?>
+					<p><?php echo esc_html($description); ?></p>
+				<?php endif; ?>
+			</div>
+		</div>
+		<div class="trimvia-account-form-section-body">
+	<?php
+}
+
+/**
+ * Close a Trimvia account form section card.
+ */
+function trimvia_account_form_section_close()
+{
+	echo '</div></div>';
+}
+
+/**
+ * Swap WooPW edit-account field markup for Trimvia card sections.
+ */
+function trimvia_replace_woopw_edit_account_fields()
+{
+	global $wp_filter, $trimvia_woopw_registration;
+
+	if (!isset($wp_filter['woocommerce_edit_account_form'])) {
+		return;
+	}
+
+	foreach ($wp_filter['woocommerce_edit_account_form']->callbacks as $priority => $callbacks) {
+		foreach ($callbacks as $callback) {
+			if (
+				!empty($callback['function'])
+				&& is_array($callback['function'])
+				&& is_object($callback['function'][0])
+				&& 'render_edit_account_fields' === $callback['function'][1]
+			) {
+				$trimvia_woopw_registration = $callback['function'][0];
+				remove_action('woocommerce_edit_account_form', $callback['function'], (int) $priority);
+				add_action('woocommerce_edit_account_form', 'trimvia_render_edit_account_fields', (int) $priority);
+				return;
+			}
+		}
+	}
+}
+add_action('wp', 'trimvia_replace_woopw_edit_account_fields', 1);
+
+/**
+ * Render Trimvia-styled WooPW fields on the edit account form.
+ */
+function trimvia_render_edit_account_fields()
+{
+	global $trimvia_woopw_registration;
+
+	$user = get_user_by('id', get_current_user_id());
+	if (!$user instanceof WP_User) {
+		return;
+	}
+
+	if (current_user_can('prescriber')) {
+		$medical_body = array('NMC', 'GMC', 'GDC', 'GPhC', 'Other');
+		?>
+		<div class="trimvia-edit-account-grid">
+			<p class="woocommerce-form-row woocommerce-form-row--first form-row form-row-first">
+				<label for="prescriber_medical_body"><?php esc_html_e('Medical Body', 'woocommerce'); ?>&nbsp;<span class="required" aria-hidden="true">*</span></label>
+				<select class="woocommerce-select woo-input-select" name="prescriber_medical_body" id="prescriber_medical_body">
+					<option value=""><?php esc_html_e('Select Option', 'woopw'); ?></option>
+					<?php foreach ($medical_body as $val) : ?>
+						<option value="<?php echo esc_attr($val); ?>" <?php selected(get_user_meta($user->ID, 'prescriber_medical_body', true), $val); ?>><?php echo esc_html($val); ?></option>
+					<?php endforeach; ?>
+				</select>
+			</p>
+			<p class="woocommerce-form-row woocommerce-form-row--last form-row form-row-last">
+				<label for="prescriber_reg_number"><?php esc_html_e('Registration Number', 'woocommerce'); ?>&nbsp;<span class="required" aria-hidden="true">*</span></label>
+				<input type="text" class="woocommerce-Input woocommerce-Input--text input-text" name="prescriber_reg_number" id="prescriber_reg_number" value="<?php echo esc_attr(get_user_meta($user->ID, 'prescriber_reg_number', true)); ?>" />
+			</p>
+		</div>
+		<?php
+	}
+
+	if (!in_array('customer', (array) $user->roles, true)) {
+		return;
+	}
+
+	$is_patient_id_optional = get_option('optional_registration_id');
+	$patient_dob            = get_user_meta($user->ID, 'patient_dob', true);
+	$patient_gp             = get_user_meta($user->ID, '_current_gp_details', true);
+	$patient_id             = get_user_meta($user->ID, 'patient_id', true);
+
+	trimvia_account_form_section_open(
+		__('Date of birth', 'theme-woopm-child'),
+		$patient_dob ? __('Your date of birth is stored securely for clinical checks.', 'theme-woopm-child') : __('Required for safe prescribing and age-appropriate treatments.', 'theme-woopm-child'),
+		'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>'
+	);
+	?>
+	<p class="woocommerce-form-row form-row form-row-wide trimvia-account-dob-row">
+		<label for="patient_dob_display">
+			<?php esc_html_e('Date of Birth', 'woopw'); ?>
+			<?php if (!$patient_dob) : ?>
+				&nbsp;<span class="required" aria-hidden="true">*</span>
+			<?php endif; ?>
+		</label>
+		<?php if ($patient_dob) : ?>
+			<input class="input-text" type="text" id="patient_dob_display" readonly value="<?php echo esc_attr(date_i18n('F j, Y', strtotime($patient_dob))); ?>" />
+		<?php elseif ($trimvia_woopw_registration && method_exists($trimvia_woopw_registration, 'render_dob_dropdown')) : ?>
+			<div class="trimvia-account-dob-fields custom-date-input">
+				<?php $trimvia_woopw_registration->render_dob_dropdown(); ?>
+			</div>
+		<?php endif; ?>
+	</p>
+	<?php
+	trimvia_account_form_section_close();
+
+	trimvia_account_form_section_open(
+		__('Identification', 'theme-woopm-child'),
+		__('Upload a clear photo or scan of your ID so our clinical team can verify your account.', 'theme-woopm-child'),
+		'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M15 8h2M15 12h2M7 16h10"/></svg>'
+	);
+
+	if (!empty($patient_id) && is_array($patient_id)) {
+		?>
+		<div class="trimvia-account-id-gallery trimvia-upload-gallery">
+			<?php foreach ($patient_id as $image) : ?>
+				<?php
+				if (empty($image['path']) || !is_readable($image['path'])) {
+					continue;
+				}
+				$finfo = new finfo(FILEINFO_MIME_TYPE);
+				$type  = $finfo->file($image['path']);
+				if (!in_array($type, array('image/png', 'image/jpeg', 'image/jpg', 'image/webp'), true)) {
+					continue;
+				}
+				$data_base64 = 'data:' . $type . ';base64,' . base64_encode((string) file_get_contents($image['path']));
+				?>
+				<figure class="trimvia-upload-gallery__item">
+					<div class="trimvia-upload-gallery__media">
+						<img src="<?php echo esc_attr($data_base64); ?>" alt="<?php echo esc_attr($image['file'] ?? __('ID image', 'theme-woopm-child')); ?>" />
+					</div>
+					<?php if (!empty($image['file'])) : ?>
+						<figcaption><?php echo esc_html($image['file']); ?></figcaption>
+					<?php endif; ?>
+				</figure>
+			<?php endforeach; ?>
+		</div>
+		<?php
+	}
+	?>
+	<p class="woocommerce-form-row form-row form-row-wide trimvia-account-file-row">
+		<label for="patient_id">
+			<?php esc_html_e('Upload new ID image', 'woopw'); ?>
+			<?php if (empty($patient_id) && !$is_patient_id_optional) : ?>
+				&nbsp;<span class="required" aria-hidden="true">*</span>
+			<?php endif; ?>
+		</label>
+		<input type="file" name="patient_id" id="patient_id" class="trimvia-account-file-input cflp-file-input input-text" <?php echo (empty($patient_id) && !$is_patient_id_optional) ? 'required' : ''; ?> accept="image/*" />
+	</p>
+	<?php
+	trimvia_account_form_section_close();
+
+	trimvia_account_form_section_open(
+		__('GP details', 'theme-woopm-child'),
+		__('Select your GP surgery so we can share clinical correspondence when required.', 'theme-woopm-child'),
+		'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>'
+	);
+
+	if (function_exists('wc_render_all_gps_select_field')) {
+		echo '<div class="trimvia-account-gp-field">';
+		ob_start();
+		wc_render_all_gps_select_field(
+			$patient_gp,
+			__('Select your GP using the field below, if it is not currently correct:', 'woopw')
+		);
+		$gp_field_html = ob_get_clean();
+		$gp_field_html = str_replace('class="mb-3"', 'class="trimvia-account-gp-select-wrap"', $gp_field_html);
+		$gp_field_html = str_replace('class="chosen-select"', 'class="chosen-select trimvia-account-gp-select"', $gp_field_html);
+		echo $gp_field_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- plugin helper output.
+		echo '</div>';
+	}
+	trimvia_account_form_section_close();
+}
+
+/**
+ * Replace plugin patient-history markup with Trimvia account card layout.
+ */
+function trimvia_override_patient_history_endpoint()
+{
+	remove_all_actions('woocommerce_account_patient-history_endpoint');
+	add_action('woocommerce_account_patient-history_endpoint', 'trimvia_render_patient_history_endpoint');
+}
+add_action('init', 'trimvia_override_patient_history_endpoint', 20);
+
+/**
+ * Medical history fields shown on the patient-history account endpoint.
+ *
+ * @return array<string,array{label:string,icon:string,wide?:bool}>
+ */
+function trimvia_patient_history_fields()
+{
+	return array(
+		'medical_allergies' => array(
+			'label' => __('Allergies (drug and non-drug)', 'theme-woopm-child'),
+			'icon'  => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+		),
+		'medical_conditions' => array(
+			'label' => __('Relevant medical conditions (chronic, past history)', 'theme-woopm-child'),
+			'icon'  => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>',
+		),
+		'medical_contraindications' => array(
+			'label' => __('Contraindications / risk factors (pregnancy, renal impairment, etc.)', 'theme-woopm-child'),
+			'icon'  => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
+		),
+		'medical_medications' => array(
+			'label' => __('Medication history (including repeat/ongoing meds not ordered online)', 'theme-woopm-child'),
+			'icon'  => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10.5 20.5L3.5 13.5a4.95 4.95 0 0 1 0-7l.5-.5a4.95 4.95 0 0 1 7 0l1 1"/><path d="M13.5 3.5l7 7a4.95 4.95 0 0 1 0 7l-.5.5a4.95 4.95 0 0 1-7 0l-1-1"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+		),
+		'consultation_notes' => array(
+			'label' => __('Consultation notes', 'theme-woopm-child'),
+			'icon'  => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
+			'wide'  => true,
+		),
+	);
+}
+
+/**
+ * Render the My Medication Information account endpoint.
+ */
+function trimvia_render_patient_history_endpoint()
+{
+	$user_id = get_current_user_id();
+
+	if (empty($user_id) || ! get_userdata($user_id)) {
+		echo '<p>' . esc_html__('No patient data found.', 'theme-woopm-child') . '</p>';
+		return;
+	}
+
+	$contact_url = home_url('/contact/');
+	$fields      = trimvia_patient_history_fields();
+	?>
+	<div class="trimvia-medication-info">
+		<div class="medication-info-intro rv">
+			<div class="medication-info-intro-icon" aria-hidden="true">
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+			</div>
+			<div class="medication-info-intro-text">
+				<h2><?php esc_html_e('My Medication Information', 'theme-woopm-child'); ?></h2>
+				<p><?php esc_html_e('Clinical records reviewed by our care team during consultations. This information helps us prescribe safely and monitor your treatment.', 'theme-woopm-child'); ?></p>
+			</div>
+		</div>
+
+		<div class="medication-info-grid">
+			<?php foreach ($fields as $meta_key => $field) : ?>
+				<?php
+				$raw_value   = get_user_meta($user_id, $meta_key, true);
+				$content     = function_exists('woopw_get_all_pmr_notes') ? woopw_get_all_pmr_notes($raw_value) : '';
+				$has_content = ! empty(trim(wp_strip_all_tags((string) $content)));
+				$card_class  = 'medication-info-card rv';
+
+				if (! empty($field['wide'])) {
+					$card_class .= ' medication-info-card--wide';
+				}
+				if (! $has_content) {
+					$card_class .= ' medication-info-card--empty';
+				}
+				?>
+				<article class="<?php echo esc_attr($card_class); ?>">
+					<header class="medication-info-card-head">
+						<span class="medication-info-card-icon" aria-hidden="true">
+							<?php echo wp_kses($field['icon'], trimvia_account_allowed_svg()); ?>
+						</span>
+						<h3><?php echo esc_html($field['label']); ?></h3>
+					</header>
+					<div class="medication-info-card-body">
+						<?php if ($has_content) : ?>
+							<?php echo $content; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- rendered by woopw_get_all_pmr_notes. ?>
+						<?php else : ?>
+							<p class="medication-info-empty">
+								<?php esc_html_e('No information recorded yet', 'theme-woopm-child'); ?>
+							</p>
+						<?php endif; ?>
+					</div>
+				</article>
+			<?php endforeach; ?>
+		</div>
+
+		<div class="medication-info-footnote rv rv-d2">
+			<p>
+				<?php
+				echo wp_kses_post(
+					sprintf(
+						/* translators: %s: contact page URL */
+						__('Information is updated by our clinical team during consultations. If anything needs correcting, <a href="%s">contact the care team</a>.', 'theme-woopm-child'),
+						esc_url($contact_url)
+					)
+				);
+				?>
+			</p>
+		</div>
+	</div>
+	<?php
+}
+
+/**
  * Parent theme registers load_condition_tax_script on wp_enqueue_scripts; it prints inline JS
  * immediately (jQuery not loaded yet) for a non-existent .conditions-slider — causes console errors
  * on condition archives. Layout uses the child grid instead.
@@ -2256,14 +3686,12 @@ function trimvia_prepare_single_product_hooks()
 		return;
 	}
 
-	// Keep default WooCommerce single-product rendering unless a custom layout
-	// is explicitly enabled by code.
-	if (!apply_filters('trimvia_use_custom_single_product_layout', false)) {
+	if (!apply_filters('trimvia_use_custom_single_product_layout', true)) {
 		return;
 	}
 
+	remove_action('woocommerce_before_single_product', 'woocommerce_output_all_notices', 10);
 	remove_action('woocommerce_before_single_product_summary', 'woocommerce_show_product_sale_flash', 10);
-	remove_action('woocommerce_before_single_product_summary', 'woocommerce_show_product_images', 20);
 
 	remove_action('woocommerce_single_product_summary', 'woocommerce_template_single_title', 5);
 	remove_action('woocommerce_single_product_summary', 'woocommerce_template_single_rating', 10);
@@ -2280,6 +3708,21 @@ function trimvia_prepare_single_product_hooks()
 	remove_action('woocommerce_after_single_product_summary', 'woocommerce_output_related_products', 20);
 }
 add_action('wp', 'trimvia_prepare_single_product_hooks', 20);
+
+/**
+ * Parent theme moves variation descriptions into .summary; Trimvia uses a custom layout.
+ */
+function trimvia_disable_parent_variation_desc_script()
+{
+	if (!function_exists('is_product') || !is_product()) {
+		return;
+	}
+
+	if (function_exists('woo_modify_wc_variation_desc_position')) {
+		remove_action('wp_footer', 'woo_modify_wc_variation_desc_position');
+	}
+}
+add_action('wp', 'trimvia_disable_parent_variation_desc_script', 25);
 
 /**
  * Core wp_die() markup includes a global `body { max-width:700px; … }` rule. If that stylesheet is ever
@@ -2320,7 +3763,7 @@ function trimvia_single_product_tabs_overview_from_short_description($tabs)
 		return $tabs;
 	}
 
-	$long_plain = trim(wp_strip_all_tags((string) $product->get_description()));
+	$long_plain = trim(wp_strip_all_tags(trimvia_single_product_get_long_description_raw((int) $product->get_id())));
 	$short_plain = trim(wp_strip_all_tags((string) $product->get_short_description()));
 
 	if ('' === $long_plain && '' !== $short_plain && !isset($tabs['description'])) {
@@ -2404,7 +3847,7 @@ function trimvia_single_product_tab_render_fallback_overview($key, $tab)
 		return;
 	}
 
-	$long  = trim((string) $product->get_description());
+	$long  = trimvia_single_product_get_long_description_raw((int) $product->get_id());
 	$short = trim((string) $product->get_short_description());
 
 	if ('' !== wp_strip_all_tags($long)) {
@@ -2708,12 +4151,290 @@ function trimvia_single_product_upsells_heading($heading)
 		return $heading;
 	}
 
-	return __('Often prescribed together', 'theme-woopm-child');
+	return __('You may also like...', 'theme-woopm-child');
 }
 add_filter('woocommerce_product_upsells_products_heading', 'trimvia_single_product_upsells_heading');
 
 /**
- * Match single-product HTML prototype CTA copy.
+ * Whether the quantity field should appear on single product add-to-cart forms.
+ *
+ * @param WC_Product|false $product Product object.
+ * @return bool
+ */
+function trimvia_should_show_single_product_quantity($product)
+{
+	if (!$product instanceof WC_Product) {
+		return true;
+	}
+
+	$max = (int) $product->get_max_purchase_quantity();
+	$min = (int) $product->get_min_purchase_quantity();
+
+	if ($max > 0 && $max <= 1 && $min <= 1) {
+		return false;
+	}
+
+	return true;
+}
+
+/**
+ * Default quantity value for single product forms.
+ *
+ * @param WC_Product|false $product Product object.
+ * @return int
+ */
+function trimvia_get_single_product_quantity_value($product)
+{
+	if (!$product instanceof WC_Product) {
+		return 1;
+	}
+
+	if (isset($_POST['quantity'])) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		return max(1, (int) wc_stock_amount(wp_unslash($_POST['quantity']))); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+	}
+
+	return max(1, (int) $product->get_min_purchase_quantity());
+}
+
+/**
+ * Ensure WooCommerce and PHP session consultation data is available (guest-safe).
+ *
+ * @return void
+ */
+function trimvia_ensure_consultation_session()
+{
+	if (!function_exists('WC') || !WC()->session) {
+		return;
+	}
+
+	if (!WC()->session->has_session()) {
+		WC()->session->set_customer_session_cookie(true);
+	}
+
+	if (!empty(WC()->session->get('cflp_form_data'))) {
+		return;
+	}
+
+	if (function_exists('session_status') && PHP_SESSION_NONE === session_status()) {
+		// WooPW stores a backup in PHP session when the WC session is unavailable.
+		session_start();
+	}
+
+	if (!empty($_SESSION['wp_cflp_form_data'])) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		WC()->session->set('cflp_form_data', $_SESSION['wp_cflp_form_data']); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+	}
+}
+add_action('woocommerce_init', 'trimvia_ensure_consultation_session', 1);
+add_action('template_redirect', 'trimvia_ensure_consultation_session', 1);
+
+/**
+ * Whether consultation/assessment session data exists in the current request.
+ *
+ * @return bool
+ */
+function trimvia_has_consultation_session()
+{
+	trimvia_ensure_consultation_session();
+
+	if (function_exists('WC') && WC()->session && !empty(WC()->session->get('cflp_form_data'))) {
+		return true;
+	}
+
+	return !empty($_SESSION['wp_cflp_form_data']); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+}
+
+/**
+ * Whether the current session includes a completed consultation for a condition slug.
+ *
+ * @param string $condition_slug Condition taxonomy slug.
+ * @return bool
+ */
+function trimvia_has_consultation_for_condition($condition_slug)
+{
+	$condition_slug = sanitize_title((string) $condition_slug);
+
+	if ('' === $condition_slug) {
+		return false;
+	}
+
+	trimvia_ensure_consultation_session();
+
+	if (function_exists('has_consultation_for_condition')) {
+		return (bool) has_consultation_for_condition($condition_slug);
+	}
+
+	$session_data = array();
+
+	if (function_exists('WC') && WC()->session) {
+		$session_data = WC()->session->get('cflp_form_data');
+	}
+
+	if (empty($session_data) && !empty($_SESSION['wp_cflp_form_data'])) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		$session_data = $_SESSION['wp_cflp_form_data']; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+	}
+
+	if (!is_array($session_data) || empty($session_data)) {
+		return false;
+	}
+
+	if (
+		!empty($session_data['condition_slug'])
+		&& sanitize_title((string) $session_data['condition_slug']) === $condition_slug
+	) {
+		return true;
+	}
+
+	foreach ($session_data as $entry) {
+		if (!is_array($entry) || empty($entry['condition_slug'])) {
+			continue;
+		}
+
+		if (sanitize_title((string) $entry['condition_slug']) === $condition_slug) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/**
+ * Whether a product's condition has a completed consultation in the current session.
+ *
+ * @param int $product_id Product ID.
+ * @return bool
+ */
+function trimvia_product_has_completed_consultation($product_id)
+{
+	$product_id = (int) $product_id;
+
+	if ($product_id < 1) {
+		return false;
+	}
+
+	$terms = get_the_terms($product_id, 'condition');
+
+	if (!empty($terms) && !is_wp_error($terms)) {
+		foreach ($terms as $term) {
+			if ($term instanceof WP_Term && trimvia_has_consultation_for_condition($term->slug)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	// Product has no condition terms — mirror parent generic session check.
+	return trimvia_has_consultation_session();
+}
+
+/**
+ * Whether the single-product CTA should be the assessment/consultation link.
+ *
+ * Mirrors parent simple.php + WooPW single_product_consultation_button_masking:
+ * prescription products show Start Assessment until the condition-specific
+ * consultation is completed (and any linked-order re-assessment gate passes).
+ *
+ * @param int|WC_Product $product Product ID or object.
+ * @return bool
+ */
+function trimvia_product_should_show_assessment_cta($product)
+{
+	return trimvia_is_product_consultation_required($product);
+}
+
+/**
+ * Label for the single-product assessment CTA.
+ *
+ * @return string
+ */
+function trimvia_get_single_product_assessment_button_label()
+{
+	if (function_exists('wc_consultation_button_title')) {
+		return (string) wc_consultation_button_title();
+	}
+
+	return __('Start Assessment', 'theme-woopm-child');
+}
+
+/**
+ * Whether a product is marked as prescription-only (parent ACF flow).
+ *
+ * @param int|WC_Product $product Product ID or object.
+ * @return bool
+ */
+function trimvia_product_is_prescription_type($product)
+{
+	$product_id = 0;
+	if ($product instanceof WC_Product) {
+		$product_id = (int) $product->get_id();
+	} elseif (is_numeric($product)) {
+		$product_id = (int) $product;
+	}
+
+	if ($product_id < 1 || !function_exists('get_field')) {
+		return false;
+	}
+
+	$prescription_flag = strtolower(trim((string) get_field('is_prescription_product', $product_id)));
+
+	return in_array($prescription_flag, array('yes', '1', 'true', 'plines', 'on', 'y'), true);
+}
+
+/**
+ * Single product CTA button — mirrors parent simple.php assessment/add-to-basket flow.
+ *
+ * @param WC_Product $product Product object.
+ * @param string     $context Template context: simple|variation.
+ * @return void
+ */
+function trimvia_render_single_product_cart_button($product, $context = 'simple')
+{
+	if (!$product instanceof WC_Product) {
+		return;
+	}
+
+	$button_class = 'single_add_to_cart_button theme-btn-primary btn-accent';
+	$wc_button_class = wc_wp_theme_get_element_class_name('button');
+	if ($wc_button_class) {
+		$button_class .= ' ' . $wc_button_class;
+	}
+	if ('simple' === $context) {
+		$button_class .= ' alt';
+	}
+
+	if (trimvia_product_should_show_assessment_cta($product)) {
+		$assessment_url = trimvia_get_product_entry_url($product);
+		if ('' !== $assessment_url) {
+			$button_class .= ' trimvia-assessment-cta';
+			?>
+			<a class="<?php echo esc_attr($button_class); ?>" href="<?php echo esc_url($assessment_url); ?>">
+				<?php echo esc_html(trimvia_get_single_product_assessment_button_label()); ?>
+			</a>
+			<?php
+			return;
+		}
+	}
+
+	$cart_label = __('Add to basket', 'theme-woopm-child');
+
+	if ('simple' === $context) {
+		?>
+		<button type="submit" name="add-to-cart" value="<?php echo esc_attr($product->get_id()); ?>" class="<?php echo esc_attr($button_class); ?>">
+			<?php echo esc_html($cart_label); ?>
+		</button>
+		<?php
+		return;
+	}
+
+	?>
+	<button type="submit" class="<?php echo esc_attr($button_class); ?>">
+		<?php echo esc_html($cart_label); ?>
+	</button>
+	<?php
+}
+
+/**
+ * Match single-product CTA copy with parent assessment → add-to-basket flow.
  *
  * @param string           $text    Default button text.
  * @param WC_Product|false $product Product object.
@@ -2725,9 +4446,382 @@ function trimvia_single_product_add_to_cart_text($text, $product)
 		return $text;
 	}
 
-	return __('Start assessment for this treatment', 'theme-woopm-child');
+	if ($product instanceof WC_Product && trimvia_product_should_show_assessment_cta($product)) {
+		return trimvia_get_single_product_assessment_button_label();
+	}
+
+	return __('Add to basket', 'theme-woopm-child');
 }
 add_filter('woocommerce_product_single_add_to_cart_text', 'trimvia_single_product_add_to_cart_text', 20, 2);
+
+/**
+ * Remove WooCommerce's leading pipe from the reset-variations link.
+ *
+ * @param string $link Default reset link markup.
+ * @return string
+ */
+function trimvia_reset_variations_link($link)
+{
+	return '<a class="reset_variations" href="#" role="button">' . esc_html__('Clear selection', 'theme-woopm-child') . '</a>';
+}
+add_filter('woocommerce_reset_variations_link', 'trimvia_reset_variations_link');
+
+/**
+ * Long product description (Product description field in admin).
+ *
+ * @param int $product_id Product ID.
+ * @return string
+ */
+function trimvia_single_product_get_long_description_raw($product_id)
+{
+	$product_id = (int) $product_id;
+	if ($product_id < 1) {
+		return '';
+	}
+
+	$product = wc_get_product($product_id);
+	if ($product instanceof WC_Product) {
+		$description = trim((string) $product->get_description());
+		if ('' !== $description) {
+			return $description;
+		}
+	}
+
+	return trim((string) get_post_field('post_content', $product_id));
+}
+
+/**
+ * Render the long product description in Treatment details tabs.
+ *
+ * @param string $key Tab key.
+ * @param array  $tab Tab definition.
+ */
+function trimvia_single_product_tab_render_description($key, $tab)
+{
+	$product_id = trimvia_single_product_get_current_product_id();
+	if ($product_id < 1) {
+		return;
+	}
+
+	$description_raw = trimvia_single_product_get_long_description_raw($product_id);
+	if ('' === trim(wp_strip_all_tags($description_raw))) {
+		return;
+	}
+
+	$product_post = get_post($product_id);
+	if (!$product_post instanceof WP_Post) {
+		echo '<div class="woocommerce-product-details__description article-content">';
+		echo apply_filters('the_content', $description_raw); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		echo '</div>';
+
+		return;
+	}
+
+	global $post;
+	$previous_post = $post ?? null;
+	$post = $product_post; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
+	setup_postdata($product_post);
+
+	echo '<div class="woocommerce-product-details__description article-content">';
+	echo apply_filters('the_content', $description_raw); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+	echo '</div>';
+
+	wp_reset_postdata();
+	$post = $previous_post; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
+}
+
+/**
+ * Resolve the product ID for single-product tab rendering.
+ *
+ * @return int
+ */
+function trimvia_single_product_get_current_product_id()
+{
+	global $product;
+
+	if ($product instanceof WC_Product) {
+		return (int) $product->get_id();
+	}
+
+	$queried_id = (int) get_queried_object_id();
+	if ($queried_id > 0 && 'product' === get_post_type($queried_id)) {
+		return $queried_id;
+	}
+
+	$loop_id = (int) get_the_ID();
+	if ($loop_id > 0 && 'product' === get_post_type($loop_id)) {
+		return $loop_id;
+	}
+
+	return 0;
+}
+
+/**
+ * Use a reliable description renderer for the Overview tab.
+ *
+ * @param array $tabs Product tabs.
+ * @return array
+ */
+function trimvia_single_product_fix_description_tab($tabs)
+{
+	$product_id = trimvia_single_product_get_current_product_id();
+	if ($product_id < 1) {
+		return $tabs;
+	}
+
+	if ('' === trim(wp_strip_all_tags(trimvia_single_product_get_long_description_raw($product_id)))) {
+		return $tabs;
+	}
+
+	if (!isset($tabs['description'])) {
+		$tabs['description'] = array(
+			'title'    => __('Overview', 'theme-woopm-child'),
+			'priority' => 10,
+			'callback' => 'trimvia_single_product_tab_render_description',
+		);
+	} else {
+		$tabs['description']['title']    = __('Overview', 'theme-woopm-child');
+		$tabs['description']['callback'] = 'trimvia_single_product_tab_render_description';
+	}
+
+	return $tabs;
+}
+add_filter('woocommerce_product_tabs', 'trimvia_single_product_fix_description_tab', 10050);
+
+/**
+ * Hide the default WooCommerce "Description" heading inside tab panels.
+ *
+ * @param string $heading Heading text.
+ * @return string
+ */
+function trimvia_single_product_hide_description_heading($heading)
+{
+	return '';
+}
+add_filter('woocommerce_product_description_heading', 'trimvia_single_product_hide_description_heading');
+
+/**
+ * Render ACF "Other tabs" content for the custom Treatment details UI.
+ *
+ * @param string $slug Tab slug.
+ * @param array  $tab  Tab definition.
+ */
+function trimvia_single_product_tab_render_acf($slug, $tab)
+{
+	if (!empty($tab['tab_title'])) {
+		echo '<h2>' . esc_html((string) $tab['tab_title']) . '</h2>';
+	}
+
+	if (!empty($tab['tab_content'])) {
+		echo wp_kses_post((string) $tab['tab_content']);
+	}
+}
+
+/**
+ * Ensure ACF product tabs (Directions, etc.) appear in Treatment details.
+ *
+ * @param array $tabs Product tabs.
+ * @return array
+ */
+function trimvia_single_product_register_acf_tabs($tabs)
+{
+	if (!function_exists('is_product') || !is_product() || !function_exists('have_rows')) {
+		return $tabs;
+	}
+
+	$product_id = get_queried_object_id();
+	if ($product_id < 1 || !have_rows('product_tabs', $product_id)) {
+		return $tabs;
+	}
+
+	while (have_rows('product_tabs', $product_id)) {
+		the_row();
+
+		if (!get_sub_field('enable')) {
+			continue;
+		}
+
+		$tab_label = trim((string) get_sub_field('tab_label'));
+		if ('' === $tab_label) {
+			$tab_label = __('Label', 'theme-woopm-child');
+		}
+
+		$tab_id = function_exists('wc_convert_str_to_slug')
+			? wc_convert_str_to_slug($tab_label)
+			: sanitize_title($tab_label);
+
+		if ('' === $tab_id) {
+			$tab_id = 'trimvia-tab-' . get_row_index();
+		}
+
+		if (isset($tabs[$tab_id])) {
+			continue;
+		}
+
+		$tabs[$tab_id] = array(
+			'title'        => $tab_label,
+			'tab_title'    => get_sub_field('tab_title'),
+			'tab_content'  => get_sub_field('tab_content'),
+			'priority'     => 18,
+			'callback'     => 'trimvia_single_product_tab_render_acf',
+		);
+	}
+
+	return $tabs;
+}
+add_filter('woocommerce_product_tabs', 'trimvia_single_product_register_acf_tabs', 10002);
+
+/**
+ * Default selected value when a variation attribute has only one purchasable option.
+ *
+ * @param WC_Product_Variable $product             Variable product.
+ * @param string              $attribute_name      Attribute name.
+ * @param array               $options             Available option slugs.
+ * @param array               $available_variations Available variations data.
+ * @return string
+ */
+function trimvia_get_variation_attribute_selected_value($product, $attribute_name, $options, $available_variations)
+{
+	if (!$product instanceof WC_Product_Variable || empty($options)) {
+		return '';
+	}
+
+	$attribute_key = sanitize_title($attribute_name);
+	$defaults      = $product->get_default_attributes();
+
+	if (!empty($defaults[$attribute_key])) {
+		$default_value = (string) $defaults[$attribute_key];
+		if (in_array($default_value, $options, true)) {
+			return $default_value;
+		}
+	}
+
+	if (1 === count($options)) {
+		return (string) reset($options);
+	}
+
+	if (is_array($available_variations) && 1 === count($available_variations)) {
+		$variation_attributes = $available_variations[0]['attributes'] ?? array();
+		$variation_key        = 'attribute_' . $attribute_key;
+
+		if (!empty($variation_attributes[$variation_key])) {
+			return (string) $variation_attributes[$variation_key];
+		}
+	}
+
+	return '';
+}
+
+/**
+ * Sync variation price into the summary price row on single product pages.
+ */
+function trimvia_single_product_variation_scripts()
+{
+	if (!function_exists('is_product') || !is_product()) {
+		return;
+	}
+	?>
+	<script>
+	(function ($) {
+		var autoSelectSingleVariationOptions = function ($form) {
+			if (!$form || !$form.length) {
+				return;
+			}
+
+			var updated = false;
+
+			$form.find('table.variations select').each(function () {
+				var $select = $(this);
+				var $options = $select.find('option').filter(function () {
+					return $(this).val() !== '';
+				});
+
+				if ($options.length === 1 && !$select.val()) {
+					$select.val($options.first().val());
+					updated = true;
+				}
+			});
+
+			if (updated) {
+				$form.trigger('check_variations');
+				return;
+			}
+
+			var allSelected = true;
+			$form.find('table.variations select').each(function () {
+				if (!$(this).val()) {
+					allSelected = false;
+				}
+			});
+
+			if (allSelected) {
+				$form.trigger('check_variations');
+			}
+		};
+
+		$(function () {
+			if (!$('body').hasClass('trimvia-single-product-page')) {
+				return;
+			}
+
+			var $priceWrap = $('.trimvia-single-product-price');
+			var defaultPriceHtml = $priceWrap.length ? $priceWrap.html() : '';
+
+			$('.variations_form').each(function () {
+				var $form = $(this);
+
+				autoSelectSingleVariationOptions($form);
+
+				$form.on('found_variation', function (event, variation) {
+					if ($priceWrap.length && variation && variation.price_html) {
+						$priceWrap.html(variation.price_html);
+					}
+				}).on('reset_data', function () {
+					if ($priceWrap.length) {
+						$priceWrap.html(defaultPriceHtml);
+					}
+					autoSelectSingleVariationOptions($form);
+				});
+			});
+		});
+
+		$(document.body).on('wc_variation_form', function (event, $form) {
+			if (!$('body').hasClass('trimvia-single-product-page')) {
+				return;
+			}
+
+			autoSelectSingleVariationOptions($form);
+		});
+
+		var removeStrayVariationMarks = function ($form) {
+			if (!$form || !$form.length) {
+				return;
+			}
+
+			$form.find('.single_variation_wrap').contents().filter(function () {
+				return this.nodeType === 3 && $.trim(this.nodeValue) === '|';
+			}).remove();
+
+			$form.contents().filter(function () {
+				return this.nodeType === 3 && $.trim(this.nodeValue) === '|';
+			}).remove();
+		};
+
+		$('.variations_form').each(function () {
+			var $form = $(this);
+
+			removeStrayVariationMarks($form);
+
+			$form.on('found_variation reset_data woocommerce_update_variation_values', function () {
+				removeStrayVariationMarks($form);
+			});
+		});
+	})(jQuery);
+	</script>
+	<?php
+}
+add_action('wp_footer', 'trimvia_single_product_variation_scripts', 99);
+
 
 /**
  * Match parent consultation gate behavior in loop cards/buttons.
@@ -2800,10 +4894,167 @@ function trimvia_get_product_primary_condition_slug($product)
 }
 
 /**
+ * Whether a product should display as out of stock on listing cards.
+ *
+ * @param WC_Product $product Product object.
+ * @return bool
+ */
+function trimvia_product_is_out_of_stock($product)
+{
+	if (!$product instanceof WC_Product) {
+		return false;
+	}
+
+	if ('outofstock' === $product->get_stock_status() || !$product->is_in_stock()) {
+		return true;
+	}
+
+	if ($product->is_type('variable')) {
+		foreach ($product->get_children() as $child_id) {
+			$variation = wc_get_product($child_id);
+			if ($variation instanceof WC_Product && $variation->is_purchasable() && $variation->is_in_stock()) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	return !$product->is_purchasable();
+}
+
+/**
+ * Whether the logged-in user has a previous completed order for a condition.
+ *
+ * Used to gate returning patients behind the reorder/reassessment questionnaire
+ * (parent consultation.php + WooPW reorder flow).
+ *
+ * @param string $condition_slug Condition taxonomy slug.
+ * @return bool
+ */
+function trimvia_user_has_previous_completed_order_for_condition($condition_slug)
+{
+	if (!is_user_logged_in()) {
+		return false;
+	}
+
+	$condition_slug = sanitize_title((string) $condition_slug);
+	if ('' === $condition_slug) {
+		return false;
+	}
+
+	$term = get_term_by('slug', $condition_slug, 'condition');
+	if (!$term instanceof WP_Term) {
+		return false;
+	}
+
+	if (function_exists('get_user_latest_completed_consultation_order')) {
+		return (bool) get_user_latest_completed_consultation_order(wp_get_current_user(), (int) $term->term_id, false);
+	}
+
+	if (function_exists('woopw_check_orders_previous_conditions')) {
+		$previous_conditions = woopw_check_orders_previous_conditions();
+		return is_array($previous_conditions)
+			&& in_array((int) $term->term_id, array_map('intval', $previous_conditions), true);
+	}
+
+	return false;
+}
+
+/**
+ * Mark reassessment as completed for a condition in the current WC session.
+ *
+ * @param string $condition_slug Condition taxonomy slug.
+ * @return void
+ */
+function trimvia_mark_reassessment_completed_for_condition($condition_slug)
+{
+	$condition_slug = sanitize_title((string) $condition_slug);
+	if ('' === $condition_slug || !function_exists('WC') || !WC()->session) {
+		return;
+	}
+
+	trimvia_ensure_consultation_session();
+	$approved = WC()->session->get('trimvia_reassessment_approved', array());
+	if (!is_array($approved)) {
+		$approved = array();
+	}
+
+	$approved[$condition_slug] = time();
+	WC()->session->set('trimvia_reassessment_approved', $approved);
+}
+
+/**
+ * Whether the current session includes a fresh reassessment for a condition.
+ *
+ * @param string $condition_slug Condition taxonomy slug.
+ * @return bool
+ */
+function trimvia_reassessment_approved_for_condition($condition_slug)
+{
+	$condition_slug = sanitize_title((string) $condition_slug);
+	if ('' === $condition_slug) {
+		return false;
+	}
+
+	trimvia_ensure_consultation_session();
+
+	if (!function_exists('WC') || !WC()->session) {
+		return false;
+	}
+
+	$approved = WC()->session->get('trimvia_reassessment_approved', array());
+	if (!is_array($approved) || empty($approved[$condition_slug])) {
+		return false;
+	}
+
+	return trimvia_has_consultation_for_condition($condition_slug);
+}
+
+/**
+ * Clear reassessment approval flags (e.g. after checkout).
+ *
+ * @return void
+ */
+function trimvia_clear_reassessment_approval()
+{
+	if (function_exists('WC') && WC()->session) {
+		WC()->session->set('trimvia_reassessment_approved', array());
+	}
+}
+
+/**
+ * Track reassessment completion when the consultation form is submitted.
+ *
+ * @param array<string, mixed> $data Form submission payload.
+ * @return array<string, mixed>
+ */
+function trimvia_track_reassessment_submission($data)
+{
+	if (!is_array($data)) {
+		return $data;
+	}
+
+	if (!empty($data['condition_slug'])) {
+		trimvia_mark_reassessment_completed_for_condition((string) $data['condition_slug']);
+	} elseif (!empty($data['condition_id'])) {
+		$term = get_term((int) $data['condition_id'], 'condition');
+		if ($term instanceof WP_Term) {
+			trimvia_mark_reassessment_completed_for_condition($term->slug);
+		}
+	}
+
+	return $data;
+}
+add_filter('cflp_form_submission_data', 'trimvia_track_reassessment_submission', 20);
+add_action('woocommerce_thankyou', 'trimvia_clear_reassessment_approval', 5);
+
+/**
  * Whether a product should be gated behind the consultation/treatment entry step.
  *
- * Mirrors parent behavior: prescription products require the consultation flow
- * until consultation session data exists.
+ * Mirrors parent simple.php + WooPW single_product_consultation_button_masking:
+ * first assessment in-session unlocks add-to-basket; returning patients must
+ * complete the reorder/reassessment questionnaire first.
  *
  * @param int|WC_Product $product Product ID or object.
  * @return bool
@@ -2843,19 +5094,35 @@ function trimvia_is_product_consultation_required($product)
 	}
 
 	$condition_slug = trimvia_get_product_primary_condition_slug($product_id);
-	if ('' !== $condition_slug && function_exists('has_consultation_for_condition')) {
-		// Keep consultation eligibility condition-specific.
-		return !has_consultation_for_condition($condition_slug);
+
+	if (trimvia_product_has_completed_consultation($product_id)) {
+		if (is_user_logged_in() && '' !== $condition_slug) {
+			$needs_reassessment = trimvia_user_has_previous_completed_order_for_condition($condition_slug);
+
+			if (!$needs_reassessment) {
+				$condition_term = get_term_by('slug', $condition_slug, 'condition');
+				if ($condition_term instanceof WP_Term && function_exists('woopw_get_order_linked_with_term_status')) {
+					$needs_reassessment = (bool) woopw_get_order_linked_with_term_status(
+						get_current_user_id(),
+						(int) $condition_term->term_id
+					);
+				}
+			}
+
+			if ($needs_reassessment) {
+				return !trimvia_reassessment_approved_for_condition($condition_slug);
+			}
+		}
+
+		// First assessment completed in this session — parent theme shows add-to-basket.
+		return false;
 	}
 
-	$has_consultation_session = false;
-	if (function_exists('WC') && WC()->session && !empty(WC()->session->get('cflp_form_data'))) {
-		$has_consultation_session = true;
-	} elseif (!empty($_SESSION['wp_cflp_form_data'])) {
-		$has_consultation_session = true;
+	if ('' !== $condition_slug) {
+		return true;
 	}
 
-	return !$has_consultation_session;
+	return !trimvia_has_consultation_session();
 }
 
 /**
@@ -3027,3 +5294,240 @@ function trimvia_flush_rewrite_rules_once_for_account_endpoints()
 	update_option('trimvia_practitioner_endpoint_flushed', '1', false);
 }
 add_action('init', 'trimvia_flush_rewrite_rules_once_for_account_endpoints', 30);
+
+/**
+ * One-time rewrite flush after registering the prescription-upload account endpoint.
+ * Disabled together with trimvia_register_prescription_upload_endpoint() above.
+ */
+// function trimvia_flush_rewrite_rules_once_for_prescription_upload_endpoint()
+// {
+// 	if ('1' === (string) get_option('trimvia_prescription_upload_endpoint_flushed', '0')) {
+// 		return;
+// 	}
+//
+// 	flush_rewrite_rules(false);
+// 	update_option('trimvia_prescription_upload_endpoint_flushed', '1', false);
+// }
+// add_action('init', 'trimvia_flush_rewrite_rules_once_for_prescription_upload_endpoint', 31);
+
+/**
+ * Whether the current user should be treated as a prescriber on the account area.
+ *
+ * Uses role membership as well as capability so newly converted prescribers still
+ * receive onboarding popups and dashboard assets before capability caches refresh.
+ *
+ * @return bool
+ */
+function trimvia_user_has_prescriber_access()
+{
+	if (!is_user_logged_in()) {
+		return false;
+	}
+
+	if (current_user_can('prescriber') || current_user_can('administrator')) {
+		return true;
+	}
+
+	$user = wp_get_current_user();
+	return in_array('prescriber', (array) $user->roles, true);
+}
+
+/**
+ * Ensure the prescriber role exposes the prescriber capability expected by WooPW.
+ */
+function trimvia_fix_prescriber_capabilities()
+{
+	$role = get_role('prescriber');
+	if ($role && !$role->has_cap('prescriber')) {
+		$role->add_cap('prescriber');
+	}
+}
+add_action('init', 'trimvia_fix_prescriber_capabilities');
+
+/**
+ * Remove the plugin footer renderer so the child theme can output one styled popup flow.
+ */
+function trimvia_remove_plugin_prescriber_pin_footer()
+{
+	global $wp_filter;
+
+	if (!isset($wp_filter['wp_footer']) || !is_object($wp_filter['wp_footer'])) {
+		return;
+	}
+
+	foreach ($wp_filter['wp_footer']->callbacks as $priority => $callbacks) {
+		foreach ($callbacks as $callback) {
+			$function = $callback['function'];
+			if (is_array($function) && isset($function[1]) && 'generate_prescriber_pin' === $function[1]) {
+				remove_action('wp_footer', $function, $priority);
+			}
+		}
+	}
+}
+add_action('wp_loaded', 'trimvia_remove_plugin_prescriber_pin_footer', 99);
+
+/**
+ * Whether the current prescriber still needs PIN and/or signature onboarding.
+ *
+ * @return array{no_pin_set:bool,no_sign:bool}|false
+ */
+function trimvia_get_prescriber_onboarding_state()
+{
+	if (!trimvia_user_has_prescriber_access() || !function_exists('is_account_page') || !is_account_page()) {
+		return false;
+	}
+
+	$current_user = wp_get_current_user();
+	$user_pin_serialize = get_user_meta($current_user->ID, '_user_' . $current_user->ID . '_sec_pin_data', true);
+	$user_sign_serialize = get_user_meta($current_user->ID, '_user_' . $current_user->ID . '_sign_data', true);
+
+	$no_pin_set = false;
+	if ($user_pin_serialize && is_array(unserialize($user_pin_serialize))) {
+		$user_pin_data = unserialize($user_pin_serialize);
+		if (empty(array_filter($user_pin_data))) {
+			$no_pin_set = true;
+		} elseif (
+			!isset($user_pin_data['id'], $user_pin_data['created_at'], $user_pin_data['user_seccode'])
+			|| (int) $user_pin_data['id'] !== (int) $current_user->ID
+			|| strtotime($user_pin_data['created_at']) >= time()
+			|| empty($user_pin_data['user_seccode'])
+		) {
+			$no_pin_set = true;
+		}
+	} else {
+		$no_pin_set = true;
+	}
+
+	$no_sign = false;
+	if ($user_sign_serialize && is_array(unserialize($user_sign_serialize))) {
+		$user_sign_data = unserialize($user_sign_serialize);
+		if (empty(array_filter($user_sign_data))) {
+			$no_sign = true;
+		}
+	} else {
+		$no_sign = true;
+	}
+
+	return array(
+		'no_pin_set' => $no_pin_set,
+		'no_sign'    => $no_sign,
+	);
+}
+
+/**
+ * Blur the account page while PIN/signature onboarding is required.
+ *
+ * @param array $classes Body classes.
+ * @return array
+ */
+function trimvia_prescriber_onboarding_body_class(array $classes)
+{
+	$state = trimvia_get_prescriber_onboarding_state();
+	if ($state && ($state['no_pin_set'] || $state['no_sign'])) {
+		$classes[] = 'presc-filter-page';
+	}
+
+	return $classes;
+}
+add_filter('body_class', 'trimvia_prescriber_onboarding_body_class');
+
+/**
+ * Ensure WooPW prescriber dashboard assets load for role-based prescribers.
+ */
+function trimvia_enqueue_prescriber_onboarding_assets()
+{
+	if (!function_exists('is_account_page') || !is_account_page() || !trimvia_user_has_prescriber_access()) {
+		return;
+	}
+
+	if (wp_script_is('cflp-prescriber-dashboard', 'enqueued') && wp_style_is('cflp-prescriber-dashboard', 'enqueued')) {
+		return;
+	}
+
+	if (!defined('CFLP_PLUGIN_URL') || !defined('CFLP_PLUGIN_DIR')) {
+		return;
+	}
+
+	wp_enqueue_script('jquery');
+
+	if (!wp_script_is('flashcanvas', 'registered')) {
+		wp_register_script('flashcanvas', CFLP_PLUGIN_URL . 'assets/js/jsSignature/flashcanvas.js', array('jquery'), null, true);
+	}
+	if (!wp_script_is('jSignature', 'registered')) {
+		wp_register_script('jSignature', CFLP_PLUGIN_URL . 'assets/js/jsSignature/jSignature.min.js', array('jquery', 'flashcanvas'), null, true);
+	}
+	if (!wp_script_is('cflp-prescriber-dashboard', 'registered')) {
+		wp_register_script(
+			'cflp-prescriber-dashboard',
+			CFLP_PLUGIN_URL . 'assets/js/prescriber-dashboard.js',
+			array('flashcanvas', 'jSignature'),
+			null,
+			true
+		);
+		wp_localize_script(
+			'cflp-prescriber-dashboard',
+			'pmNotes',
+			array(
+				'ajax'          => admin_url('admin-ajax.php'),
+				'nonce'         => wp_create_nonce('woopw_prescriber_note'),
+				'myaccount_url' => function_exists('wc_get_page_permalink') ? wc_get_page_permalink('myaccount') : '#',
+			)
+		);
+	}
+	if (!wp_style_is('cflp-prescriber-dashboard', 'registered')) {
+		wp_register_style(
+			'cflp-prescriber-dashboard',
+			CFLP_PLUGIN_URL . 'assets/css/prescriber-dashboard.css',
+			array(),
+			file_exists(CFLP_PLUGIN_DIR . 'assets/css/prescriber-dashboard.css') ? filemtime(CFLP_PLUGIN_DIR . 'assets/css/prescriber-dashboard.css') : null
+		);
+	}
+
+	wp_enqueue_script('flashcanvas');
+	wp_enqueue_script('jSignature');
+	wp_enqueue_script('cflp-prescriber-dashboard');
+	wp_enqueue_style('cflp-prescriber-dashboard');
+}
+add_action('wp_enqueue_scripts', 'trimvia_enqueue_prescriber_onboarding_assets', 105);
+
+/**
+ * Render prescriber PIN/signature onboarding as centered popups on My Account.
+ */
+function trimvia_child_prescriber_popups()
+{
+	$state = trimvia_get_prescriber_onboarding_state();
+	if (!$state) {
+		return;
+	}
+
+	$current_user = wp_get_current_user();
+	$myaccount_id = get_the_ID();
+
+	if ($state['no_pin_set']) {
+		wc_get_template(
+			'myaccount/prescriber-pin-generation.php',
+			array(
+				'page_id' => $myaccount_id,
+				'user_id' => $current_user->ID,
+				'step'    => 1,
+			)
+		);
+		wc_get_template(
+			'myaccount/prescriber-signature-generation.php',
+			array(
+				'page_id' => $myaccount_id,
+				'user_id' => $current_user->ID,
+				'step'    => 2,
+			)
+		);
+	} elseif ($state['no_sign']) {
+		wc_get_template(
+			'myaccount/prescriber-signature-generation.php',
+			array(
+				'page_id' => $myaccount_id,
+				'user_id' => $current_user->ID,
+			)
+		);
+	}
+}
+add_action('wp_footer', 'trimvia_child_prescriber_popups', 99);

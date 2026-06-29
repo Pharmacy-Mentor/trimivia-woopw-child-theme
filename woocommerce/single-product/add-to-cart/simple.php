@@ -32,8 +32,6 @@ if (! $product || ! $product->is_purchasable()) {
 // Show stock message (e.g. "Out of stock").
 //echo wc_get_stock_html( $product ); // WPCS: XSS ok.
 
-$is_prescription_product = get_field('is_prescription_product');
-
 // ✅ Only show the form if the product is in stock.
 if ($product->is_in_stock()) : ?>
 
@@ -50,49 +48,54 @@ if ($product->is_in_stock()) : ?>
 
 		<?php do_action('woocommerce_before_add_to_cart_quantity_wrapper'); ?>
 
-		<div class="woocommerce-variation-add-to-cart variations_button quantity-cartbtn">
-			<div class="woo-cart-form-meta-wrapper">
-				<?php
-				do_action('woocommerce_before_add_to_cart_quantity');
+		<?php
+		$show_assessment_cta = function_exists('trimvia_product_should_show_assessment_cta')
+			&& trimvia_product_should_show_assessment_cta($product);
+		$show_quantity       = !$show_assessment_cta && function_exists('trimvia_should_show_single_product_quantity')
+			? trimvia_should_show_single_product_quantity($product)
+			: !$show_assessment_cta;
+		$quantity_value      = function_exists('trimvia_get_single_product_quantity_value')
+			? trimvia_get_single_product_quantity_value($product)
+			: 1;
+		$cart_actions_class  = 'woocommerce-variation-add-to-cart variations_button quantity-cartbtn trimvia-product-cart-actions';
+		if ($show_quantity) {
+			$cart_actions_class .= ' trimvia-product-cart-actions--has-qty';
+		}
+		if ($show_assessment_cta) {
+			$cart_actions_class .= ' trimvia-product-cart-actions--assessment';
+		}
+		?>
+		<div class="<?php echo esc_attr($cart_actions_class); ?>">
+			<div class="trimvia-product-cart-actions__row">
+				<?php if ($show_quantity) : ?>
+					<div class="trimvia-product-qty-row woo-cart-form-meta-wrapper">
+						<span class="trimvia-product-qty-label"><?php esc_html_e('Qty', 'theme-woopm-child'); ?></span>
+						<?php
+						do_action('woocommerce_before_add_to_cart_quantity');
 
-				woocommerce_quantity_input(
-					array(
-						'min_value'   => apply_filters('woocommerce_quantity_input_min', $product->get_min_purchase_quantity(), $product),
-						'max_value'   => apply_filters('woocommerce_quantity_input_max', $product->get_max_purchase_quantity(), $product),
-						'input_value' => isset($_POST['quantity'])
-							? wc_stock_amount(wp_unslash($_POST['quantity']))
-							: $product->get_min_purchase_quantity(),
-					)
-				);
+						woocommerce_quantity_input(
+							array(
+								'min_value'   => apply_filters('woocommerce_quantity_input_min', $product->get_min_purchase_quantity(), $product),
+								'max_value'   => apply_filters('woocommerce_quantity_input_max', $product->get_max_purchase_quantity(), $product),
+								'input_value' => $quantity_value,
+							)
+						);
 
-				do_action('woocommerce_after_add_to_cart_quantity');
-				?>
-			</div>
+						do_action('woocommerce_after_add_to_cart_quantity');
+						?>
+					</div>
+				<?php else : ?>
+					<input type="hidden" name="quantity" value="<?php echo esc_attr((string) $quantity_value); ?>" />
+				<?php endif; ?>
 
-			<div class="woo-variation-action-wrap">
-				<div class="woo-cart-form-act-wrapper">
-					<?php
-					$term_link = '';
-					$terms = wp_get_post_terms($product->get_id(), 'condition');
-					if (! empty($terms)) {
-						$term_link = get_term_link($terms[0]);
-					}
-
-					if ($is_prescription_product == 'yes' && $term_link != '') {
-						if (! empty(WC()->session->get('cflp_form_data'))) { ?>
-							<button type="submit" name="add-to-cart" value="<?php echo esc_attr($product->get_id()); ?>" class="single_add_to_cart_button theme-btn-primary alt<?php echo esc_attr(wc_wp_theme_get_element_class_name('button') ? ' ' . wc_wp_theme_get_element_class_name('button') : ''); ?>">
-								<?php echo esc_html($product->single_add_to_cart_text()); ?>
-							</button>
-						<?php } else { ?>
-							<a class="single_add_to_cart_button theme-btn-primary" href="<?php echo esc_url($term_link); ?>">
-								Start Assessment
-							</a>
-						<?php } ?>
-					<?php } else { ?>
-						<button type="submit" name="add-to-cart" value="<?php echo esc_attr($product->get_id()); ?>" class="single_add_to_cart_button theme-btn-primary alt<?php echo esc_attr(wc_wp_theme_get_element_class_name('button') ? ' ' . wc_wp_theme_get_element_class_name('button') : ''); ?>">
-							<?php echo esc_html($product->single_add_to_cart_text()); ?>
-						</button>
-					<?php } ?>
+				<div class="woo-variation-action-wrap">
+					<div class="woo-cart-form-act-wrapper">
+						<?php
+						if (function_exists('trimvia_render_single_product_cart_button')) {
+							trimvia_render_single_product_cart_button($product, 'simple');
+						}
+						?>
+					</div>
 				</div>
 			</div>
 		</div>

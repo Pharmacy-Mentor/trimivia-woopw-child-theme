@@ -11,9 +11,14 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
-get_header();
-
 $term = trimvia_get_treatments_landing_condition_term();
+
+if ($term instanceof WP_Term && 'condition' === $term->taxonomy && function_exists('trimvia_condition_has_visible_products') && !trimvia_condition_has_visible_products($term)) {
+	wp_safe_redirect(home_url('/all-conditions/'));
+	exit;
+}
+
+get_header();
 
 if ($term instanceof WP_Term && 'condition' === $term->taxonomy) {
 	get_template_part(

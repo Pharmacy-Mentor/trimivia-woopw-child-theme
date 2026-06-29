@@ -56,7 +56,9 @@ $count_label    = sprintf(
 <section class="page-section">
 	<div class="container">
 		<?php if (function_exists('woocommerce_output_all_notices')) : ?>
-			<?php woocommerce_output_all_notices(); ?>
+			<div class="trimvia-wc-notices">
+				<?php woocommerce_output_all_notices(); ?>
+			</div>
 		<?php endif; ?>
 
 		<div class="shop-header rv">
@@ -81,7 +83,7 @@ $count_label    = sprintf(
 					the_post();
 					do_action('woocommerce_shop_loop');
 					$shop_product = wc_get_product(get_the_ID());
-					if (!$shop_product instanceof WC_Product) {
+					if (!$shop_product instanceof WC_Product || !$shop_product->is_visible()) {
 						continue;
 					}
 					get_template_part(
@@ -109,7 +111,7 @@ $count_label    = sprintf(
 			</div>
 			<div class="shop-trust-item">
 				<div class="shop-trust-icon"><i class="fa-solid fa-truck-fast" aria-hidden="true"></i></div>
-				<h4><?php esc_html_e('Next-Day Delivery', 'theme-woopm-child'); ?></h4>
+				<h4><?php esc_html_e('Tracked Delivery', 'theme-woopm-child'); ?></h4>
 				<p><?php esc_html_e('Discreet, unbranded packaging', 'theme-woopm-child'); ?></p>
 			</div>
 			<div class="shop-trust-item">

@@ -1,9 +1,6 @@
 <?php
 /**
- * Condition content section (about condition blocks).
- *
- * Child override keeps the same data source and behavior
- * while using child-friendly section structure.
+ * Condition content section — Trimvia about blocks, parent ACF data source.
  *
  * @package theme-woopm-child
  */
@@ -22,53 +19,54 @@ if (!is_array($condition_group) || empty($condition_group)) {
 	return;
 }
 ?>
-<section class="section-padding about-condition-content">
+<section class="how-sec section-pad trimvia-condition-about" id="about-condition">
 	<div class="container">
-		<div class="section-header-wrapper">
-			<div class="row align-items-center">
-				<div class="col-lg-12 col-md-12 text-center">
-					<div class="content-block">
-						<h5><?php esc_html_e('About This Condition', 'woocommerce'); ?></h5>
-						<h2 class="section-title"><?php echo esc_html(sprintf(__('About %s', 'woocommerce'), $term->name)); ?></h2>
-						<?php if (get_field('short_description', $term)) : ?>
-							<?php echo wpautop(wp_kses_post(get_field('short_description', $term))); ?>
-						<?php endif; ?>
-					</div>
-				</div>
-			</div>
+		<div class="trimvia-condition-about__head rv">
+			<div class="stag"><?php esc_html_e('About this condition', 'woocommerce'); ?></div>
+			<h2 class="stitle"><?php echo esc_html(sprintf(__('About %s', 'woocommerce'), $term->name)); ?></h2>
+			<?php if (get_field('short_description', $term)) : ?>
+				<p class="sdesc"><?php echo esc_html(wp_strip_all_tags((string) get_field('short_description', $term))); ?></p>
+			<?php endif; ?>
 		</div>
-		<div class="content-column-blocks mt-5">
+		<div class="trimvia-condition-about__blocks">
 			<?php
-			$index = 0;
-			foreach ($condition_group as $group_key => $content_group) :
-				if (!is_array($content_group) || strpos((string) $group_key, 'content_group_') !== 0) {
+			$block_index = 0;
+			foreach ($condition_group as $group_key => $content_group) {
+				if (!is_string($group_key) || strpos($group_key, 'content_group_') !== 0 || !is_array($content_group)) {
 					continue;
 				}
-				$description = isset($content_group['content_description']) ? $content_group['content_description'] : '';
-				$featured_image = isset($content_group['featured_image']) ? $content_group['featured_image'] : 0;
-				if (empty($description)) {
+				$content_group_description   = isset($content_group['content_description']) ? $content_group['content_description'] : '';
+				$content_group_featured_img = isset($content_group['featured_image']) ? $content_group['featured_image'] : null;
+				if (empty($content_group_description)) {
 					continue;
 				}
-				$index++;
-				$swap = ($index % 2 === 0);
+				$block_index++;
+				$swap = ($block_index % 2 === 0);
 				?>
-				<div class="content-column">
-					<div class="row align-items-center">
-						<div class="col-lg-6 col-md-6 col-sm-12 <?php echo $swap ? 'order-md-2 order-1' : ''; ?>">
-							<?php echo wp_kses_post($description); ?>
-						</div>
-						<div class="col-lg-6 col-md-6 col-sm-12 <?php echo $swap ? 'order-md-1 order-2' : ''; ?>">
-							<div class="featured-image-wrapper">
-								<?php if (!empty($featured_image)) : ?>
-									<?php echo wp_get_attachment_image((int) $featured_image, 'large', false, array('class' => 'img-fluid')); ?>
-								<?php else : ?>
-									<img src="<?php echo esc_url(get_placeholder_image()); ?>" class="img-fluid" alt="">
-								<?php endif; ?>
-							</div>
-						</div>
+				<div class="trimvia-condition-about__block rv<?php echo $swap ? ' trimvia-condition-about__block--reverse' : ''; ?>">
+					<div class="trimvia-condition-about__media">
+						<?php
+						if ($content_group_featured_img) {
+							if (is_array($content_group_featured_img) && !empty($content_group_featured_img['sizes']['large'])) {
+								echo '<img src="' . esc_url($content_group_featured_img['sizes']['large']) . '" class="trimvia-condition-about__image" alt="" loading="lazy" />';
+							} elseif (is_numeric($content_group_featured_img)) {
+								echo wp_get_attachment_image((int) $content_group_featured_img, 'large', false, array('class' => 'trimvia-condition-about__image', 'loading' => 'lazy'));
+							}
+						} else {
+							$ph = function_exists('get_placeholder_image') ? get_placeholder_image() : '';
+							if ($ph) {
+								echo '<img src="' . esc_url($ph) . '" class="trimvia-condition-about__image" alt="" loading="lazy" />';
+							}
+						}
+						?>
+					</div>
+					<div class="trimvia-condition-about__copy">
+						<?php echo $content_group_description; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- ACF WYSIWYG ?>
 					</div>
 				</div>
-			<?php endforeach; ?>
+				<?php
+			}
+			?>
 		</div>
 	</div>
 </section>

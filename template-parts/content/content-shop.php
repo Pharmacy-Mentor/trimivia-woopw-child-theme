@@ -39,7 +39,7 @@ $shop_trust_items = array(
 	),
 	array(
 		'icon_class' => 'fa-solid fa-truck-fast',
-		'title' => 'Next-Day Delivery',
+		'title' => 'Tracked Delivery',
 		'subtitle' => 'Discreet, unbranded packaging',
 	),
 	array(
@@ -121,6 +121,9 @@ if (function_exists('get_field') && $page_id > 0) {
 
 		foreach ($shop_trust_items_value as $shop_trust_item) {
 			$item_title = isset($shop_trust_item['title']) ? trim((string) $shop_trust_item['title']) : '';
+			if (preg_match('/^next[\s-]?day\s+delivery$/i', $item_title)) {
+				$item_title = 'Tracked Delivery';
+			}
 			$item_subtitle = isset($shop_trust_item['subtitle']) ? trim((string) $shop_trust_item['subtitle']) : '';
 			$item_icon_class = isset($shop_trust_item['icon_class']) ? trim((string) $shop_trust_item['icon_class']) : '';
 
@@ -174,24 +177,25 @@ if (is_array($query_post_type)) {
 }
 
 $render_native_product_loop = $is_query_product_type && $native_query_has_products && woocommerce_product_loop();
-$use_fallback_product_query = false;
-$fallback_product_query = null;
-if (!$render_native_product_loop) {
+$use_fallback_products      = false;
+$fallback_product_results   = null;
+if (!$render_native_product_loop && function_exists('wc_get_products')) {
 	$fallback_paged = max(1, (int) get_query_var('paged'), (int) get_query_var('page'));
-	$fallback_product_query = new WP_Query(
+	$fallback_product_results = wc_get_products(
 		array(
-			'post_type'      => 'product',
-			'post_status'    => 'publish',
-			'posts_per_page' => (int) apply_filters('loop_shop_per_page', 12),
-			'paged'          => $fallback_paged,
-			'orderby'        => 'date',
-			'order'          => 'DESC',
+			'status'             => 'publish',
+			'limit'              => (int) apply_filters('loop_shop_per_page', 12),
+			'page'               => $fallback_paged,
+			'orderby'            => 'date',
+			'order'              => 'DESC',
+			'catalog_visibility' => 'visible',
+			'paginate'           => true,
 		)
 	);
 
-	if ($fallback_product_query->have_posts()) {
-		$use_fallback_product_query = true;
-		$shop_products_count = (int) $fallback_product_query->found_posts;
+	if (is_object($fallback_product_results) && !empty($fallback_product_results->products)) {
+		$use_fallback_products = true;
+		$shop_products_count   = (int) $fallback_product_results->total;
 	}
 }
 ?>
@@ -216,34 +220,41 @@ if (!$render_native_product_loop) {
 			</div>
 		</div>
 
-		<?php if ($render_native_product_loop || $use_fallback_product_query) : ?>
+		<?php if ($render_native_product_loop || $use_fallback_products) : ?>
 			<div class="shop-grid">
-				<?php while (($use_fallback_product_query ? $fallback_product_query->have_posts() : ($render_native_product_loop ? have_posts() : false))) : ?>
-					<?php
-					if ($use_fallback_product_query) {
-						$fallback_product_query->the_post();
-					} else {
+				<?php if ($use_fallback_products && is_object($fallback_product_results)) : ?>
+					<?php foreach ($fallback_product_results->products as $product) : ?>
+						<?php
+						if (!$product instanceof WC_Product || !$product->is_visible()) {
+							continue;
+						}
+						get_template_part('template-parts/trimvia', 'shop-product-card', array('product' => $product));
+						?>
+					<?php endforeach; ?>
+				<?php else : ?>
+					<?php while (have_posts()) : ?>
+						<?php
 						the_post();
-					}
-					global $product;
-					if (!$product instanceof WC_Product) {
-						$product = wc_get_product(get_the_ID());
-					}
-					if (!$product instanceof WC_Product) {
-						continue;
-					}
-					get_template_part('template-parts/trimvia', 'shop-product-card', array('product' => $product));
-					?>
-				<?php endwhile; ?>
+						global $product;
+						if (!$product instanceof WC_Product) {
+							$product = wc_get_product(get_the_ID());
+						}
+						if (!$product instanceof WC_Product || !$product->is_visible()) {
+							continue;
+						}
+						get_template_part('template-parts/trimvia', 'shop-product-card', array('product' => $product));
+						?>
+					<?php endwhile; ?>
+				<?php endif; ?>
 			</div>
 
 			<div class="trimvia-shop-pagination">
-				<?php if ($use_fallback_product_query && $fallback_product_query instanceof WP_Query) : ?>
+				<?php if ($use_fallback_products && is_object($fallback_product_results)) : ?>
 					<?php
 					echo wp_kses_post(
 						paginate_links(
 							array(
-								'total'      => (int) $fallback_product_query->max_num_pages,
+								'total'      => (int) $fallback_product_results->max_num_pages,
 								'current'    => max(1, (int) get_query_var('paged'), (int) get_query_var('page')),
 								'type'       => 'list',
 								'prev_text'  => __('Prev', 'theme-woopm-child'),
@@ -252,7 +263,6 @@ if (!$render_native_product_loop) {
 							)
 						)
 					);
-					wp_reset_postdata();
 					?>
 				<?php else : ?>
 					<?php do_action('woocommerce_after_shop_loop'); ?>

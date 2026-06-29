@@ -1,0 +1,148 @@
+/**
+ * Patient consultation modal — thank you + My Account view order.
+ * Mirrors parent/WooPW Bootstrap 4 modal behaviour with Trimvia polish.
+ */
+
+#consultation-patient-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1055;
+  display: none;
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  outline: 0;
+}
+
+#consultation-patient-modal:not(.show) {
+  display: none !important;
+}
+
+#consultation-patient-modal.show {
+  display: flex !important;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 1.75rem 1rem;
+}
+
+#consultation-patient-modal .modal-dialog {
+  position: relative;
+  width: calc(100% - 2rem);
+  max-width: 920px;
+  margin: 0 auto;
+  pointer-events: none;
+}
+
+#consultation-patient-modal .modal-content {
+  pointer-events: auto;
+  border: 1px solid var(--g100, #e5e7eb);
+  border-radius: var(--rl, 16px);
+  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.18);
+  overflow: hidden;
+  background: var(--white, #fff);
+}
+
+#consultation-patient-modal .modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--g100, #e5e7eb);
+  background: var(--white, #fff);
+}
+
+#consultation-patient-modal .modal-header .close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--off-white, #f8faff);
+  color: var(--g600, #4b5563);
+  font-size: 24px;
+  line-height: 1;
+  opacity: 1;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+#consultation-patient-modal .modal-header .close:hover {
+  background: var(--g100, #e5e7eb);
+  color: var(--g900, #111827);
+}
+
+#consultation-patient-modal .modal-body {
+  max-height: calc(100vh - 8rem);
+  overflow-y: auto;
+  padding: 24px;
+  background: var(--off-white, #f8faff);
+}
+
+#consultation-patient-modal .loader {
+  position: static !important;
+  inset: auto !important;
+  display: inline-flex;
+  width: auto;
+  margin: 0;
+  vertical-align: middle;
+}
+
+#consultation-patient-modal .trimvia-consultation-modal__title {
+  margin: 0;
+  font-family: var(--fd, Georgia, serif);
+  font-size: clamp(22px, 2vw, 28px);
+  line-height: 1.2;
+  color: var(--g900, #111827);
+}
+
+#consultation-patient-modal .consultation-content h4,
+#consultation-patient-modal h4 {
+  margin: 0 0 16px;
+  padding: 0 0 12px;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--g900, #111827);
+  border-bottom: 1px solid var(--g100, #e5e7eb);
+}
+
+#consultation-patient-modal .consultation-content .prescription-patient-data .patient-row .q-label,
+#consultation-patient-modal .prescription-patient-data .patient-row .q-label {
+  width: 100%;
+  text-align: left !important;
+}
+
+#consultation-patient-modal .prescription-patient-data .patient-row .user-sub-detail,
+#consultation-patient-modal .prescription-patient-data .patient-row .user-sub-detail * {
+  text-align: left !important;
+}
+
+body.modal-open {
+  overflow: hidden !important;
+}
+
+body.modal-open .modal-backdrop {
+  z-index: 1050;
+}
+
+@media (max-width: 767px) {
+  #consultation-patient-modal.show {
+    padding: 1rem 0.75rem;
+    align-items: flex-start;
+  }
+
+  #consultation-patient-modal .modal-header,
+  #consultation-patient-modal .modal-body {
+    padding: 16px 18px;
+  }
+
+  #consultation-patient-modal .modal-body {
+    max-height: calc(100vh - 6rem);
+  }
+}

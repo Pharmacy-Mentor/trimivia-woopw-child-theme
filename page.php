@@ -22,4 +22,13 @@ if ((function_exists('is_account_page') && is_account_page()) || (function_exist
 	return;
 }
 
-include get_template_directory() . '/page.php';
+if (function_exists('trimvia_is_wp2fa_setup_page') && trimvia_is_wp2fa_setup_page()) {
+	get_header();
+	get_template_part('template-parts/content/content', '2fa-setup');
+	get_footer();
+	return;
+}
+
+get_header();
+get_template_part('template-parts/content/content', 'default-page');
+get_footer();

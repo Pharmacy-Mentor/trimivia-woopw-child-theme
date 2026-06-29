@@ -58,7 +58,13 @@ $cart_count = WC()->cart ? WC()->cart->get_cart_contents_count() : 0;
 						<?php do_action('woocommerce_checkout_billing'); ?>
 					</div>
 
-					<div class="form-section active trimvia-checkout-panel trimvia-checkout-panel--shipping">
+					<?php
+					$trimvia_show_delivery_panel = WC()->cart && WC()->cart->needs_shipping();
+					$trimvia_local_pickup_selected = function_exists('trimvia_checkout_chosen_method_is_local_pickup')
+						&& trimvia_checkout_chosen_method_is_local_pickup();
+					if ($trimvia_show_delivery_panel) :
+					?>
+					<div class="form-section active trimvia-checkout-panel trimvia-checkout-panel--shipping<?php echo $trimvia_local_pickup_selected ? ' is-collapsed' : ''; ?>"<?php echo $trimvia_local_pickup_selected ? ' hidden' : ''; ?>>
 						<div class="form-section-header">
 							<div class="form-section-num">2</div>
 							<div>
@@ -68,29 +74,27 @@ $cart_count = WC()->cart ? WC()->cart->get_cart_contents_count() : 0;
 						</div>
 						<?php do_action('woocommerce_checkout_shipping'); ?>
 					</div>
+					<?php endif; ?>
 				</div>
 
 				<?php do_action('woocommerce_checkout_after_customer_details'); ?>
 			<?php endif; ?>
 
 			<div class="form-section active trimvia-checkout-panel trimvia-checkout-panel--notes">
-				<div class="form-section-header">
-					<div class="form-section-num">3</div>
-					<div>
-						<h3><?php esc_html_e('Clinical Review', 'theme-woopm-child'); ?></h3>
-						<p><?php esc_html_e('Important information before payment.', 'theme-woopm-child'); ?></p>
-					</div>
-				</div>
 				<div class="form-alert">
 					<strong><?php esc_html_e('Prescription review required:', 'theme-woopm-child'); ?></strong>
 					<?php esc_html_e('Your order starts a pharmacist prescriber review. If extra information is needed, our team will contact you before dispatch.', 'theme-woopm-child'); ?>
 				</div>
-				<div class="trimvia-checkout-confirmation">
-					<label class="form-check">
-						<input type="checkbox" required>
-						<span><?php esc_html_e('I confirm my details are accurate and I understand my order may require clinical approval before dispatch.', 'theme-woopm-child'); ?></span>
-					</label>
-				</div>
+				<?php
+				$trimvia_gp_checkout_markup = function_exists('trimvia_checkout_get_gp_section_markup')
+					? trimvia_checkout_get_gp_section_markup()
+					: '';
+				if ('' !== $trimvia_gp_checkout_markup) :
+					?>
+					<div class="trimvia-checkout-gp-section">
+						<?php echo $trimvia_gp_checkout_markup; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- WooPW GP template markup. ?>
+					</div>
+				<?php endif; ?>
 			</div>
 		</div>
 
@@ -99,6 +103,7 @@ $cart_count = WC()->cart ? WC()->cart->get_cart_contents_count() : 0;
 				<h3><?php esc_html_e('Order Summary', 'theme-woopm-child'); ?></h3>
 				<p><?php echo esc_html(sprintf(_n('%s item in your order', '%s items in your order', $cart_count, 'theme-woopm-child'), number_format_i18n($cart_count))); ?></p>
 			</div>
+			<?php do_action('woocommerce_checkout_before_order_review_heading'); ?>
 			<div id="order_review" class="woocommerce-checkout-review-order trimvia-order-review">
 				<?php do_action('woocommerce_checkout_before_order_review'); ?>
 				<?php do_action('woocommerce_checkout_order_review'); ?>

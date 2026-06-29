@@ -1,9 +1,9 @@
 <?php
 /**
- * Taxonomy archive: condition (native URL e.g. /condition/{slug}/).
+ * Taxonomy archive: condition (e.g. /condition/weight-loss/).
  *
- * Default: Trimvia layout matching page template Treatments (see content-condition-treatments.php).
- * After consultation / reorder: parent theme “after consultation” product template when available.
+ * Child template parts use Trimvia design; section order matches HTML mockup:
+ * hero → how it works → products → about → FAQs → popular categories.
  *
  * @package theme-woopm-child
  */
@@ -12,10 +12,9 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
-get_header();
-
 $queried = get_queried_object();
 if (!$queried instanceof WP_Term || 'condition' !== $queried->taxonomy) {
+	get_header();
 	get_footer();
 	return;
 }
@@ -23,24 +22,60 @@ if (!$queried instanceof WP_Term || 'condition' !== $queried->taxonomy) {
 $term_id = (int) $queried->term_id;
 $term    = get_term($term_id);
 if (is_wp_error($term) || !$term) {
+	get_header();
 	get_footer();
 	return;
 }
 
-$consultation_completed       = function_exists('has_consultation_for_condition') ? has_consultation_for_condition($term->slug) : false;
-$is_reorder                  = isset($_GET['is_reorder']) ? absint(wp_unslash($_GET['is_reorder'])) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-$reorder_order_id            = isset($_GET['order_id']) ? absint(wp_unslash($_GET['order_id'])) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+if (function_exists('trimvia_condition_has_visible_products') && !trimvia_condition_has_visible_products($term)) {
+	wp_safe_redirect(home_url('/all-conditions/'));
+	exit;
+}
+
+get_header();
+
+$consultation_completed = function_exists('has_consultation_for_condition')
+	? has_consultation_for_condition($term->slug)
+	: false;
+
+$is_reorder         = isset($_GET['is_reorder']) ? absint(wp_unslash($_GET['is_reorder'])) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+$reorder_order_id   = isset($_GET['order_id']) ? absint(wp_unslash($_GET['order_id'])) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
 if (is_user_logged_in() && 1 === $is_reorder && function_exists('get_user_latest_completed_consultation_order')) {
 	$user = wp_get_current_user();
 	get_user_latest_completed_consultation_order($user, $term->term_id, true, $reorder_order_id);
-	$consultation_completed    = true;
+	$consultation_completed = true;
 }
 
-if ((bool) get_theme_mod('trimvia_condition_archive_always_public_layout', false)) {
-	$consultation_completed = false;
+if ($term && !$consultation_completed) {
+	get_template_part(
+		'template-parts/condition',
+		'header',
+		array(
+			'term_id' => $term_id,
+			'term'    => $term,
+		)
+	);
 }
 
-if ($consultation_completed) {
+if ($term && !$consultation_completed) {
+	get_template_part(
+		'template-parts/order',
+		'steps',
+		array(
+			'term' => $term,
+		)
+	);
+
+	get_template_part(
+		'template-parts/condition',
+		'treatments',
+		array(
+			'term'    => $term,
+			'term_id' => $term_id,
+		)
+	);
+} else {
 	get_template_part(
 		'template-parts/condition',
 		'treatments-afterconsultation',
@@ -49,18 +84,32 @@ if ($consultation_completed) {
 			'term_id' => $term_id,
 		)
 	);
-} else {
+}
+
+if ($term && !$consultation_completed) {
 	get_template_part(
-		'template-parts/content/content',
-		'condition-treatments',
+		'template-parts/condition',
+		'content',
 		array(
 			'term' => $term,
 		)
 	);
 
-	// Keep parent condition flow parity while preserving child theme design.
-	get_template_part('template-parts/order', 'steps');
-	get_template_part('template-parts/popular', 'categories');
+	get_template_part(
+		'template-parts/condition',
+		'faqs',
+		array(
+			'term' => $term,
+		)
+	);
+
+	get_template_part(
+		'template-parts/popular',
+		'categories',
+		array(
+			'term' => $term,
+		)
+	);
 }
 
 get_footer();

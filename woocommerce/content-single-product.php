@@ -86,6 +86,11 @@ $consultation_url = function_exists('trimvia_get_consultation_url')
 <section class="page-section rv" id="main-content">
 	<div id="product-<?php the_ID(); ?>" <?php wc_product_class($plines_class, $product); ?>>
 		<div class="container">
+			<?php if (function_exists('woocommerce_output_all_notices')) : ?>
+				<div class="trimvia-wc-notices trimvia-single-product-notices">
+					<?php woocommerce_output_all_notices(); ?>
+				</div>
+			<?php endif; ?>
 			<div class="single-product-layout">
 				<div class="single-product-gallery">
 					<?php if ($product instanceof WC_Product && $product->is_featured()) : ?>
@@ -130,7 +135,10 @@ $consultation_url = function_exists('trimvia_get_consultation_url')
 						<?php woocommerce_template_single_add_to_cart(); ?>
 
 						<div class="single-product-secondary-actions trimvia-single-product-actions">
-							<a class="btn-shop-outline" href="<?php echo esc_url($shop_url); ?>"><?php esc_html_e('Back to all treatments', 'theme-woopm-child'); ?></a>
+							<a class="btn-shop-outline btn-shop-outline--back" href="<?php echo esc_url($shop_url); ?>">
+								<i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+								<?php esc_html_e('Back to all treatments', 'theme-woopm-child'); ?>
+							</a>
 						</div>
 					</div>
 
@@ -162,48 +170,15 @@ $consultation_url = function_exists('trimvia_get_consultation_url')
 	</div>
 </section>
 
-<?php
-$tabs = apply_filters('woocommerce_product_tabs', array());
-if (!empty($tabs)) :
-	$first_tab_key = array_key_first($tabs);
-	?>
-	<section class="page-section page-section--alt rv rv-d1">
-		<div class="container">
-			<div class="single-product-details-head">
-				<h2 class="stitle"><?php esc_html_e('Treatment details', 'theme-woopm-child'); ?></h2>
-				<?php if ('' !== $hero_description) : ?>
-					<p><?php echo esc_html($hero_description); ?></p>
-				<?php endif; ?>
-			</div>
-
-			<div class="single-product-tabs trimvia-single-product-tabs" role="tablist" aria-label="<?php esc_attr_e('Product information tabs', 'theme-woopm-child'); ?>">
-				<?php foreach ($tabs as $tab_key => $tab) : ?>
-					<?php
-					$panel_id = 'trimvia-tab-' . sanitize_title((string) $tab_key);
-					$is_active = ($tab_key === $first_tab_key);
-					?>
-					<button type="button" class="single-product-tab <?php echo $is_active ? 'is-active' : ''; ?>" role="tab" aria-selected="<?php echo $is_active ? 'true' : 'false'; ?>" data-panel="<?php echo esc_attr($panel_id); ?>">
-						<?php echo esc_html((string) ($tab['title'] ?? $tab_key)); ?>
-					</button>
-				<?php endforeach; ?>
-			</div>
-
-			<?php foreach ($tabs as $tab_key => $tab) : ?>
-				<?php
-				$panel_id = 'trimvia-tab-' . sanitize_title((string) $tab_key);
-				$is_active = ($tab_key === $first_tab_key);
-				?>
-				<div id="<?php echo esc_attr($panel_id); ?>" class="single-product-panel trimvia-single-product-panel trimvia-single-product-tab-panel article-content <?php echo $is_active ? 'is-active' : ''; ?>" role="tabpanel" <?php echo $is_active ? '' : 'hidden'; ?>>
-					<?php
-					if (!empty($tab['callback']) && is_callable($tab['callback'])) {
-						call_user_func($tab['callback'], $tab_key, $tab);
-					}
-					?>
-				</div>
-			<?php endforeach; ?>
+<section class="page-section page-section--alt rv rv-d1 trimvia-single-product-details">
+	<div class="container">
+		<div class="single-product-details-head">
+			<h2 class="stitle"><?php esc_html_e('Treatment details', 'theme-woopm-child'); ?></h2>
 		</div>
-	</section>
-<?php endif; ?>
+
+		<?php woocommerce_output_product_data_tabs(); ?>
+	</div>
+</section>
 
 <section class="page-section rv rv-d3 trimvia-single-product-related">
 	<div class="container">
@@ -229,7 +204,7 @@ if (!empty($tabs)) :
 			</div>
 			<div class="shop-trust-item">
 				<div class="shop-trust-icon"><i class="fa-solid fa-truck-fast" aria-hidden="true"></i></div>
-				<h4><?php esc_html_e('Next-Day Delivery', 'theme-woopm-child'); ?></h4>
+				<h4><?php esc_html_e('Tracked Delivery', 'theme-woopm-child'); ?></h4>
 				<p><?php esc_html_e('Discreet, unbranded packaging', 'theme-woopm-child'); ?></p>
 			</div>
 			<div class="shop-trust-item">

@@ -19,6 +19,86 @@
     }
   };
 
+  const PRACTITIONER_MODAL_IDS = [
+    "practitioner-order-modal",
+    "practitioner-order-prescription-modal",
+    "prescription-extra-content-modal",
+    "consultation-patient-modal",
+  ];
+
+  const movePractitionerModalsToBody = () => {
+    PRACTITIONER_MODAL_IDS.forEach((id) => {
+      const modal = document.getElementById(id);
+      if (modal && modal.parentElement !== document.body) {
+        document.body.appendChild(modal);
+      }
+    });
+  };
+
+  const PRESCRIBER_ONBOARDING_POPUP_SELECTOR =
+    ".prescriber-pin-gen-wrapper.make-popup, .prescriber-sign-gen-wrapper.make-popup";
+
+  const movePrescriberOnboardingPopupsToBody = () => {
+    const popups = document.querySelectorAll(PRESCRIBER_ONBOARDING_POPUP_SELECTOR);
+    popups.forEach((popup) => {
+      if (popup.parentElement !== document.body) {
+        document.body.appendChild(popup);
+      }
+    });
+  };
+
+  const moveSignaturePopupToBody = () => {
+    movePrescriberOnboardingPopupsToBody();
+    const popup =
+      document.querySelector(".prescriber-signature-modal .prescriber-sign-gen-wrapper.make-popup") ||
+      document.querySelector("body > .prescriber-sign-gen-wrapper.make-popup:not(.d-none)") ||
+      document.querySelector(".prescriber-sign-gen-wrapper.make-popup:not(.d-none)");
+    if (popup && popup.parentElement !== document.body) {
+      document.body.appendChild(popup);
+    }
+  };
+
+  const closeSignaturePopup = () => {
+    const popup =
+      document.querySelector("body > .prescriber-sign-gen-wrapper.make-popup") ||
+      document.querySelector(".prescriber-sign-gen-wrapper.make-popup.presc-edit-popup") ||
+      document.querySelector(".prescriber-signature-modal .prescriber-sign-gen-wrapper.make-popup");
+    if (popup) {
+      popup.remove();
+    }
+    const host = document.querySelector(".prescriber-signature-modal");
+    if (host) {
+      host.innerHTML = "";
+    }
+    document.querySelectorAll(".signature-modal.disabled").forEach((btn) => {
+      btn.classList.remove("disabled");
+      const loader = btn.querySelector(".loader");
+      if (loader) {
+        loader.style.display = "none";
+      }
+    });
+  };
+
+  const watchSignaturePopupMount = () => {
+    if (typeof MutationObserver === "undefined") {
+      return;
+    }
+
+    const observer = new MutationObserver(() => {
+      movePrescriberOnboardingPopupsToBody();
+      moveSignaturePopupToBody();
+    });
+
+    const host = document.querySelector(".prescriber-signature-modal");
+    if (host) {
+      observer.observe(host, { childList: true, subtree: true });
+    }
+
+    if (document.body) {
+      observer.observe(document.body, { childList: true, subtree: false });
+    }
+  };
+
   const ensureLegacyJqueryModalSupport = () => {
     const jq = window.jQuery;
     if (!jq || !jq.fn) return;
@@ -28,9 +108,11 @@
 
     const showModal = (modal) => {
       if (!modal) return;
+      movePractitionerModalsToBody();
       modal.classList.add("show");
-      modal.style.display = "block";
+      modal.style.display = "flex";
       modal.setAttribute("aria-hidden", "false");
+      modal.setAttribute("aria-modal", "true");
       document.body.classList.add("modal-open");
 
       if (!getBackdrop()) {
@@ -45,11 +127,9 @@
       modal.classList.remove("show");
       modal.style.display = "none";
       modal.setAttribute("aria-hidden", "true");
+      modal.removeAttribute("aria-modal");
       document.body.classList.remove("modal-open");
-      const backdrop = getBackdrop();
-      if (backdrop) {
-        backdrop.remove();
-      }
+      document.querySelectorAll(".modal-backdrop").forEach((backdrop) => backdrop.remove());
     };
 
     jq.fn.modal = function modalCompat(action) {
@@ -154,8 +234,7 @@
     };
   };
 
-  // Global compatibility for legacy practitioner scripts that call orderModal()
-  // before/without child initializers.
+  // Legacy orderModal helper — defer to WooPW jQuery/Bootstrap modal when available.
   if (typeof window.orderModal !== "function") {
     window.orderModal = (state) => {
       const modal =
@@ -165,20 +244,23 @@
         document.getElementById("prescriber-order-modal");
       if (!modal) return;
 
-      const shouldShow = state !== "hide";
+      const jq = window.jQuery;
+      if (jq && typeof jq.fn.modal === "function") {
+        jq(modal).modal(state === "hide" ? "hide" : "show");
+        return;
+      }
 
-      // Prefer Bootstrap modal API when present.
       if (window.bootstrap && typeof window.bootstrap.Modal === "function") {
         const instance = window.bootstrap.Modal.getOrCreateInstance(modal);
-        if (shouldShow) {
-          instance.show();
-        } else {
+        if (state === "hide") {
           instance.hide();
+        } else {
+          instance.show();
         }
         return;
       }
 
-      // Fallback behavior (no bootstrap JS available).
+      const shouldShow = state !== "hide";
       modal.classList.toggle("show", shouldShow);
       modal.style.display = shouldShow ? "block" : "none";
       modal.setAttribute("aria-hidden", shouldShow ? "false" : "true");
@@ -231,6 +313,32 @@
     });
   };
 
+  const isLoggedInVisitor = () =>
+    document.body.classList.contains("logged-in") ||
+    /(?:^|;\s*)wordpress_logged_in_[^=]+=/.test(document.cookie || "");
+
+  const syncHeaderAuthButtons = () => {
+    document.querySelectorAll("[data-trimvia-auth-btn]").forEach((button) => {
+      const loginText = button.getAttribute("data-login-text") || "Login";
+      const accountText = button.getAttribute("data-account-text") || "My Account";
+      const loginUrl = button.getAttribute("data-login-url") || button.getAttribute("href") || "";
+      const accountUrl = button.getAttribute("data-account-url") || loginUrl;
+
+      if (isLoggedInVisitor()) {
+        button.textContent = accountText;
+        if (accountUrl) {
+          button.setAttribute("href", accountUrl);
+        }
+        return;
+      }
+
+      button.textContent = loginText;
+      if (loginUrl) {
+        button.setAttribute("href", loginUrl);
+      }
+    });
+  };
+
   const initMobileMenu = () => {
     const header = document.querySelector(".header");
     const nav = document.querySelector(".nav");
@@ -266,6 +374,7 @@
 
     const actionsClone = actions.cloneNode(true);
     actionsClone.className = "mobile-nav-actions";
+    actionsClone.querySelectorAll(".btn-basket, .btn-ghost").forEach((el) => el.remove());
 
     panel.append(panelTop, navClone, actionsClone);
     document.body.append(backdrop, panel);
@@ -439,145 +548,1503 @@
     });
   };
 
-  const initPractitionerOrderModalFix = () => {
-    const actionSelector = '.practitioner-order-action, a[data-action_type="view-prescriptions"]';
-    const modalIds = [
-      "practitioner-order-modal",
-      "practitioner-order-prescription-modal",
-      "prescription-extra-content-modal",
-      "prescriber-order-modal",
-    ];
-    const closeSelector = [
-      "#practitioner-order-modal .close",
-      "#practitioner-order-modal button.close",
-      "#practitioner-order-modal .close-me",
-      "#practitioner-order-modal .close-my-popup",
-      "#practitioner-order-modal [data-bs-dismiss='modal']",
-    ].join(", ");
+  const initTestimonialCarousel = () => {
+    const carousels = document.querySelectorAll(".testi-sec .tg, .tg-carousel");
+    if (!carousels.length) return;
 
-    const getModal = () => {
-      for (const id of modalIds) {
-        const node = document.getElementById(id);
-        if (node) return node;
-      }
-      return null;
+    const navIconPrev =
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>';
+    const navIconNext =
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>';
+
+    const getSlidesPerView = () => {
+      if (window.matchMedia("(max-width: 640px)").matches) return 1;
+      if (window.matchMedia("(max-width: 1024px)").matches) return 2;
+      return 3;
     };
 
-    const syncBackdrops = () => {
-      const backdrops = Array.from(document.querySelectorAll(".modal-backdrop"));
-      backdrops.forEach((backdrop, index) => {
-        if (index < backdrops.length - 1) {
-          backdrop.remove();
+    carousels.forEach((grid) => {
+      if (grid.dataset.carouselInit === "true") return;
+
+      const cards = Array.from(grid.querySelectorAll(":scope > .tc"));
+      if (!cards.length) return;
+
+      grid.dataset.carouselInit = "true";
+      grid.classList.add("tg-carousel");
+
+      const viewport = document.createElement("div");
+      viewport.className = "tg-carousel__viewport";
+      const track = document.createElement("div");
+      track.className = "tg-carousel__track";
+
+      cards.forEach((card) => {
+        const slide = document.createElement("div");
+        slide.className = "tg-carousel__slide";
+        slide.appendChild(card);
+        track.appendChild(slide);
+      });
+
+      viewport.appendChild(track);
+
+      const prevButton = document.createElement("button");
+      prevButton.type = "button";
+      prevButton.className = "tg-carousel__nav tg-carousel__nav--prev";
+      prevButton.setAttribute("aria-label", "Previous review");
+      prevButton.innerHTML = navIconPrev;
+
+      const nextButton = document.createElement("button");
+      nextButton.type = "button";
+      nextButton.className = "tg-carousel__nav tg-carousel__nav--next";
+      nextButton.setAttribute("aria-label", "Next review");
+      nextButton.innerHTML = navIconNext;
+
+      const dotsWrap = document.createElement("div");
+      dotsWrap.className = "tg-carousel__dots";
+      dotsWrap.setAttribute("role", "tablist");
+      dotsWrap.setAttribute("aria-label", "Review slides");
+
+      grid.replaceChildren(prevButton, viewport, nextButton, dotsWrap);
+
+      let currentIndex = 0;
+      let touchStartX = 0;
+      let touchDeltaX = 0;
+
+      const getGap = () => {
+        const styles = window.getComputedStyle(track);
+        return parseFloat(styles.columnGap || styles.gap || "0") || 0;
+      };
+
+      const getStep = () => {
+        const slide = track.querySelector(".tg-carousel__slide");
+        if (!slide) return 0;
+        return slide.getBoundingClientRect().width + getGap();
+      };
+
+      const getMaxIndex = () => Math.max(0, cards.length - getSlidesPerView());
+
+      const renderDots = () => {
+        dotsWrap.replaceChildren();
+        const pages = getMaxIndex() + 1;
+        if (pages <= 1) return;
+
+        for (let index = 0; index < pages; index += 1) {
+          const dot = document.createElement("button");
+          dot.type = "button";
+          dot.className = "tg-carousel__dot";
+          dot.setAttribute("aria-label", `Go to review slide ${index + 1}`);
+          dot.setAttribute("aria-current", index === currentIndex ? "true" : "false");
+          if (index === currentIndex) dot.classList.add("is-active");
+          dot.addEventListener("click", () => {
+            currentIndex = index;
+            update();
+          });
+          dotsWrap.appendChild(dot);
+        }
+      };
+
+      const update = () => {
+        const slidesPerView = getSlidesPerView();
+        const maxIndex = getMaxIndex();
+        currentIndex = Math.min(currentIndex, maxIndex);
+
+        track.style.transform = `translate3d(-${currentIndex * getStep()}px, 0, 0)`;
+
+        const showControls = cards.length > slidesPerView;
+        prevButton.hidden = !showControls;
+        nextButton.hidden = !showControls;
+        dotsWrap.hidden = !showControls;
+
+        prevButton.disabled = currentIndex <= 0;
+        nextButton.disabled = currentIndex >= maxIndex;
+
+        dotsWrap.querySelectorAll(".tg-carousel__dot").forEach((dot, index) => {
+          const isActive = index === currentIndex;
+          dot.classList.toggle("is-active", isActive);
+          dot.setAttribute("aria-current", isActive ? "true" : "false");
+        });
+      };
+
+      prevButton.addEventListener("click", () => {
+        currentIndex = Math.max(0, currentIndex - 1);
+        update();
+      });
+
+      nextButton.addEventListener("click", () => {
+        currentIndex = Math.min(getMaxIndex(), currentIndex + 1);
+        update();
+      });
+
+      viewport.addEventListener(
+        "touchstart",
+        (event) => {
+          if (!event.changedTouches.length) return;
+          touchStartX = event.changedTouches[0].clientX;
+          touchDeltaX = 0;
+        },
+        { passive: true }
+      );
+
+      viewport.addEventListener(
+        "touchmove",
+        (event) => {
+          if (!event.changedTouches.length) return;
+          touchDeltaX = event.changedTouches[0].clientX - touchStartX;
+        },
+        { passive: true }
+      );
+
+      viewport.addEventListener(
+        "touchend",
+        () => {
+          if (Math.abs(touchDeltaX) < 40) return;
+          if (touchDeltaX < 0) {
+            currentIndex = Math.min(getMaxIndex(), currentIndex + 1);
+          } else {
+            currentIndex = Math.max(0, currentIndex - 1);
+          }
+          update();
+        },
+        { passive: true }
+      );
+
+      let resizeTimer;
+      window.addEventListener("resize", () => {
+        window.clearTimeout(resizeTimer);
+        resizeTimer = window.setTimeout(() => {
+          renderDots();
+          update();
+        }, 120);
+      });
+
+      renderDots();
+      update();
+    });
+  };
+
+  const initSingleProductGallery = () => {
+    if (!document.body.classList.contains("trimvia-single-product-page")) {
+      return;
+    }
+
+    const galleryWrap = document.querySelector(".single-product-gallery");
+    const main = document.querySelector(".single-product-main");
+    const gallery = main ? main.querySelector(".woocommerce-product-gallery") : null;
+    if (!galleryWrap || !main || !gallery) {
+      return;
+    }
+
+    const syncGalleryLayout = () => {
+      const thumbs = gallery.querySelector(".flex-control-thumbs");
+      if (thumbs && thumbs.parentElement !== galleryWrap) {
+        thumbs.classList.add("single-product-thumbs");
+        galleryWrap.appendChild(thumbs);
+      }
+    };
+
+    syncGalleryLayout();
+
+    if (window.jQuery) {
+      window.jQuery(document.body).on(
+        "woocommerce_gallery_init_zoom wc-product-gallery-after-init found_variation reset_data flexslider-before flexslider-after",
+        syncGalleryLayout
+      );
+    }
+
+    window.addEventListener("resize", syncGalleryLayout);
+    window.setTimeout(syncGalleryLayout, 120);
+    window.setTimeout(syncGalleryLayout, 600);
+  };
+
+  const initCheckoutDeliveryPanel = () => {
+    if (
+      !document.body.classList.contains("trimvia-checkout-page") ||
+      document.body.classList.contains("trimvia-order-pay-page") ||
+      !window.jQuery
+    ) {
+      return;
+    }
+
+    const $ = window.jQuery;
+    const sameAsBillingStorageKey = "trimvia_checkout_same_as_billing";
+
+    const getDeliveryRefs = () => ({
+      panel: document.querySelector(".trimvia-checkout-panel--shipping"),
+      shipDiffInput: document.getElementById("trimvia_ship_to_different_address"),
+      sameAsBillingInput: document.getElementById("trimvia_same_as_billing"),
+      shippingAddress: document.querySelector(".trimvia-checkout-shipping-address"),
+    });
+
+    const billingToShippingMap = [
+      ["billing_first_name", "shipping_first_name"],
+      ["billing_last_name", "shipping_last_name"],
+      ["billing_company", "shipping_company"],
+      ["billing_address_1", "shipping_address_1"],
+      ["billing_address_2", "shipping_address_2"],
+      ["billing_city", "shipping_city"],
+      ["billing_state", "shipping_state"],
+      ["billing_postcode", "shipping_postcode"],
+      ["billing_country", "shipping_country"],
+    ];
+
+    const isLocalPickup = (methodId) => String(methodId || "").indexOf("local_pickup") === 0;
+
+    const getSelectedShippingMethod = () => {
+      const checked = document.querySelector('#shipping_method input[type="radio"]:checked');
+      return checked ? checked.value : "";
+    };
+
+    const copyBillingToShipping = (overwriteEmptyOnly) => {
+      billingToShippingMap.forEach(([billingId, shippingId]) => {
+        const billingField = document.getElementById(billingId);
+        const shippingField = document.getElementById(shippingId);
+
+        if (!billingField || !shippingField) {
           return;
         }
-        backdrop.style.zIndex = "1040";
+
+        const billingValue = billingField.value || "";
+        if (!overwriteEmptyOnly || !String(shippingField.value || "").trim()) {
+          shippingField.value = billingValue;
+        }
       });
     };
 
-    const makeModalInteractive = () => {
-      const modal = getModal();
-      if (!modal) return;
-
-      modal.classList.add("show");
-      modal.style.display = "block";
-      modal.style.opacity = "1";
-      modal.style.pointerEvents = "auto";
-      modal.style.zIndex = "1062";
-      modal.setAttribute("aria-hidden", "false");
-      modal.setAttribute("aria-modal", "true");
-
-      const dialog = modal.querySelector(".modal-dialog");
-      if (dialog) {
-        dialog.style.pointerEvents = "auto";
-        dialog.style.zIndex = "1064";
-      }
-
-      const content = modal.querySelector(".modal-content, .popup-content-wrapper");
-      if (content) {
-        content.style.pointerEvents = "auto";
-        content.style.opacity = "1";
-        content.style.zIndex = "1065";
-      }
-
-      document.body.classList.add("modal-open");
-      document.body.style.paddingRight = "0px";
-      syncBackdrops();
-    };
-
-    const hideModal = () => {
-      const modal = getModal();
-      if (!modal) return;
-
-      modal.classList.remove("show");
-      modal.style.display = "none";
-      modal.setAttribute("aria-hidden", "true");
-
-      document.body.classList.remove("modal-open");
-      Array.from(document.querySelectorAll(".modal-backdrop")).forEach((backdrop) => backdrop.remove());
-    };
-
-    // Keep behavior aligned with legacy flow.
-    window.orderModal = (state) => {
-      if ("hide" === state) {
-        hideModal();
+    const syncDeliveryPanel = () => {
+      const { panel, shipDiffInput, sameAsBillingInput, shippingAddress } = getDeliveryRefs();
+      if (!panel) {
         return;
       }
-      makeModalInteractive();
+
+      const localPickup = isLocalPickup(getSelectedShippingMethod());
+      let storedSameAsBilling = null;
+      try {
+        storedSameAsBilling = window.sessionStorage?.getItem(sameAsBillingStorageKey);
+      } catch (error) {
+        storedSameAsBilling = null;
+      }
+
+      if (sameAsBillingInput && !localPickup && storedSameAsBilling !== null) {
+        sameAsBillingInput.checked = storedSameAsBilling === "1";
+      }
+
+      const sameAsBilling = !!sameAsBillingInput?.checked;
+      const hideShippingFields = localPickup || sameAsBilling;
+
+      panel.classList.toggle("is-collapsed", localPickup);
+      panel.hidden = localPickup;
+      panel.classList.toggle("is-same-as-billing", !localPickup && sameAsBilling);
+
+      if (shippingAddress) {
+        shippingAddress.hidden = hideShippingFields;
+        shippingAddress.style.display = hideShippingFields ? "none" : "";
+      }
+
+      if (shipDiffInput) {
+        shipDiffInput.value = hideShippingFields ? "0" : "1";
+        shipDiffInput.disabled = localPickup;
+      }
+
+      if (sameAsBillingInput) {
+        sameAsBillingInput.disabled = localPickup;
+        if (localPickup) {
+          sameAsBillingInput.checked = true;
+        }
+      }
+
+      if (!localPickup) {
+        copyBillingToShipping(hideShippingFields ? false : true);
+      }
     };
 
-    document.addEventListener("click", (event) => {
-      const actionButton = event.target.closest(actionSelector);
-      if (!actionButton) return;
-
-      // Let parent flow run first (it usually injects modal content),
-      // then recover only if modal did not open.
-      window.setTimeout(() => {
-        const modal = getModal();
-        if (!modal) return;
-        const isVisible =
-          modal.classList.contains("show") ||
-          modal.style.display === "block" ||
-          modal.getAttribute("aria-hidden") === "false";
-        if (!isVisible) {
-          window.orderModal("show");
-        }
-      }, 120);
-    });
-
-    document.addEventListener("click", (event) => {
-      const closeButton = event.target.closest(closeSelector);
-      if (!closeButton) return;
-      event.preventDefault();
-      hideModal();
-    });
-
-    document.addEventListener("click", (event) => {
-      const modal = getModal();
-      if (!modal || modal.style.display === "none") return;
-      if (event.target === modal) {
-        hideModal();
+    $(document.body).on("change", '#shipping_method input[type="radio"]', syncDeliveryPanel);
+    $(document.body).on("change", "#trimvia_same_as_billing", function onSameAsBillingChange() {
+      try {
+        window.sessionStorage?.setItem(sameAsBillingStorageKey, this.checked ? "1" : "0");
+      } catch (error) {
+        // Ignore storage failures; the hidden WooCommerce field still updates immediately.
       }
+      syncDeliveryPanel();
     });
+    $(document.body).on(
+      "input change",
+      ".woocommerce-billing-fields input, .woocommerce-billing-fields select",
+      () => {
+        const { panel, sameAsBillingInput } = getDeliveryRefs();
+        if (panel && !panel.hidden && sameAsBillingInput?.checked) {
+          copyBillingToShipping(false);
+        }
+      }
+    );
+    $(document.body).on("updated_checkout", syncDeliveryPanel);
 
-    document.addEventListener("keydown", (event) => {
-      if (event.key !== "Escape") return;
-      const modal = getModal();
-      if (!modal || modal.style.display === "none") return;
-      hideModal();
+    syncDeliveryPanel();
+  };
+
+  const removeSidebarGpDuplicates = () => {
+    document.querySelectorAll(".trimvia-checkout-summary .woo-gp-form-wrapper").forEach((node) => {
+      node.remove();
     });
+  };
+
+  const initCheckoutGpForm = () => {
+    if (document.body.classList.contains("trimvia-order-pay-page")) {
+      return;
+    }
+
+    removeSidebarGpDuplicates();
+
+    const gpForm = document.querySelector(".trimvia-checkout-gp-section .trimvia-gp-form");
+    if (!gpForm || !window.jQuery) {
+      return;
+    }
+
+    const $ = window.jQuery;
+    const $form = $(gpForm);
+    const $checkoutForm = $("form.checkout");
+    const $radios = $form.find('input[name="gp_surgery"]');
+    const $panels = $form.find(".trimvia-gp-panel");
+    const $searchSelect = $form.find(".gp-surgery-selector");
+    const $manualName = $form.find("#gp-surgery-name");
+    const $manualAddress = $form.find("#gp-surgery-full-address");
+    const $addressSubmit = $form.find("#gp-surgery-address-submit");
+    const $emailField = $form.find("#gp-surgery-email");
+
+    const syncGpAddressSubmit = () => {
+      const mode = $radios.filter(":checked").val() || "nhs";
+
+      if (mode === "manual") {
+        $addressSubmit.val(($manualAddress.val() || "").trim());
+        return;
+      }
+
+      if (mode === "nhs") {
+        if ($searchSelect.data("select2")) {
+          const selected = $searchSelect.select2("data");
+          const selectedSurgery = selected && selected.length ? selected[0] : null;
+
+          if (selectedSurgery) {
+            $addressSubmit.val(selectedSurgery.address || selectedSurgery.id || selectedSurgery.text || "");
+            if (!$manualName.val()) {
+              $manualName.val(selectedSurgery.org_name || "");
+            }
+            if (!$emailField.val()) {
+              $emailField.val(selectedSurgery.email || "");
+            }
+            return;
+          }
+        }
+
+        $addressSubmit.val(($searchSelect.val() || "").trim());
+        return;
+      }
+
+      $addressSubmit.val("");
+    };
+
+    const resetGpFields = () => {
+      $emailField.val("");
+      $manualName.val("");
+      $manualAddress.val("");
+      $addressSubmit.val("");
+      if ($searchSelect.data("select2")) {
+        $searchSelect.val("").trigger("change");
+      } else {
+        $searchSelect.val("");
+      }
+    };
+
+    let activeGpMode = $radios.filter(":checked").val() || "nhs";
+
+    const syncGpPanels = (resetFields) => {
+      const mode = $radios.filter(":checked").val() || "nhs";
+
+      if (resetFields && mode !== activeGpMode) {
+        resetGpFields();
+      }
+      activeGpMode = mode;
+
+      $panels.each(function syncPanel() {
+        const $panel = $(this);
+        const isActive = $panel.data("gp-panel") === mode;
+        $panel.toggleClass("is-active", isActive);
+        if (isActive) {
+          $panel.removeAttr("hidden");
+        } else {
+          $panel.attr("hidden", "hidden");
+        }
+      });
+
+      $form.find(".trimvia-gp-option").each(function syncOption() {
+        const $option = $(this);
+        const $input = $option.find('input[name="gp_surgery"]');
+        $option.toggleClass("is-selected", $input.is(":checked"));
+      });
+
+      $manualName.prop("disabled", mode === "current");
+      $manualAddress.prop("disabled", mode !== "manual");
+      $searchSelect.prop("disabled", mode !== "nhs").trigger("change.select2");
+      syncGpAddressSubmit();
+    };
+
+    const prepareGpFormForSubmit = () => {
+      removeSidebarGpDuplicates();
+      syncGpPanels(false);
+      syncGpAddressSubmit();
+    };
+
+    if ($searchSelect.length && typeof $searchSelect.select2 === "function" && !$searchSelect.data("select2")) {
+      $searchSelect.select2({
+        placeholder: "Enter GP Surgery Here ...",
+        width: "100%",
+        minimumInputLength: 4,
+        ajax: {
+          delay: 1000,
+          url: "https://api.nhs.uk/service-search/search?api-version=1",
+          type: "post",
+          crossDomain: true,
+          dataType: "json",
+          headers: {
+            "subscription-key": "8a497723c41543b7b133a997edd3cd3e",
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+          data(params) {
+            return JSON.stringify({
+              searchFields: "OrganisationName,Address1,City,County,Postcode",
+              search: params.term,
+              top: 25,
+              skip: 0,
+              count: true,
+              filter: "OrganisationTypeID eq 'GPB'",
+              orderby: "search.score() desc",
+            });
+          },
+          processResults(data) {
+            const result = [];
+
+            if (typeof data.value !== "undefined" && data.value.length > 0) {
+              data.value.forEach((value) => {
+                let address = value.Address1 ? " - " + value.Address1 + ", " : "";
+                address += address && value.Postcode ? value.Postcode : value.Postcode ? " - " + value.Postcode : "";
+                const orgNameOnly = value.OrganisationName;
+                const orgName = value.OrganisationName + address;
+                const contactDetails = JSON.parse(value.Contacts);
+                let telephone = null;
+                let email = null;
+
+                contactDetails.forEach((contact) => {
+                  if (contact.OrganisationContactMethodType === "Telephone") {
+                    telephone = contact.OrganisationContactValue;
+                  }
+                  if (contact.OrganisationContactMethodType === "Email") {
+                    email = contact.OrganisationContactValue;
+                  }
+                });
+
+                const fullAddress = [
+                  value.Address1,
+                  value.Address2,
+                  value.Address3,
+                  value.City,
+                  value.County,
+                  value.Postcode,
+                ]
+                  .filter((el) => el != null && el !== "")
+                  .join(", ");
+
+                result.push({
+                  id: orgName,
+                  text: orgName,
+                  address: fullAddress,
+                  contact_number: telephone,
+                  email,
+                  org_name: orgNameOnly,
+                });
+              });
+            }
+
+            return { results: result };
+          },
+        },
+      });
+
+      $searchSelect.on("select2:select", (event) => {
+        const selectedSurgery = event.params.data;
+        $emailField.val(selectedSurgery.email || "");
+        $manualName.val(selectedSurgery.org_name || "");
+        $addressSubmit.val(selectedSurgery.address || selectedSurgery.id || selectedSurgery.text || "");
+      });
+
+      $searchSelect.on("select2:clear change", syncGpAddressSubmit);
+    }
+
+    $manualAddress.on("input change", syncGpAddressSubmit);
+    $radios.on("change", () => syncGpPanels(true));
+    $checkoutForm.on("checkout_place_order checkout_place_order_pm submit", prepareGpFormForSubmit);
+    $(document.body).on("updated_checkout", removeSidebarGpDuplicates);
+    syncGpPanels(false);
   };
 
   const initCommon = () => {
     ensureLegacyAdminAjaxGlobal();
+    movePractitionerModalsToBody();
+    movePrescriberOnboardingPopupsToBody();
+    moveSignaturePopupToBody();
+    watchSignaturePopupMount();
+    document.addEventListener(
+      "click",
+      (event) => {
+        if (!event.target.closest(".prescriber-sign-gen-wrapper.make-popup .close-me")) {
+          return;
+        }
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        closeSignaturePopup();
+      },
+      true
+    );
+    document.addEventListener("click", (event) => {
+      if (event.target.closest(".signature-modal")) {
+        window.setTimeout(moveSignaturePopupToBody, 120);
+      }
+    });
     ensureLegacyJqueryModalSupport();
     ensureGetOrderPrescriptionDataFallback();
     initHeaderScroll();
+    syncHeaderAuthButtons();
     initMobileMenu();
+    syncHeaderAuthButtons();
     initRevealOnScroll();
     initFaqAccordion();
+    initTestimonialCarousel();
     initSingleProductTabs();
+    initSingleProductGallery();
     initCartQuantityUpdates();
-    initPractitionerOrderModalFix();
+    initCheckoutDeliveryPanel();
+    initCheckoutGpForm();
+    initPrescriberConsultationAccordion();
+    initPrescriberApprovalPinModal();
+    initConsultationPatientModal();
+  };
+
+  const enhancePrescriberPinApprovalForm = (root) => {
+    if (!root) {
+      return;
+    }
+
+    root.querySelectorAll(".prescriber-verification-form").forEach((form) => {
+      if (form.dataset.trimviaPinApprovalReady === "1") {
+        return;
+      }
+
+      form.dataset.trimviaPinApprovalReady = "1";
+      form.classList.add("trimvia-pin-approval-shell");
+
+      const pinInput = form.querySelector('input[name="pin_number"]');
+      if (pinInput) {
+        pinInput.classList.add("pin-input", "trimvia-pin-input");
+        pinInput.setAttribute("maxlength", "6");
+        pinInput.setAttribute("inputmode", "numeric");
+        pinInput.setAttribute("pattern", "[0-9]*");
+        pinInput.setAttribute("autocomplete", "off");
+        if (!pinInput.getAttribute("placeholder")) {
+          pinInput.setAttribute("placeholder", "••••••");
+        }
+      }
+
+      form.querySelectorAll(".verify-me").forEach((button) => {
+        button.classList.add("theme-btn", "btn", "trimvia-pin-authorise");
+      });
+
+      form.querySelectorAll(".dismiss-modal").forEach((button) => {
+        button.classList.add("theme-btn-s4", "trimvia-pin-cancel");
+      });
+
+      const actionRows = form.querySelectorAll(".form-input-wrapper");
+      const actionRow = actionRows.length ? actionRows[actionRows.length - 1] : null;
+      if (actionRow && !actionRow.classList.contains("trimvia-pin-actions")) {
+        actionRow.classList.add("trimvia-pin-actions");
+      }
+    });
+  };
+
+  const initPrescriberApprovalPinModal = () => {
+    const modalIds = [
+      "practitioner-order-modal",
+      "practitioner-order-prescription-modal",
+    ];
+
+    const scanModal = (modal) => {
+      if (!modal) {
+        return;
+      }
+      enhancePrescriberPinApprovalForm(modal);
+    };
+
+    modalIds.forEach((id) => {
+      const modal = document.getElementById(id);
+      if (!modal || modal.dataset.trimviaPinApprovalObserved === "1") {
+        return;
+      }
+
+      modal.dataset.trimviaPinApprovalObserved = "1";
+      scanModal(modal);
+
+      if (typeof MutationObserver === "undefined") {
+        return;
+      }
+
+      const observer = new MutationObserver(() => scanModal(modal));
+      observer.observe(modal, { childList: true, subtree: true });
+    });
+  };
+
+  const initPrescriberConsultationAccordion = () => {
+    const modalIds = [
+      "practitioner-order-modal",
+      "practitioner-order-prescription-modal",
+      "prescription-extra-content-modal",
+    ];
+
+    const normalizeConsultMeta = (root) => {
+      if (!root) {
+        return;
+      }
+
+      root.querySelectorAll(".cons-completedby").forEach((meta) => {
+        if (meta.dataset.trimviaMetaReady === "1" || meta.classList.contains("trimvia-consult-meta")) {
+          return;
+        }
+
+        const rawText = meta.textContent.replace(/\s+/g, " ").trim();
+        if (!rawText) {
+          return;
+        }
+
+        const completedMatch = rawText.match(/Completed By:\s*(.*?)(?:\s+On:|$)/i);
+        const onMatch = rawText.match(/On:\s*(.+)$/i);
+        if (!completedMatch && !onMatch) {
+          return;
+        }
+
+        meta.dataset.trimviaMetaReady = "1";
+        meta.classList.add("trimvia-consult-meta");
+        meta.innerHTML = "";
+
+        if (completedMatch && completedMatch[1]) {
+          const row = document.createElement("p");
+          row.className = "trimvia-consult-meta-row";
+          row.innerHTML =
+            '<span class="trimvia-consult-meta-label">Completed By:</span>' +
+            `<span class="trimvia-consult-meta-value">${completedMatch[1].trim()}</span>`;
+          meta.appendChild(row);
+        }
+
+        if (onMatch && onMatch[1]) {
+          const row = document.createElement("p");
+          row.className = "trimvia-consult-meta-row";
+          row.innerHTML =
+            '<span class="trimvia-consult-meta-label">On:</span>' +
+            `<span class="trimvia-consult-meta-value">${onMatch[1].trim()}</span>`;
+          meta.appendChild(row);
+        }
+      });
+    };
+
+    const convertRowsToFaq = (group) => {
+      if (!group || group.dataset.trimviaFaqReady === "1") {
+        return;
+      }
+
+      const rows = [...group.querySelectorAll(":scope > .patient-row")];
+      if (!rows.length) {
+        return;
+      }
+
+      group.dataset.trimviaFaqReady = "1";
+
+      const header = group.querySelector(".patient-group-header");
+      if (header) {
+        header.classList.add("trimvia-consult-group-label");
+      }
+
+      const list = document.createElement("div");
+      list.className = "trimvia-consult-faq-list";
+
+      rows.forEach((row, index) => {
+        const questionEl = row.querySelector(".q-field-label");
+        if (!questionEl) {
+          return;
+        }
+
+        const fq = document.createElement("div");
+        fq.className = "trimvia-fq" + (index === 0 ? " active" : "");
+
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "trimvia-fq-btn";
+
+        const questionWrap = document.createElement("span");
+        questionWrap.className = "trimvia-fq-q";
+        questionWrap.innerHTML = questionEl.innerHTML;
+
+        const chev = document.createElement("span");
+        chev.className = "trimvia-fq-chev";
+        chev.setAttribute("aria-hidden", "true");
+
+        btn.appendChild(questionWrap);
+        btn.appendChild(chev);
+
+        const answerWrap = document.createElement("div");
+        answerWrap.className = "trimvia-fq-a";
+        const answerIn = document.createElement("div");
+        answerIn.className = "trimvia-fq-a-in";
+
+        row.querySelectorAll(".pm-answer-row, .user-sub-detail, .user-submission, .child-description").forEach((node) => {
+          answerIn.appendChild(node.cloneNode(true));
+        });
+
+        if (!answerIn.textContent.trim()) {
+          const fallback = row.querySelector(".q-label .user-sub-detail, .q-label .user-submission");
+          if (fallback) {
+            answerIn.appendChild(fallback.cloneNode(true));
+          }
+        }
+
+        answerWrap.appendChild(answerIn);
+        fq.appendChild(btn);
+        fq.appendChild(answerWrap);
+        list.appendChild(fq);
+        row.remove();
+      });
+
+      group.appendChild(list);
+    };
+
+    const initConsultFaqItems = (root) => {
+      if (!root) {
+        return;
+      }
+
+      root.querySelectorAll(".trimvia-fq-btn").forEach((button) => {
+        if (button.dataset.trimviaFaqBound === "1") {
+          return;
+        }
+        button.dataset.trimviaFaqBound = "1";
+        button.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          const item = button.closest(".trimvia-fq");
+          if (!item) {
+            return;
+          }
+          const wasActive = item.classList.contains("active");
+          item.parentElement.querySelectorAll(".trimvia-fq").forEach((faq) => faq.classList.remove("active"));
+          if (!wasActive) {
+            item.classList.add("active");
+          }
+        });
+      });
+    };
+
+    const findSectionLabel = (root, expectedTitle) => {
+      if (!root) {
+        return null;
+      }
+
+      let prev = root.previousElementSibling;
+      while (prev) {
+        if (prev.matches(".pm-consult-section-label, h2, h3, h4, h5")) {
+          const text = prev.textContent.replace(/\s+/g, " ").trim();
+          if (
+            prev.classList.contains("pm-consult-section-label") ||
+            !expectedTitle ||
+            text.toLowerCase() === expectedTitle.toLowerCase()
+          ) {
+            return prev;
+          }
+          return null;
+        }
+        prev = prev.previousElementSibling;
+      }
+
+      return root.querySelector(":scope > .pm-consult-section-label, :scope > h2, :scope > h3, :scope > h4");
+    };
+
+    const createConsultFaqHead = (titleText) => {
+      const head = document.createElement("button");
+      head.type = "button";
+      head.className = "trimvia-consult-faq-head";
+      head.setAttribute("aria-expanded", "false");
+
+      const inner = document.createElement("div");
+      inner.className = "trimvia-consult-faq-head-inner";
+
+      const titleSpan = document.createElement("span");
+      titleSpan.className = "trimvia-consult-faq-title";
+      titleSpan.textContent = titleText;
+
+      const chev = document.createElement("span");
+      chev.className = "trimvia-consult-faq-chev";
+      chev.setAttribute("aria-hidden", "true");
+
+      inner.appendChild(titleSpan);
+      head.appendChild(inner);
+      head.appendChild(chev);
+      return head;
+    };
+
+    const extractAccordionMeta = (faqRoot) => {
+      const button = faqRoot?.querySelector(".accordion-button");
+      if (!button) {
+        return null;
+      }
+
+      const meta = document.createElement("div");
+      meta.className = "trimvia-consult-faq-meta";
+
+      const pill = button.querySelector(".pm-acc-pill");
+      const date = button.querySelector(".pm-acc-date");
+      if (pill) {
+        meta.appendChild(pill.cloneNode(true));
+      }
+      if (date) {
+        meta.appendChild(date.cloneNode(true));
+      }
+
+      if (!meta.textContent.trim()) {
+        button.querySelectorAll(".cons-title, .cons-completedby").forEach((node) => {
+          meta.appendChild(node.cloneNode(true));
+        });
+      }
+
+      return meta.textContent.trim() ? meta : null;
+    };
+
+    const enrichConsultFaqHead = (faqRoot) => {
+      if (!faqRoot || faqRoot.dataset.trimviaHeadMeta === "1") {
+        return;
+      }
+
+      const head = faqRoot.querySelector(".trimvia-consult-faq-head");
+      const meta = extractAccordionMeta(faqRoot);
+      if (!head || !meta) {
+        return;
+      }
+
+      faqRoot.dataset.trimviaHeadMeta = "1";
+
+      faqRoot.querySelector(".trimvia-consult-summary-row")?.remove();
+
+      const inner = head.querySelector(".trimvia-consult-faq-head-inner") || head;
+      inner.appendChild(meta);
+
+      const header = faqRoot.querySelector(".accordion-header");
+      if (header) {
+        header.classList.add("trimvia-sr-accordion-header");
+      }
+    };
+
+    const wireFaqShellToggle = (root) => {
+      const head = root.querySelector(".trimvia-consult-faq-head");
+      const accordionButton = root.querySelector(".accordion-button");
+      const accordionCollapse = root.querySelector(".accordion-collapse");
+      if (!head || head.dataset.trimviaFaqBound === "1") {
+        return;
+      }
+
+      head.dataset.trimviaFaqBound = "1";
+
+      const syncSectionState = () => {
+        const isOpen = accordionCollapse
+          ? accordionCollapse.classList.contains("show")
+          : root.classList.contains("is-open");
+        root.classList.toggle("is-open", isOpen);
+        root.classList.toggle("is-collapsed", !isOpen);
+        head.setAttribute("aria-expanded", isOpen ? "true" : "false");
+      };
+
+      syncSectionState();
+
+      head.addEventListener("click", (event) => {
+        event.preventDefault();
+        if (accordionButton && accordionCollapse) {
+          accordionButton.click();
+          return;
+        }
+
+        const isOpen = !root.classList.contains("is-open");
+        root.classList.toggle("is-open", isOpen);
+        root.classList.toggle("is-collapsed", !isOpen);
+        head.setAttribute("aria-expanded", isOpen ? "true" : "false");
+      });
+
+      if (accordionCollapse && typeof MutationObserver !== "undefined") {
+        const observer = new MutationObserver(syncSectionState);
+        observer.observe(accordionCollapse, { attributes: true, attributeFilter: ["class"] });
+      }
+    };
+
+    const removeNearbySectionLabels = (root, expectedTitle) => {
+      if (!root || !expectedTitle) {
+        return;
+      }
+
+      const normalizedExpected = expectedTitle.replace(/\s+/g, " ").trim().toLowerCase();
+      const matchesTitle = (node) =>
+        node.textContent.replace(/\s+/g, " ").trim().toLowerCase() === normalizedExpected;
+
+      let parent = root.parentElement;
+      while (parent && !parent.classList.contains("pm-prescription-review")) {
+        parent.querySelectorAll(":scope > .pm-consult-section-label, :scope > h2, :scope > h3, :scope > h4, :scope > h5").forEach((label) => {
+          if (matchesTitle(label)) {
+            label.remove();
+          }
+        });
+        parent = parent.parentElement;
+      }
+
+      root.querySelectorAll(":scope > .pm-consult-section-label, :scope > h2, :scope > h3, :scope > h4, :scope > h5").forEach((label) => {
+        if (matchesTitle(label) && !label.classList.contains("trimvia-consult-faq-head")) {
+          label.remove();
+        }
+      });
+    };
+
+    const getUnwrappedPreviousItems = (root) =>
+      [...root.querySelectorAll(".pm-consultation-accordion > .accordion-item")].filter(
+        (item) => !item.closest(".trimvia-consult-faq--previous")
+      );
+
+    const getUnwrappedPreviousWraps = (root) =>
+      [...root.querySelectorAll(":scope > .pm-consultation-wrap")].filter((wrap) => !wrap.closest(".trimvia-consult-faq"));
+
+    const mountSummaryRow = (faqRoot) => {
+      enrichConsultFaqHead(faqRoot);
+    };
+
+    const buildConsultFaqShell = (root, forcedTitle) => {
+      if (!root || root.dataset.trimviaFaqShell === "1") {
+        return;
+      }
+
+      const titleText =
+        forcedTitle ||
+        (root.id === "pmPreviousConsultations" ? "Previous Consultations" : "Current Order");
+      const labelEl = findSectionLabel(root, titleText);
+
+      root.dataset.trimviaFaqShell = "1";
+      root.classList.add("trimvia-consult-faq", "is-collapsed");
+
+      if (labelEl) {
+        labelEl.remove();
+      }
+
+      const panel = document.createElement("div");
+      panel.className = "trimvia-consult-faq-panel";
+      while (root.firstChild) {
+        panel.appendChild(root.firstChild);
+      }
+
+      root.appendChild(createConsultFaqHead(titleText));
+      root.appendChild(panel);
+
+      removeNearbySectionLabels(root, titleText);
+      mountSummaryRow(root);
+      wireFaqShellToggle(root);
+    };
+
+    const syncPreviousCardHead = (card) => {
+      const button = card.querySelector(".trimvia-prev-card-head, .accordion-button");
+      const collapse = card.querySelector(".trimvia-prev-card-panel, .accordion-collapse");
+      if (!button || !collapse) {
+        return;
+      }
+
+      const isOpen = collapse.classList.contains("show");
+      button.classList.toggle("is-open", isOpen);
+      button.classList.toggle("collapsed", !isOpen);
+      card.classList.toggle("is-open", isOpen);
+      button.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    };
+
+    const closeOtherPreviousPanels = (card, collapse) => {
+      const parent = card.closest(".trimvia-prev-cards, .pm-consultation-accordion");
+      if (!parent) {
+        return;
+      }
+
+      parent.querySelectorAll(".trimvia-prev-card-panel.show, .accordion-collapse.show").forEach((panel) => {
+        if (panel === collapse) {
+          return;
+        }
+
+        panel.classList.remove("show");
+        const otherCard = panel.closest(".trimvia-prev-card, .accordion-item");
+        if (otherCard) {
+          syncPreviousCardHead(otherCard);
+        }
+      });
+    };
+
+    const wirePreviousCardToggle = (card) => {
+      const button = card.querySelector(".trimvia-prev-card-head, .accordion-button");
+      const collapse = card.querySelector(".trimvia-prev-card-panel, .accordion-collapse");
+      if (!button || !collapse || button.dataset.trimviaCardToggleBound === "1") {
+        return;
+      }
+
+      button.dataset.trimviaCardToggleBound = "1";
+
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+
+        const isOpen = collapse.classList.contains("show");
+        const jq = window.jQuery;
+
+        if (jq && typeof jq.fn.collapse === "function") {
+          if (!isOpen) {
+            closeOtherPreviousPanels(card, collapse);
+          }
+          jq(collapse).collapse("toggle");
+          window.setTimeout(() => syncPreviousCardHead(card), 0);
+          return;
+        }
+
+        if (!isOpen) {
+          closeOtherPreviousPanels(card, collapse);
+        }
+
+        collapse.classList.toggle("show", !isOpen);
+        syncPreviousCardHead(card);
+      });
+
+      if (window.jQuery && typeof window.jQuery.fn.collapse === "function") {
+        window.jQuery(collapse).collapse({ toggle: false });
+      }
+    };
+
+    const enhancePreviousCard = (card) => {
+      if (!card || card.dataset.trimviaCardReady === "1") {
+        return;
+      }
+
+      card.dataset.trimviaCardReady = "1";
+
+      const body = card.querySelector(".trimvia-prev-card-body, .accordion-body");
+      if (body) {
+        normalizeConsultMeta(body);
+        wrapConsultGroups(body);
+        initConsultFaqItems(body);
+      }
+
+      wirePreviousCardToggle(card);
+
+      const collapse = card.querySelector(".trimvia-prev-card-panel, .accordion-collapse");
+      if (collapse && typeof MutationObserver !== "undefined") {
+        syncPreviousCardHead(card);
+        const observer = new MutationObserver(() => syncPreviousCardHead(card));
+        observer.observe(collapse, { attributes: true, attributeFilter: ["class"] });
+      }
+    };
+
+    const enhancePreviousConsultationsSection = (root) => {
+      if (!root) {
+        return;
+      }
+
+      const pendingCards = [...root.querySelectorAll(".trimvia-prev-card:not([data-trimvia-card-ready])")];
+      const pendingItems = getUnwrappedPreviousItems(root).filter(
+        (item) => !item.classList.contains("trimvia-prev-card")
+      );
+      const pendingWraps = getUnwrappedPreviousWraps(root);
+
+      if (
+        root.dataset.trimviaSectionReady === "1" &&
+        !pendingCards.length &&
+        !pendingItems.length &&
+        !pendingWraps.length
+      ) {
+        return;
+      }
+
+      root.dataset.trimviaSectionReady = "1";
+      root.classList.add("trimvia-previous-consultations-list", "trimvia-previous-consultations");
+
+      removeNearbySectionLabels(root, "Previous Consultations");
+
+      root
+        .querySelectorAll(
+          ":scope > .pm-consult-section-label, :scope > .trimvia-previous-section-heading, :scope > h2, :scope > h3, :scope > h4"
+        )
+        .forEach((label) => {
+          if (label.closest(".trimvia-prev-section-head")) {
+            return;
+          }
+
+          const text = label.textContent.replace(/\s+/g, " ").trim().toLowerCase();
+          if (text === "previous consultations" || label.classList.contains("trimvia-previous-section-heading")) {
+            label.remove();
+          }
+        });
+
+      let cardsWrap = root.querySelector(":scope > .trimvia-prev-cards");
+      if (!cardsWrap) {
+        cardsWrap = document.createElement("div");
+        cardsWrap.className = "trimvia-prev-cards pm-consultation-accordion accordion";
+
+        const looseItems = [
+          ...root.querySelectorAll(":scope > .trimvia-prev-card, :scope > .accordion-item, :scope > .pm-consultation-wrap"),
+        ].filter((node) => !node.closest(".trimvia-prev-cards"));
+
+        looseItems.forEach((node) => cardsWrap.appendChild(node));
+
+        if (looseItems.length) {
+          root.appendChild(cardsWrap);
+        }
+      }
+
+      if (!root.querySelector(".trimvia-prev-section-head")) {
+        const cardCount = root.querySelectorAll(".trimvia-prev-card, .accordion-item, .pm-consultation-wrap").length;
+        const sectionHead = document.createElement("div");
+        sectionHead.className = "trimvia-prev-section-head";
+
+        const title = document.createElement("h3");
+        title.className = "trimvia-prev-section-title";
+        title.textContent = "Previous Consultations";
+
+        const count = document.createElement("span");
+        count.className = "trimvia-prev-section-count";
+        count.textContent = String(cardCount || pendingCards.length || pendingItems.length || pendingWraps.length);
+
+        sectionHead.appendChild(title);
+        sectionHead.appendChild(count);
+        root.insertBefore(sectionHead, root.firstChild);
+      } else {
+        const countEl = root.querySelector(".trimvia-prev-section-count");
+        if (countEl) {
+          const cardCount = root.querySelectorAll(".trimvia-prev-cards .trimvia-prev-card, .trimvia-prev-cards .accordion-item, .trimvia-prev-cards .pm-consultation-wrap").length;
+          countEl.textContent = String(cardCount);
+        }
+      }
+
+      root.querySelectorAll(".trimvia-prev-card").forEach(enhancePreviousCard);
+
+      pendingItems.forEach((item) => {
+        item.classList.add("trimvia-prev-card", "trimvia-previous-consultation-item");
+        enhancePreviousCard(item);
+      });
+
+      pendingWraps.forEach((wrap) => {
+        wrap.classList.add("trimvia-prev-card", "trimvia-previous-consultation-item");
+        normalizeConsultMeta(wrap);
+        wrapConsultGroups(wrap);
+        initConsultFaqItems(wrap);
+      });
+
+      root.querySelectorAll(".pm-consultation-accordion").forEach((accordion) => {
+        if (accordion.classList.contains("trimvia-prev-cards")) {
+          return;
+        }
+
+        if (!accordion.querySelector(".accordion-item, .trimvia-prev-card")) {
+          accordion.remove();
+        }
+      });
+
+      root.querySelectorAll(".trimvia-consult-faq--previous").forEach((legacyShell) => {
+        const nestedCard = legacyShell.querySelector(".trimvia-prev-card, .accordion-item");
+        if (nestedCard && legacyShell.parentElement) {
+          legacyShell.parentElement.insertBefore(nestedCard, legacyShell);
+        }
+        legacyShell.remove();
+      });
+    };
+
+    const wrapConsultGroups = (root) => {
+      if (!root) {
+        return;
+      }
+
+      root.querySelectorAll(".prescription-patient-data.patient-consultation").forEach((container) => {
+        if (container.dataset.trimviaGroupsReady === "1") {
+          return;
+        }
+
+        const headers = [...container.querySelectorAll(":scope > .patient-group-header")];
+        if (!headers.length) {
+          return;
+        }
+
+        container.dataset.trimviaGroupsReady = "1";
+
+        headers.reverse().forEach((header) => {
+          if (header.closest(".trimvia-consult-group")) {
+            return;
+          }
+
+          const group = document.createElement("div");
+          group.className = "trimvia-consult-group";
+          header.parentNode.insertBefore(group, header);
+          group.appendChild(header);
+
+          let sibling = group.nextElementSibling;
+          while (sibling && !sibling.classList.contains("patient-group-header")) {
+            const next = sibling.nextElementSibling;
+            if (sibling.classList.contains("patient-row")) {
+              group.appendChild(sibling);
+            }
+            sibling = next;
+          }
+
+          convertRowsToFaq(group);
+        });
+      });
+    };
+
+    const enhanceConsultSection = (root) => {
+      if (!root) {
+        return;
+      }
+
+      if (root.id === "pmPreviousConsultations") {
+        enhancePreviousConsultationsSection(root);
+        return;
+      }
+
+      if (root.id === "pmCurrentConsultations") {
+        buildConsultFaqShell(root, "Current Order");
+        return;
+      }
+
+      buildConsultFaqShell(root);
+    };
+
+    const normalizeAccordionItem = (item) => {
+      if (!item || item.dataset.trimviaConsultAccordionReady === "1") {
+        return;
+      }
+
+      const body = item.querySelector(".accordion-body");
+      const button = item.querySelector(".accordion-button");
+      if (!body || !button) {
+        return;
+      }
+
+      item.dataset.trimviaConsultAccordionReady = "1";
+      button.classList.add("trimvia-consultation-toggle");
+
+      const isCurrentOrder = Boolean(item.closest("#pmCurrentConsultations"));
+      const isPreviousCard = item.classList.contains("trimvia-prev-card") || Boolean(item.closest(".trimvia-prev-cards"));
+      if (isPreviousCard) {
+        enhancePreviousCard(item);
+        return;
+      }
+
+      const isFaqCard = Boolean(item.closest(".trimvia-consult-faq"));
+      if (isCurrentOrder || isFaqCard) {
+        [".cons-title", ".cons-completedby"].forEach((selector) => {
+          item.querySelectorAll(selector).forEach((node) => {
+            if (body.contains(node)) {
+              return;
+            }
+            body.insertBefore(node, body.firstChild);
+          });
+        });
+      } else {
+        button.classList.add("trimvia-previous-consultation-toggle");
+      }
+
+      normalizeConsultMeta(body);
+      wrapConsultGroups(body);
+      initConsultFaqItems(body);
+    };
+
+    const scanModal = (modal) => {
+      if (!modal) return;
+      modal.querySelectorAll("#pmCurrentConsultations, #pmPreviousConsultations").forEach(enhanceConsultSection);
+      modal.querySelectorAll("#pmPreviousConsultations .trimvia-prev-card, #pmPreviousConsultations .accordion-item").forEach((item) => {
+        if (item.closest("#pmCurrentConsultations")) {
+          return;
+        }
+        if (item.classList.contains("trimvia-prev-card")) {
+          enhancePreviousCard(item);
+          return;
+        }
+        normalizeAccordionItem(item);
+      });
+      modal.querySelectorAll("#pmCurrentConsultations .accordion-item").forEach(normalizeAccordionItem);
+      modal.querySelectorAll("#pmPreviousConsultations .pm-consultation-wrap").forEach((section) => {
+        normalizeConsultMeta(section);
+        wrapConsultGroups(section);
+        initConsultFaqItems(section);
+      });
+    };
+
+    const attachModalConsultScan = (modal) => {
+      if (!modal) {
+        return;
+      }
+
+      scanModal(modal);
+
+      if (modal.dataset.trimviaConsultAccordionObserved === "1") {
+        return;
+      }
+
+      modal.dataset.trimviaConsultAccordionObserved = "1";
+
+      if (typeof MutationObserver === "undefined") {
+        return;
+      }
+
+      let scanTimer = null;
+      const scheduleScan = () => {
+        if (scanTimer) {
+          window.clearTimeout(scanTimer);
+        }
+        scanTimer = window.setTimeout(() => {
+          scanTimer = null;
+          scanModal(modal);
+        }, 60);
+      };
+
+      const observer = new MutationObserver(scheduleScan);
+      observer.observe(modal, { childList: true, subtree: true });
+    };
+
+    modalIds.forEach((id) => {
+      attachModalConsultScan(document.getElementById(id));
+    });
+
+    document.addEventListener("shown.bs.modal", (event) => {
+      const modal = event.target;
+      if (!modal || !modal.id || !modalIds.includes(modal.id)) {
+        return;
+      }
+      window.setTimeout(() => attachModalConsultScan(modal), 0);
+    });
+
+    if (window.jQuery) {
+      window.jQuery(document).on(
+        "shown.bs.modal",
+        modalIds.map((id) => `#${id}`).join(", "),
+        function onPrescriberModalShown() {
+          window.setTimeout(() => attachModalConsultScan(this), 0);
+        }
+      );
+    }
+
+    if (typeof MutationObserver !== "undefined" && document.body) {
+      const bodyObserver = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          mutation.addedNodes.forEach((node) => {
+            if (node.nodeType !== 1) {
+              return;
+            }
+
+            modalIds.forEach((id) => {
+              if (node.id === id) {
+                attachModalConsultScan(node);
+                return;
+              }
+
+              const nestedModal = node.querySelector?.(`#${id}`);
+              if (nestedModal) {
+                attachModalConsultScan(nestedModal);
+              }
+            });
+          });
+        });
+      });
+      bodyObserver.observe(document.body, { childList: true, subtree: true });
+    }
+  };
+
+  const initConsultationPatientModal = () => {
+    const modal = document.getElementById("consultation-patient-modal");
+    if (!modal) return;
+
+    const moveModalToBody = () => {
+      if (modal.parentElement !== document.body) {
+        document.body.appendChild(modal);
+      }
+    };
+
+    const getBackdrop = () => document.querySelector(".modal-backdrop");
+
+    const hideConsultationModal = () => {
+      const jq = window.jQuery;
+      if (jq && typeof jq.fn.modal === "function") {
+        jq(modal).modal("hide");
+        return;
+      }
+
+      modal.classList.remove("show");
+      modal.style.display = "none";
+      modal.setAttribute("aria-hidden", "true");
+      modal.removeAttribute("aria-modal");
+      document.body.classList.remove("modal-open");
+      document.querySelectorAll(".modal-backdrop").forEach((backdrop) => backdrop.remove());
+    };
+
+    const showConsultationModal = (event) => {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+
+      moveModalToBody();
+      modal.removeAttribute("hidden");
+
+      const jq = window.jQuery;
+      if (jq && typeof jq.fn.modal === "function") {
+        jq(modal).modal("show");
+        return;
+      }
+
+      modal.classList.add("show");
+      modal.style.display = "flex";
+      modal.setAttribute("aria-hidden", "false");
+      modal.setAttribute("aria-modal", "true");
+      document.body.classList.add("modal-open");
+
+      if (!getBackdrop()) {
+        const backdrop = document.createElement("div");
+        backdrop.className = "modal-backdrop fade show";
+        backdrop.addEventListener("click", hideConsultationModal);
+        document.body.appendChild(backdrop);
+      }
+    };
+
+    moveModalToBody();
+
+    const jq = window.jQuery;
+    if (jq && typeof jq.fn.modal === "function") {
+      jq(modal).on("show.bs.modal", moveModalToBody);
+      jq(modal).on("hidden.bs.modal", () => {
+        document.body.classList.remove("modal-open");
+        jq(".modal-backdrop").remove();
+      });
+    }
+
+    document.addEventListener(
+      "click",
+      (event) => {
+        const trigger = event.target.closest(
+          '[data-target="#consultation-patient-modal"], [data-bs-target="#consultation-patient-modal"], .trimvia-view-consultation-btn'
+        );
+        if (!trigger) return;
+        showConsultationModal(event);
+      },
+      true
+    );
+
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal) {
+        hideConsultationModal();
+      }
+    });
   };
 
   if (document.readyState === "loading") {

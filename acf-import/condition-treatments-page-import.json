@@ -1,0 +1,431 @@
+[
+    {
+        "key": "group_trimvia_condition_term_hero",
+        "title": "Condition — treatments page",
+        "fields": [
+            {
+                "key": "field_trimvia_cond_hero_tab",
+                "label": "Hero",
+                "name": "",
+                "aria-label": "",
+                "type": "tab",
+                "instructions": "",
+                "required": 0,
+                "conditional_logic": 0,
+                "wrapper": {
+                    "width": "",
+                    "class": "",
+                    "id": ""
+                },
+                "placement": "top",
+                "endpoint": 0,
+                "selected": 0
+            },
+            {
+                "key": "field_trimvia_cond_hero_visibility",
+                "label": "Hero visibility",
+                "name": "cond_hero_visibility",
+                "aria-label": "",
+                "type": "true_false",
+                "instructions": "Same pattern as Service pages. Hide the full hero (title, intro, image, badges, CTA).",
+                "required": 0,
+                "conditional_logic": 0,
+                "wrapper": {
+                    "width": "",
+                    "class": "",
+                    "id": ""
+                },
+                "message": "",
+                "default_value": 1,
+                "ui": 1,
+                "ui_on_text": "Show",
+                "ui_off_text": "Hide"
+            },
+            {
+                "key": "field_trimvia_cond_hero_title_prefix",
+                "label": "Heading — prefix (before condition name)",
+                "name": "cond_hero_title_prefix",
+                "aria-label": "",
+                "type": "text",
+                "instructions": "e.g. \"Our\" → \"Our {Condition name} Treatments\"",
+                "required": 0,
+                "conditional_logic": 0,
+                "wrapper": {
+                    "width": "",
+                    "class": "",
+                    "id": ""
+                },
+                "default_value": "Our",
+                "maxlength": "",
+                "placeholder": "",
+                "prepend": "",
+                "append": ""
+            },
+            {
+                "key": "field_trimvia_cond_hero_title_suffix",
+                "label": "Heading — accent word (italic, after condition name)",
+                "name": "cond_hero_title_suffix",
+                "aria-label": "",
+                "type": "text",
+                "instructions": "Shown in italic after the condition name.",
+                "required": 0,
+                "conditional_logic": 0,
+                "wrapper": {
+                    "width": "",
+                    "class": "",
+                    "id": ""
+                },
+                "default_value": "Treatments",
+                "maxlength": "",
+                "placeholder": "",
+                "prepend": "",
+                "append": ""
+            },
+            {
+                "key": "field_trimvia_cond_hero_intro",
+                "label": "Intro paragraph",
+                "name": "cond_hero_intro",
+                "aria-label": "",
+                "type": "textarea",
+                "instructions": "Replaces the default taxonomy description in the hero when set.",
+                "required": 0,
+                "conditional_logic": 0,
+                "wrapper": {
+                    "width": "",
+                    "class": "",
+                    "id": ""
+                },
+                "default_value": "",
+                "maxlength": "",
+                "rows": "",
+                "placeholder": "",
+                "new_lines": "br"
+            },
+            {
+                "key": "field_trimvia_cond_hero_image",
+                "label": "Hero image",
+                "name": "cond_hero_image",
+                "aria-label": "",
+                "type": "image",
+                "instructions": "Shown in the right column of the hero. Falls back to the condition featured image when empty.",
+                "required": 0,
+                "conditional_logic": 0,
+                "wrapper": {
+                    "width": "",
+                    "class": "",
+                    "id": ""
+                },
+                "return_format": "array",
+                "library": "all",
+                "min_width": "",
+                "min_height": "",
+                "min_size": "",
+                "max_width": "",
+                "max_height": "",
+                "max_size": "",
+                "mime_types": "",
+                "preview_size": "medium"
+            },
+            {
+                "key": "field_trimvia_cond_hero_show_count",
+                "label": "Show dynamic treatment count badge",
+                "name": "cond_hero_show_count_badge",
+                "aria-label": "",
+                "type": "true_false",
+                "instructions": "",
+                "required": 0,
+                "conditional_logic": 0,
+                "wrapper": {
+                    "width": "",
+                    "class": "",
+                    "id": ""
+                },
+                "message": "",
+                "default_value": 1,
+                "ui": 1,
+                "ui_on_text": "Yes",
+                "ui_off_text": "No"
+            },
+            {
+                "key": "field_trimvia_cond_hero_count_suffix",
+                "label": "Count badge suffix",
+                "name": "cond_hero_count_suffix",
+                "aria-label": "",
+                "type": "text",
+                "instructions": "Appears after the number.",
+                "required": 0,
+                "conditional_logic": 0,
+                "wrapper": {
+                    "width": "",
+                    "class": "",
+                    "id": ""
+                },
+                "default_value": "treatments available",
+                "maxlength": "",
+                "placeholder": "",
+                "prepend": "",
+                "append": ""
+            },
+            {
+                "key": "field_trimvia_cond_hero_badges",
+                "label": "Additional hero badges",
+                "name": "cond_hero_badges",
+                "aria-label": "",
+                "type": "repeater",
+                "instructions": "",
+                "required": 0,
+                "conditional_logic": 0,
+                "wrapper": {
+                    "width": "",
+                    "class": "",
+                    "id": ""
+                },
+                "layout": "block",
+                "min": 0,
+                "max": 0,
+                "collapsed": "",
+                "button_label": "Add badge",
+                "rows_per_page": 20,
+                "sub_fields": [
+                    {
+                        "key": "field_trimvia_cond_badge_html",
+                        "label": "Badge text (HTML allowed)",
+                        "name": "text",
+                        "aria-label": "",
+                        "type": "textarea",
+                        "instructions": "e.g. UK prescriber reviewed, or &lt;strong&gt;Next-day&lt;/strong&gt; discreet delivery",
+                        "required": 0,
+                        "conditional_logic": 0,
+                        "wrapper": {
+                            "width": "",
+                            "class": "",
+                            "id": ""
+                        },
+                        "default_value": "",
+                        "maxlength": "",
+                        "rows": "",
+                        "placeholder": "",
+                        "new_lines": "",
+                        "parent_repeater": "field_trimvia_cond_hero_badges"
+                    }
+                ]
+            },
+            {
+                "key": "field_trimvia_cond_tab_sections",
+                "label": "Page sections",
+                "name": "",
+                "aria-label": "",
+                "type": "tab",
+                "instructions": "",
+                "required": 0,
+                "conditional_logic": 0,
+                "wrapper": {
+                    "width": "",
+                    "class": "",
+                    "id": ""
+                },
+                "placement": "top",
+                "endpoint": 0,
+                "selected": 0
+            },
+            {
+                "key": "field_trimvia_cond_products_visibility",
+                "label": "Treatments (products) section",
+                "name": "cond_products_section_visibility",
+                "aria-label": "",
+                "type": "true_false",
+                "instructions": "",
+                "required": 0,
+                "conditional_logic": 0,
+                "wrapper": {
+                    "width": "",
+                    "class": "",
+                    "id": ""
+                },
+                "message": "",
+                "default_value": 1,
+                "ui": 1,
+                "ui_on_text": "Show",
+                "ui_off_text": "Hide"
+            },
+            {
+                "key": "field_trimvia_cond_products_show_intro_header",
+                "label": "Show title row above product grid",
+                "name": "cond_products_show_intro_header",
+                "aria-label": "",
+                "type": "true_false",
+                "instructions": "Optional kicker, heading and blurb between the hero and cards. Turn off for grid-only (hero + products).",
+                "required": 0,
+                "conditional_logic": 0,
+                "wrapper": {
+                    "width": "",
+                    "class": "",
+                    "id": ""
+                },
+                "message": "",
+                "default_value": 0,
+                "ui": 1,
+                "ui_on_text": "Show",
+                "ui_off_text": "Hide"
+            },
+            {
+                "key": "field_trimvia_cond_products_kicker",
+                "label": "Products block — kicker (small line above heading)",
+                "name": "cond_products_kicker",
+                "aria-label": "",
+                "type": "text",
+                "instructions": "e.g. \"Treatments\". Leave empty to use the default label.",
+                "required": 0,
+                "conditional_logic": 0,
+                "wrapper": {
+                    "width": "",
+                    "class": "",
+                    "id": ""
+                },
+                "default_value": "Treatments",
+                "maxlength": "",
+                "placeholder": "",
+                "prepend": "",
+                "append": ""
+            },
+            {
+                "key": "field_trimvia_cond_products_heading",
+                "label": "Products block — main heading",
+                "name": "cond_products_heading",
+                "aria-label": "",
+                "type": "text",
+                "instructions": "Large centered title above the product grid.",
+                "required": 0,
+                "conditional_logic": 0,
+                "wrapper": {
+                    "width": "",
+                    "class": "",
+                    "id": ""
+                },
+                "default_value": "Choose your treatment",
+                "maxlength": "",
+                "placeholder": "",
+                "prepend": "",
+                "append": ""
+            },
+            {
+                "key": "field_trimvia_cond_products_description",
+                "label": "Products block — description",
+                "name": "cond_products_description",
+                "aria-label": "",
+                "type": "textarea",
+                "instructions": "Optional paragraph under the heading. If empty, falls back to the taxonomy \"short description\" field when set.",
+                "required": 0,
+                "conditional_logic": 0,
+                "wrapper": {
+                    "width": "",
+                    "class": "",
+                    "id": ""
+                },
+                "default_value": "",
+                "maxlength": "",
+                "rows": "",
+                "placeholder": "",
+                "new_lines": "br"
+            },
+            {
+                "key": "field_trimvia_cond_about_visibility",
+                "label": "About this condition section",
+                "name": "cond_about_section_visibility",
+                "aria-label": "",
+                "type": "true_false",
+                "instructions": "",
+                "required": 0,
+                "conditional_logic": 0,
+                "wrapper": {
+                    "width": "",
+                    "class": "",
+                    "id": ""
+                },
+                "message": "",
+                "default_value": 1,
+                "ui": 1,
+                "ui_on_text": "Show",
+                "ui_off_text": "Hide"
+            },
+            {
+                "key": "field_trimvia_cond_faqs_visibility",
+                "label": "FAQs section",
+                "name": "cond_faqs_section_visibility",
+                "aria-label": "",
+                "type": "true_false",
+                "instructions": "",
+                "required": 0,
+                "conditional_logic": 0,
+                "wrapper": {
+                    "width": "",
+                    "class": "",
+                    "id": ""
+                },
+                "message": "",
+                "default_value": 1,
+                "ui": 1,
+                "ui_on_text": "Show",
+                "ui_off_text": "Hide"
+            },
+            {
+                "key": "field_trimvia_cond_order_steps_visibility",
+                "label": "How it works section",
+                "name": "cond_order_steps_visibility",
+                "aria-label": "",
+                "type": "true_false",
+                "instructions": "Uses homepage order steps content. Also requires the homepage \"How it works\" section to be enabled.",
+                "required": 0,
+                "conditional_logic": 0,
+                "wrapper": {
+                    "width": "",
+                    "class": "",
+                    "id": ""
+                },
+                "message": "",
+                "default_value": 1,
+                "ui": 1,
+                "ui_on_text": "Show",
+                "ui_off_text": "Hide"
+            },
+            {
+                "key": "field_trimvia_cond_popular_categories_visibility",
+                "label": "Popular categories section",
+                "name": "cond_popular_categories_visibility",
+                "aria-label": "",
+                "type": "true_false",
+                "instructions": "Show or hide the \"Need help finding something?\" block at the bottom of this condition page. Content is managed on the Homepage (Home → Conditions Section).",
+                "required": 0,
+                "conditional_logic": 0,
+                "wrapper": {
+                    "width": "",
+                    "class": "",
+                    "id": ""
+                },
+                "message": "",
+                "default_value": 1,
+                "ui": 1,
+                "ui_on_text": "Show",
+                "ui_off_text": "Hide"
+            }
+        ],
+        "location": [
+            [
+                {
+                    "param": "taxonomy",
+                    "operator": "==",
+                    "value": "condition"
+                }
+            ]
+        ],
+        "menu_order": 1,
+        "position": "acf_after_title",
+        "style": "default",
+        "label_placement": "top",
+        "instruction_placement": "label",
+        "hide_on_screen": "",
+        "active": true,
+        "description": "Treatments layout for each condition: taxonomy archive (/condition/slug/) and Page Template Treatments (?condition-slug=). Section visibility matches Service pages.",
+        "show_in_rest": 0
+    }
+]

@@ -89,20 +89,14 @@ if (!is_string($banner_trust_content) || '' === trim($banner_trust_content)) {
 	$banner_trust_content = (string) get_field('banner_trust_content', $page_id);
 }
 
-$banner_dispatch_content = get_field('banner_dispatch_content', $term_acf_id);
-if (!is_string($banner_dispatch_content) || '' === trim($banner_dispatch_content)) {
-	$banner_dispatch_content = (string) get_field('banner_dispatch_content', $page_id);
-}
-
 $condition_banner_content_text = trim(preg_replace('/\s+/', ' ', wp_strip_all_tags((string) $condition_banner_content)));
-$banner_dispatch_content_text = trim(preg_replace('/\s+/', ' ', wp_strip_all_tags((string) $banner_dispatch_content)));
 
 $suitable_product_heading = get_field('suitable_product_heading', $term_acf_id);
 if (!is_string($suitable_product_heading) || '' === trim($suitable_product_heading)) {
 	$suitable_product_heading = get_field('suitable_product_heading', $page_id);
 }
 if (!is_string($suitable_product_heading) || '' === trim($suitable_product_heading)) {
-	$suitable_product_heading = __('The products below are also suitable for you.', 'theme-woopm-child');
+	$suitable_product_heading = __('Choose a treatment', 'theme-woopm-child');
 }
 
 // Submission progress items.
@@ -164,48 +158,9 @@ if ($steps_source) {
 					<p><?php echo esc_html($condition_banner_content_text); ?></p>
 				</div>
 			<?php endif; ?>
-			<?php if ('' !== $banner_dispatch_content_text) : ?>
-				<div class="trimvia-condition-complete-dispatch">
-					<p><?php echo esc_html($banner_dispatch_content_text); ?></p>
-				</div>
-			<?php endif; ?>
 		</div>
 	</div>
 </section>
-
-<?php if (!empty($steps_rows)) : ?>
-	<section class="page-section page-section--alt trimvia-condition-complete-steps">
-		<div class="container">
-			<div class="shop-trust">
-				<?php
-				$visible_index = 0;
-				foreach ($steps_rows as $row) :
-					$icon = isset($row['icon']) ? (string) $row['icon'] : '';
-					$heading = isset($row['heading']) ? trim((string) $row['heading']) : '';
-					if ('' === $icon && '' === $heading) {
-						continue;
-					}
-					$is_completed = (0 === $visible_index);
-					$visible_index++;
-					?>
-					<div class="shop-trust-item<?php echo $is_completed ? ' is-completed' : ''; ?>">
-						<div class="shop-trust-icon">
-							<?php if ('' !== $icon) : ?>
-								<i class="<?php echo esc_attr($icon); ?>" aria-hidden="true"></i>
-							<?php else : ?>
-								<i class="fa-solid fa-circle-check" aria-hidden="true"></i>
-							<?php endif; ?>
-						</div>
-						<h4><?php echo esc_html($heading); ?></h4>
-						<p>
-							<?php echo $is_completed ? esc_html__('Completed', 'theme-woopm-child') : esc_html__('Next step', 'theme-woopm-child'); ?>
-						</p>
-					</div>
-				<?php endforeach; ?>
-			</div>
-		</div>
-	</section>
-<?php endif; ?>
 
 <?php if ($recommend_class) : ?>
 	<section id="recommended_products" class="page-section trimvia-condition-complete-recommended">
@@ -275,49 +230,39 @@ if ($steps_source) {
 	</div>
 </section>
 
-<section class="page-section page-section--alt trimvia-condition-complete-usp">
-	<div class="container">
-		<div class="shop-trust">
-			<?php
-			$usp_rows = get_field('footer_usp_bar', $page_id);
-			if (is_array($usp_rows) && !empty($usp_rows)) :
-				foreach ($usp_rows as $usp_row) :
-					$usp_icon_id = $usp_row['icon'] ?? 0;
-					$usp_title = isset($usp_row['title']) ? trim((string) $usp_row['title']) : '';
-					if ('' === $usp_title) {
+<?php if (!empty($steps_rows)) : ?>
+	<section class="page-section trimvia-condition-complete-steps">
+		<div class="container">
+			<div class="shop-trust">
+				<?php
+				$visible_index = 0;
+				foreach ($steps_rows as $row) :
+					$icon = isset($row['icon']) ? (string) $row['icon'] : '';
+					$heading = isset($row['heading']) ? trim((string) $row['heading']) : '';
+					if ('' === $icon && '' === $heading) {
 						continue;
 					}
+					$is_completed = (0 === $visible_index);
+					$visible_index++;
 					?>
-					<div class="shop-trust-item">
+					<div class="shop-trust-item<?php echo $is_completed ? ' is-completed' : ''; ?>">
 						<div class="shop-trust-icon">
-							<?php if (!empty($usp_icon_id)) : ?>
-								<?php echo wp_get_attachment_image((int) $usp_icon_id, 'thumbnail', false, array('loading' => 'lazy')); ?>
+							<?php if ('' !== $icon) : ?>
+								<i class="<?php echo esc_attr($icon); ?>" aria-hidden="true"></i>
 							<?php else : ?>
 								<i class="fa-solid fa-circle-check" aria-hidden="true"></i>
 							<?php endif; ?>
 						</div>
-						<h4><?php echo esc_html($usp_title); ?></h4>
+						<h4><?php echo esc_html($heading); ?></h4>
+						<p>
+							<?php echo $is_completed ? esc_html__('Completed', 'theme-woopm-child') : esc_html__('Next step', 'theme-woopm-child'); ?>
+						</p>
 					</div>
-				<?php
-				endforeach;
-			else :
-				?>
-				<div class="shop-trust-item">
-					<div class="shop-trust-icon"><i class="fa-solid fa-user-doctor" aria-hidden="true"></i></div>
-					<h4><?php esc_html_e('UK-Prescribing Pharmacists', 'theme-woopm-child'); ?></h4>
-				</div>
-				<div class="shop-trust-item">
-					<div class="shop-trust-icon"><i class="fa-solid fa-notes-medical" aria-hidden="true"></i></div>
-					<h4><?php esc_html_e('No GP Appointments Needed', 'theme-woopm-child'); ?></h4>
-				</div>
-				<div class="shop-trust-item">
-					<div class="shop-trust-icon"><i class="fa-solid fa-truck-fast" aria-hidden="true"></i></div>
-					<h4><?php esc_html_e('Fast & Discreet Delivery', 'theme-woopm-child'); ?></h4>
-				</div>
-			<?php endif; ?>
+				<?php endforeach; ?>
+			</div>
 		</div>
-	</div>
-</section>
+	</section>
+<?php endif; ?>
 
 <script>
 	document.addEventListener('DOMContentLoaded', function () {

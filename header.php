@@ -51,14 +51,23 @@ if (is_user_logged_in()) {
 	$secondary_link = $account_page_link;
 }
 
-$primary_text = trim((string) get_theme_mod('trimvia_header_primary_button_text', __('Start Consultation', 'theme-woopm-child')));
-if ($primary_text === '' || stripos($primary_text, 'consultation') !== false) {
-	$primary_text = __('Start Consultation', 'theme-woopm-child');
-}
+$is_order_received_page = function_exists('is_order_received_page') && is_order_received_page();
+$default_shop_link      = function_exists('wc_get_page_id') ? get_permalink(wc_get_page_id('shop')) : home_url('/shop/');
+$default_shop_link      = $default_shop_link ? $default_shop_link : home_url('/shop/');
 
-$primary_link = trim((string) get_theme_mod('trimvia_header_primary_button_link', home_url('/shop/')));
-if ($primary_link === '' || stripos($primary_link, 'consultation') !== false) {
-	$primary_link = home_url('/shop/');
+if ($is_order_received_page) {
+	$primary_text = __('Continue shopping', 'theme-woopm-child');
+	$primary_link = $default_shop_link;
+} else {
+	$primary_text = trim((string) get_theme_mod('trimvia_header_primary_button_text', __('Start Consultation', 'theme-woopm-child')));
+	if ($primary_text === '' || stripos($primary_text, 'consultation') !== false) {
+		$primary_text = __('Start Consultation', 'theme-woopm-child');
+	}
+
+	$primary_link = trim((string) get_theme_mod('trimvia_header_primary_button_link', $default_shop_link));
+	if ($primary_link === '' || stripos($primary_link, 'consultation') !== false) {
+		$primary_link = $default_shop_link;
+	}
 }
 
 $header_classes = 'header';
@@ -121,7 +130,15 @@ if (!empty($sticky_header_logo_url)) {
 				</a>
 			<?php endif; ?>
 			<?php if (!empty($secondary_text) && !empty($secondary_link)) : ?>
-				<a href="<?php echo esc_url($secondary_link); ?>" class="btn-ghost"><?php echo esc_html($secondary_text); ?></a>
+				<a
+					href="<?php echo esc_url($secondary_link); ?>"
+					class="btn-ghost"
+					data-trimvia-auth-btn="1"
+					data-login-text="<?php echo esc_attr(__('Login', 'theme-woopm-child')); ?>"
+					data-account-text="<?php echo esc_attr(__('My Account', 'theme-woopm-child')); ?>"
+					data-login-url="<?php echo esc_url($default_secondary_link); ?>"
+					data-account-url="<?php echo esc_url($account_page_link); ?>"
+				><?php echo esc_html($secondary_text); ?></a>
 			<?php endif; ?>
 			<?php if (!empty($primary_text) && !empty($primary_link)) : ?>
 				<a href="<?php echo esc_url($primary_link); ?>" class="btn-accent"><?php echo esc_html($primary_text); ?></a>

@@ -1,0 +1,231 @@
+/**
+ * Prescriber onboarding popups (PIN + signature) — Trimvia modal styling.
+ */
+
+/* Shared overlay + centered dialog */
+.prescriber-pin-gen-wrapper.make-popup,
+.prescriber-pin-gen-wrapper.make-popup:not(.d-none),
+.prescriber-sign-gen-wrapper.make-popup:not(.d-none),
+.prescriber-signature-modal .prescriber-sign-gen-wrapper.make-popup {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 1060 !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 1.75rem 1rem;
+  overflow-y: auto;
+}
+
+.prescriber-pin-gen-wrapper.make-popup::before,
+.prescriber-sign-gen-wrapper.make-popup:not(.d-none)::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: #000;
+  opacity: 0.5;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.prescriber-pin-gen-wrapper.make-popup .prescriber-pin-gen-container.popup-content-wrapper,
+.prescriber-sign-gen-wrapper.make-popup .prescriber-sign-gen-container.popup-content-wrapper {
+  position: relative !important;
+  z-index: 1 !important;
+  background: #fff;
+  width: min(900px, calc(100vw - 2rem));
+  max-width: 900px;
+  height: auto !important;
+  min-height: 420px;
+  max-height: calc(100vh - 3.5rem);
+  overflow-y: auto;
+  margin: 0 !important;
+  padding: 24px 28px 28px !important;
+  border-radius: 12px !important;
+  box-shadow: 0 18px 50px rgba(20, 25, 41, 0.22);
+  top: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  right: auto !important;
+}
+
+.prescriber-pin-gen-wrapper.make-popup .loader,
+.prescriber-sign-gen-wrapper.make-popup .loader,
+.prescriber-signature-modal .loader {
+  position: static !important;
+  inset: auto !important;
+  display: inline-flex;
+  width: auto;
+  margin: 0 0 0 8px;
+  vertical-align: middle;
+}
+
+/* Close (X) — top right */
+.prescriber-sign-gen-wrapper .close-popup {
+  display: flex;
+  justify-content: flex-end;
+  margin: -8px -8px 12px 0;
+}
+
+.prescriber-sign-gen-wrapper .close-me {
+  border: none;
+  background: transparent;
+  font-size: 32px;
+  line-height: 1;
+  color: var(--g600, #64748b);
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.prescriber-sign-gen-wrapper .close-me:hover {
+  color: var(--midnight, #060e24);
+}
+
+.prescriber-pin-gen-wrapper h2,
+.prescriber-sign-gen-wrapper h2 {
+  margin: 0 0 10px;
+  font-family: var(--fd, inherit);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--midnight, #060e24);
+}
+
+.prescriber-pin-gen-wrapper > .prescriber-pin-gen-container > p,
+.prescriber-pin-gen-wrapper .prescriber-pin-gen-container > p,
+.prescriber-sign-gen-wrapper > .prescriber-sign-gen-container > p,
+.prescriber-sign-gen-wrapper .prescriber-sign-gen-container > p {
+  margin: 0 0 16px;
+  color: var(--g600, #64748b);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* PIN input */
+.prescriber-pin-gen-wrapper .pin-input {
+  display: block;
+  width: 100%;
+  max-width: 220px;
+  margin: 0 0 20px;
+  padding: 12px 16px;
+  font-size: 1.25rem;
+  letter-spacing: 0.35em;
+  text-align: center;
+  border: 2px solid var(--g300, #cbd5e1);
+  border-radius: 10px;
+  background: #f9fafb;
+  color: var(--midnight, #060e24);
+}
+
+.prescriber-pin-gen-wrapper .pin-input:focus {
+  outline: none;
+  border-color: var(--blue, #1a56e8);
+  box-shadow: 0 0 0 3px rgba(26, 86, 232, 0.15);
+}
+
+/* Signature pad */
+.prescriber-sign-gen-wrapper #presc-jsignature {
+  display: block;
+  width: 100%;
+  height: 220px;
+  margin: 0 0 20px;
+  background: #f9f9f9;
+  border: 2px dotted var(--g300, #cbd5e1);
+  border-radius: 10px;
+}
+
+.prescriber-sign-gen-wrapper #presc-jsignature canvas {
+  height: 200px !important;
+}
+
+/* Action buttons — always visible */
+.prescriber-pin-gen-wrapper .form-input-wrapper,
+.prescriber-sign-gen-wrapper .form-input-wrapper {
+  display: flex !important;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 0 !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.prescriber-pin-gen-wrapper .form-input-wrapper .btn,
+.prescriber-pin-gen-wrapper .form-input-wrapper a.btn,
+.prescriber-sign-gen-wrapper .form-input-wrapper .btn,
+.prescriber-sign-gen-wrapper .form-input-wrapper a.btn {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  visibility: visible !important;
+  opacity: 1 !important;
+  text-decoration: none !important;
+  border: none !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  cursor: pointer;
+}
+
+.prescriber-pin-gen-wrapper .form-input-wrapper .theme-btn,
+.prescriber-pin-gen-wrapper .form-input-wrapper a.theme-btn,
+.prescriber-sign-gen-wrapper .form-input-wrapper .theme-btn,
+.prescriber-sign-gen-wrapper .form-input-wrapper a.theme-btn {
+  background: var(--blue, #1a56e8) !important;
+  color: #fff !important;
+  border-radius: 50px !important;
+  padding: 10px 24px !important;
+  box-shadow: 0 4px 16px rgba(26, 86, 232, 0.22) !important;
+}
+
+.prescriber-pin-gen-wrapper .form-input-wrapper .theme-btn:hover,
+.prescriber-pin-gen-wrapper .form-input-wrapper a.theme-btn:hover,
+.prescriber-sign-gen-wrapper .form-input-wrapper .theme-btn:hover,
+.prescriber-sign-gen-wrapper .form-input-wrapper a.theme-btn:hover {
+  background: var(--blue-dark, #0f3ba6) !important;
+  color: #fff !important;
+}
+
+.prescriber-pin-gen-wrapper .form-input-wrapper .theme-btn-s4,
+.prescriber-sign-gen-wrapper .form-input-wrapper .theme-btn-s4,
+.prescriber-sign-gen-wrapper .form-input-wrapper .clear-sign {
+  background: transparent !important;
+  color: var(--g600, #64748b) !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 10px 12px !important;
+  text-transform: capitalize;
+}
+
+.prescriber-pin-gen-wrapper .form-input-wrapper .theme-btn-s4:hover,
+.prescriber-sign-gen-wrapper .form-input-wrapper .theme-btn-s4:hover,
+.prescriber-sign-gen-wrapper .form-input-wrapper .clear-sign:hover {
+  color: var(--blue, #1a56e8) !important;
+  background: transparent !important;
+}
+
+.prescriber-pin-gen-wrapper .err-wrapper,
+.prescriber-pin-gen-wrapper .succ-wrapper,
+.prescriber-sign-gen-wrapper .err-wrapper,
+.prescriber-sign-gen-wrapper .succ-wrapper {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+}
+
+/* PIN dialog is slightly narrower than the signature pad */
+.prescriber-pin-gen-wrapper.make-popup .prescriber-pin-gen-container.popup-content-wrapper {
+  width: min(480px, calc(100vw - 2rem));
+  max-width: 480px;
+  min-height: auto;
+}
+
+/* Blur page behind onboarding popups (presc-filter-page) */
+.presc-filter-page .page-wrapper {
+  filter: blur(7px);
+}
+
+.presc-filter-page {
+  overflow: hidden;
+}

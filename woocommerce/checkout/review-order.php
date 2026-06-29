@@ -67,15 +67,6 @@ defined('ABSPATH') || exit;
 			</div>
 		<?php endforeach; ?>
 
-		<?php if (WC()->cart->needs_shipping() && WC()->cart->show_shipping()) : ?>
-			<?php do_action('woocommerce_review_order_before_shipping'); ?>
-			<div class="summary-line shipping">
-				<span><?php esc_html_e('Delivery', 'theme-woopm-child'); ?></span>
-				<span><?php echo wp_kses_post(WC()->cart->get_cart_shipping_total()); ?></span>
-			</div>
-			<?php do_action('woocommerce_review_order_after_shipping'); ?>
-		<?php endif; ?>
-
 		<?php foreach (WC()->cart->get_fees() as $fee) : ?>
 			<div class="summary-line fee">
 				<span><?php echo esc_html($fee->name); ?></span>

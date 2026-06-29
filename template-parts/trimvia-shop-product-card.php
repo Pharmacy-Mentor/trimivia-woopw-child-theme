@@ -19,7 +19,7 @@ if ( isset( $args ) && is_array( $args ) && isset( $args['product'] ) && $args['
 } elseif ( isset( $product ) && $product instanceof WC_Product ) {
 	$shop_product = $product;
 }
-if ( ! $shop_product instanceof WC_Product ) {
+if ( ! $shop_product instanceof WC_Product || ! $shop_product->is_visible() ) {
 	return;
 }
 
@@ -53,7 +53,10 @@ if ('' !== $product_short_description_raw) {
 $product_badge_label = '';
 $product_badge_class = '';
 
-if ($shop_product->is_featured()) {
+if (function_exists('trimvia_product_is_out_of_stock') && trimvia_product_is_out_of_stock($shop_product)) {
+	$product_badge_label = __('Out of stock', 'theme-woopm-child');
+	$product_badge_class = 'product-badge--out-of-stock';
+} elseif ($shop_product->is_featured()) {
 	$product_badge_label = __('Most Popular', 'theme-woopm-child');
 	$product_badge_class = 'product-badge--popular';
 } elseif (false !== strpos(strtolower((string) $product_categories), 'oral')) {
@@ -112,7 +115,18 @@ if ($consultation_required) {
 	$product_button_text = __('Start Assessment', 'theme-woopm-child');
 }
 ?>
-<article class="product-card rv">
+<article class="product-card product-card--linked rv">
+	<a class="product-card-hit" href="<?php echo esc_url($product_link); ?>" aria-labelledby="<?php echo esc_attr('product-card-title-' . $product_id); ?>">
+		<span class="screen-reader-text">
+			<?php
+			printf(
+				/* translators: %s: product name */
+				esc_html__('View %s', 'theme-woopm-child'),
+				esc_html($product_title)
+			);
+			?>
+		</span>
+	</a>
 	<div class="product-img">
 		<?php if ('' !== $product_badge_label) : ?>
 			<span class="product-badge <?php echo esc_attr($product_badge_class); ?>"><?php echo esc_html($product_badge_label); ?></span>
@@ -129,7 +143,7 @@ if ($consultation_required) {
 		<?php if ('' !== $product_categories) : ?>
 			<div class="product-type"><?php echo esc_html(wp_strip_all_tags($product_categories)); ?></div>
 		<?php endif; ?>
-		<h3><?php echo esc_html($product_title); ?></h3>
+		<h3 id="<?php echo esc_attr('product-card-title-' . $product_id); ?>"><?php echo esc_html($product_title); ?></h3>
 		<?php if ('' !== $product_subtitle) : ?>
 			<div class="product-subtitle"><?php echo esc_html($product_subtitle); ?></div>
 		<?php endif; ?>
@@ -147,9 +161,8 @@ if ($consultation_required) {
 			<div class="product-price">
 				<span class="price-from"><?php esc_html_e('From', 'theme-woopm-child'); ?></span>
 				<span class="price-value"><?php echo wp_kses_post(wc_price($product_price_value)); ?></span>
-				<span class="price-period"><?php esc_html_e('/month', 'theme-woopm-child'); ?></span>
 			</div>
-			<a href="<?php echo esc_url($product_button_url); ?>" class="btn-shop">
+			<a href="<?php echo esc_url($product_button_url); ?>" class="btn-shop" aria-labelledby="<?php echo esc_attr('product-card-title-' . $product_id); ?>">
 				<?php echo esc_html($product_button_text); ?>
 				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
 			</a>

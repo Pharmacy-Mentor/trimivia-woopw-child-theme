@@ -13,8 +13,6 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
-get_header();
-
 $term = null;
 if (isset($_GET['condition-slug'])) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 	$condition_slug = sanitize_text_field(wp_unslash($_GET['condition-slug']));
@@ -23,6 +21,13 @@ if (isset($_GET['condition-slug'])) { // phpcs:ignore WordPress.Security.NonceVe
 		$term = $found;
 	}
 }
+
+if ($term instanceof WP_Term && function_exists('trimvia_condition_has_visible_products') && !trimvia_condition_has_visible_products($term)) {
+	wp_safe_redirect(home_url('/all-conditions/'));
+	exit;
+}
+
+get_header();
 
 if (!$term) :
 	?>

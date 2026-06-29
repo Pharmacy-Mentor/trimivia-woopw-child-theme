@@ -18,7 +18,7 @@ $hero_secondary_cta  = array(
 );
 $hero_rating_score   = '4.8';
 $hero_rating_label   = 'Google Reviews';
-$hero_pills          = array('GPhC Registered', 'Next-Day Delivery', 'UK Prescribers');
+$hero_pills          = array('GPhC Registered', 'Tracked Delivery', 'UK Prescribers');
 $hero_bg_url         = '';
 $hero_bg_mobile_url  = '';
 
@@ -364,10 +364,10 @@ if (function_exists('get_field') && $home_page_id) {
 
     $why_media_image_field = get_field('why_section_media_image', $home_page_id);
     if (function_exists('trimvia_acf_image_url')) {
-        $why_media_image = trimvia_acf_image_url($why_media_image_field, 'large');
+        $why_media_image = trimvia_acf_image_url($why_media_image_field, 'full');
     }
     if (!$why_media_image && is_numeric($why_media_image_field)) {
-        $why_media_image = wp_get_attachment_image_url((int) $why_media_image_field, 'large');
+        $why_media_image = wp_get_attachment_image_url((int) $why_media_image_field, 'full');
     }
 
     $why_media_label_value = trim((string) get_field('why_section_media_label', $home_page_id));
@@ -514,7 +514,7 @@ $trust_bar_items = array(
   ),
   array(
     'icon_class' => 'fa-solid fa-truck-fast',
-    'title'      => 'Next-Day Delivery',
+    'title'      => 'Tracked Delivery',
     'subtitle'   => 'Discreet, unbranded packaging',
   ),
   array(
@@ -626,8 +626,8 @@ if (function_exists('get_field')) {
       </div>
       <div class="rv rv-d2" style="display:flex;flex-direction:column;gap:24px;">
         <?php if (!empty($why_media_image)) : ?>
-          <div class="media-zone media-zone--dark media-zone--why" style="min-height:320px;">
-            <img src="<?php echo esc_url($why_media_image); ?>" alt="<?php echo esc_attr($why_media_label); ?>" class="why-media-image">
+          <div class="media-zone media-zone--dark media-zone--why media-zone--filled">
+            <img src="<?php echo esc_url($why_media_image); ?>" alt="<?php echo esc_attr($why_media_label); ?>" class="why-media-image" loading="lazy" decoding="async">
           </div>
         <?php else : ?>
           <div class="media-zone media-zone--dark media-zone--why" style="min-height:320px;">
@@ -1035,9 +1035,9 @@ if (function_exists('get_field')) {
       </div>
     </div>
     <div class="cta-media rv rv-d2">
-      <div style="width:100%;min-height:380px;border-radius:32px;overflow:hidden;position:relative;">
-        <div style="position:absolute;inset:0;background:linear-gradient(135deg, rgba(10,41,112,0.5) 0%, rgba(26,86,232,0.35) 50%, rgba(6,14,36,0.25) 100%);z-index:1;border-radius:32px;mix-blend-mode:multiply;"></div>
-        <div style="position:absolute;inset:0;background:linear-gradient(to left, transparent 50%, rgba(6,14,36,0.6) 100%);z-index:2;border-radius:32px;"></div>
+      <div class="cta-media-frame">
+        <div class="cta-media-overlay cta-media-overlay--tint" aria-hidden="true"></div>
+        <div class="cta-media-overlay cta-media-overlay--fade" aria-hidden="true"></div>
         <?php if (!empty($cta_media_image)) : ?>
           <img src="<?php echo esc_url($cta_media_image); ?>" alt="<?php echo esc_attr($cta_heading); ?>" class="cta-media-image">
         <?php else : ?>

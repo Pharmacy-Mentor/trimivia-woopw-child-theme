@@ -1,5 +1,8 @@
 /**
- * Sync Trimvia consultation chrome (step strip, progress bar, sidebar list) with CFLP multi-group forms.
+ * Trimvia consultation helpers for WooPW CFLP forms.
+ *
+ * WooPW 1.8 `frontend-script.js` owns v2 step navigation and `.cflp-v2-progress-head`.
+ * This file only mirrors WooPW sidebar state into the Trimvia aside and styles radio pills.
  */
 (function () {
 	'use strict';
@@ -12,145 +15,206 @@
 		return Array.prototype.slice.call((ctx || document).querySelectorAll(sel));
 	}
 
-	function getMount() {
-		return qs('.trimvia-consult-woo-form');
-	}
-
-	function getCflpForm(mount) {
-		return mount ? mount.querySelector('form.cflp-form') : null;
-	}
-
-	function stepLabelsFromGroups(form) {
-		var wrappers = qsa('.form-group-wrapper', form);
-		return wrappers.map(function (wrap) {
-			var titleEl = wrap.querySelector('.form-group-title');
-			if (!titleEl) {
-				return '';
-			}
-			var clone = titleEl.cloneNode(true);
-			qsa('.count-group', clone).forEach(function (n) {
-				n.parentNode.removeChild(n);
-			});
-			return (clone.textContent || '').replace(/\s+/g, ' ').trim();
-		});
-	}
-
-	function activeGroupIndex(form) {
-		var wrappers = qsa('.form-group-wrapper', form);
-		var idx = wrappers.findIndex(function (w) {
-			return !w.classList.contains('deactive-group');
-		});
-		return idx >= 0 ? idx : 0;
-	}
-
-	function renderStepIndicator(container, labels, activeIdx) {
-		if (!container) {
-			return;
-		}
-		container.innerHTML = '';
-		labels.forEach(function (label, i) {
-			var step = document.createElement('div');
-			step.className = 'step-ind';
-			step.setAttribute('role', 'listitem');
-			if (i === activeIdx) {
-				step.classList.add('active');
-			} else if (i < activeIdx) {
-				step.classList.add('completed');
-			}
-			step.innerHTML =
-				'<div class="step-ind-num">' +
-				String(i + 1) +
-				'</div><div class="step-ind-label">' +
-				escapeHtml(label || 'Step ' + (i + 1)) +
-				'</div>';
-			container.appendChild(step);
-		});
-	}
-
 	function escapeHtml(text) {
 		var div = document.createElement('div');
 		div.textContent = text;
 		return div.innerHTML;
 	}
 
-	function renderProgressList(listEl, labels, activeIdx) {
-		if (!listEl || !labels.length) {
+	function getCflpForm() {
+		var mount = qs('.trimvia-consult-woo-form');
+		return mount ? mount.querySelector('form.cflp-form') : null;
+	}
+
+	function isVisible(el) {
+		return el && el.style.display !== 'none' && !el.classList.contains('cflp-v2-step-hidden');
+	}
+
+	/**
+	 * Authoritative active step — form group visibility, not sidebar item classes.
+	 * Sidebar classes are toggled during field validation and can briefly desync.
+	 */
+	function getActiveStepIndex(form) {
+		var activeGroup = form.querySelector('.form-group-wrapper.cflp-v2-step-active');
+		if (!activeGroup) {
+			return null;
+		}
+
+		var stepIndex = parseInt(activeGroup.getAttribute('data-step-index') || '', 10);
+		if (!Number.isNaN(stepIndex)) {
+			return stepIndex;
+		}
+
+		var groups = qsa('.form-group-wrapper', form);
+		var pos = groups.indexOf(activeGroup);
+		return pos >= 0 ? pos : null;
+	}
+
+	function getSidebarItemStepIndex(item, fallbackIndex) {
+		var stepIndex = parseInt(item.getAttribute('data-step-index') || '', 10);
+		if (!Number.isNaN(stepIndex)) {
+			return stepIndex;
+		}
+		stepIndex = parseInt(item.getAttribute('data-group-index') || '', 10);
+		if (!Number.isNaN(stepIndex)) {
+			return stepIndex;
+		}
+		return fallbackIndex;
+	}
+
+	function syncTrimviaSidebar(form) {
+		var list = document.getElementById('trimvia-consult-progress-list');
+		var woopwItems = form.querySelectorAll('#formSidebar .sidebar-item');
+		if (!list || !woopwItems.length) {
 			return;
 		}
-		listEl.innerHTML = '';
-		labels.forEach(function (label, i) {
-			var row = document.createElement('div');
-			row.className = 'progress-step';
-			if (i === activeIdx) {
-				row.classList.add('active');
-			} else if (i < activeIdx) {
-				row.classList.add('completed');
+
+		var activeStepIndex = getActiveStepIndex(form);
+		var rows = [];
+		var stepNum = 0;
+
+		woopwItems.forEach(function (item, itemIndex) {
+			if (!isVisible(item)) {
+				return;
 			}
-			row.innerHTML =
-				'<span class="progress-step-num" aria-hidden="true">' +
-				String(i + 1) +
-				'</span>' +
-				'<span class="progress-step-label">' +
-				escapeHtml(label || 'Step ' + (i + 1)) +
-				'</span>';
-			listEl.appendChild(row);
+			stepNum++;
+			var titleEl = item.querySelector('.sidebar-title');
+			var label = titleEl ? titleEl.textContent.replace(/\s+/g, ' ').trim() : 'Step ' + stepNum;
+			var itemStepIndex = getSidebarItemStepIndex(item, itemIndex);
+			var isActive = activeStepIndex !== null && itemStepIndex === activeStepIndex;
+			var rowClass = 'progress-step';
+			if (isActive) {
+				rowClass += ' active';
+			} else if (item.classList.contains('cflp-v2-complete-step')) {
+				rowClass += ' completed';
+			}
+			rows.push(
+				'<div class="' +
+					rowClass +
+					'">' +
+					'<span class="progress-step-num" aria-hidden="true">' +
+					stepNum +
+					'</span>' +
+					'<span class="progress-step-label">' +
+					escapeHtml(label || 'Step ' + stepNum) +
+					'</span>' +
+					'</div>'
+			);
+		});
+
+		var nextHtml = rows.join('');
+		if (list.innerHTML !== nextHtml) {
+			list.innerHTML = nextHtml;
+		}
+	}
+
+	function syncRadioPills(form) {
+		qsa('.form-check.radio', form).forEach(function (wrap) {
+			var input = wrap.querySelector('input[type="radio"]');
+			var label = wrap.querySelector('label.form-check-label');
+			if (!input || !label) {
+				return;
+			}
+			var isChecked = input.checked;
+			wrap.classList.toggle('trimvia-radio-selected', isChecked);
+			label.classList.toggle('selected', isChecked);
 		});
 	}
 
-	function updateProgressBar(activeIdx, total) {
-		var pct = total ? Math.round(((activeIdx + 1) / total) * 100) : 100;
-		var fill = document.getElementById('trimvia-consult-progress-fill');
-		var pctEl = document.getElementById('trimvia-consult-progress-pct');
-		var curEl = document.getElementById('trimvia-consult-current-step');
-		if (fill) {
-			fill.style.width = pct + '%';
+	var sidebarSyncTimer = null;
+
+	function scheduleSidebarSync(form) {
+		if (sidebarSyncTimer) {
+			window.clearTimeout(sidebarSyncTimer);
 		}
-		if (pctEl) {
-			pctEl.textContent = pct + '%';
-		}
-		if (curEl) {
-			curEl.textContent = String(activeIdx + 1);
-		}
-		var stepTotalEl = document.getElementById('trimvia-consult-step-total');
-		if (stepTotalEl) {
-			stepTotalEl.textContent = total ? String(total) : '1';
-		}
-		var stepOfEl = document.getElementById('trimvia-consult-step-of');
-		if (stepOfEl) {
-			stepOfEl.style.display = total <= 1 ? 'none' : '';
-		}
+		sidebarSyncTimer = window.setTimeout(function () {
+			sidebarSyncTimer = null;
+			syncTrimviaSidebar(form);
+		}, 120);
 	}
 
-	function syncChrome(form) {
-		var labels = stepLabelsFromGroups(form);
-		if (!labels.length) {
-			return;
+	function syncAll(form) {
+		if (document.body.classList.contains('cflp-multistep-v2')) {
+			syncTrimviaSidebar(form);
 		}
-		var activeIdx = activeGroupIndex(form);
-		var indicator = document.getElementById('trimvia-consult-step-indicator');
-		var list = document.getElementById('trimvia-consult-progress-list');
-		renderStepIndicator(indicator, labels, activeIdx);
-		renderProgressList(list, labels, activeIdx);
-		updateProgressBar(activeIdx, labels.length);
+		syncRadioPills(form);
 	}
 
 	function boot() {
-		var mount = getMount();
-		var form = getCflpForm(mount);
+		var form = getCflpForm();
 		if (!form) {
 			return;
 		}
 
-		syncChrome(form);
+		syncAll(form);
 
-		var observer = new MutationObserver(function () {
-			syncChrome(form);
+		form.addEventListener('change', function (event) {
+			if (event.target && event.target.matches('input[type="radio"]')) {
+				syncRadioPills(form);
+			}
 		});
-		observer.observe(form, {
-			subtree: true,
-			attributes: true,
-			attributeFilter: ['class'],
+
+		var groupObserver = new MutationObserver(function (mutations) {
+			var stepChanged = false;
+
+			mutations.forEach(function (mutation) {
+				if (mutation.type !== 'attributes' || mutation.attributeName !== 'class') {
+					return;
+				}
+				var target = mutation.target;
+				if (!target.classList || !target.classList.contains('form-group-wrapper')) {
+					return;
+				}
+				var wasActive =
+					mutation.oldValue && mutation.oldValue.indexOf('cflp-v2-step-active') !== -1;
+				var isActive = target.classList.contains('cflp-v2-step-active');
+				if (wasActive !== isActive) {
+					stepChanged = true;
+				}
+			});
+
+			if (stepChanged) {
+				syncTrimviaSidebar(form);
+				return;
+			}
+
+			syncRadioPills(form);
 		});
+
+		qsa('.form-group-wrapper', form).forEach(function (wrap) {
+			groupObserver.observe(wrap, {
+				attributes: true,
+				attributeFilter: ['class'],
+				attributeOldValue: true,
+			});
+		});
+
+		var sidebar = form.querySelector('#formSidebar');
+		if (sidebar) {
+			var sidebarObserver = new MutationObserver(function () {
+				scheduleSidebarSync(form);
+			});
+
+			sidebarObserver.observe(sidebar, {
+				attributes: true,
+				childList: true,
+				subtree: true,
+				attributeFilter: ['class', 'style'],
+			});
+		}
+
+		qsa('.cflp-v2-next, .cflp-v2-prev, .step-nav button', form).forEach(function (btn) {
+			btn.addEventListener('click', function () {
+				window.setTimeout(function () {
+					syncAll(form);
+				}, 50);
+			});
+		});
+
+		// WooPW v2 init runs after DOMContentLoaded — resync once it has applied state.
+		window.setTimeout(function () {
+			syncAll(form);
+		}, 350);
 	}
 
 	if (document.readyState === 'loading') {
