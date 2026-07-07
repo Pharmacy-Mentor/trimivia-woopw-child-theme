@@ -13,6 +13,14 @@ $active_tab = isset($_GET['tab']) ? sanitize_key(wp_unslash($_GET['tab'])) : 'lo
 if (!$show_registration || !in_array($active_tab, array('login', 'register'), true)) {
 	$active_tab = 'login';
 }
+
+$login_redirect = function_exists('trimvia_get_request_auth_redirect_target')
+	? trimvia_get_request_auth_redirect_target('')
+	: '';
+if ($login_redirect && function_exists('trimvia_set_consultation_auth_redirect')) {
+	trimvia_set_consultation_auth_redirect($login_redirect);
+}
+$login_form_action = esc_url(add_query_arg(array()));
 ?>
 
 <section class="page-hero trimvia-account-hero">
@@ -70,8 +78,13 @@ if (!$show_registration || !in_array($active_tab, array('login', 'register'), tr
 				<div id="customer_login">
 					<div class="trimvia-auth-panel <?php echo 'login' === $active_tab ? 'is-active' : ''; ?>" <?php echo 'login' === $active_tab ? '' : 'hidden'; ?>>
 						<h2><?php esc_html_e('Log in to your account', 'woocommerce'); ?></h2>
-						<form class="woocommerce-form woocommerce-form-login login" method="post">
+						<form class="woocommerce-form woocommerce-form-login login" method="post" action="<?php echo $login_form_action; ?>">
 							<?php do_action('woocommerce_login_form_start'); ?>
+							<?php if ($login_redirect) : ?>
+								<input type="hidden" name="redirect" value="<?php echo esc_attr($login_redirect); ?>" />
+								<input type="hidden" name="redirect_to" value="<?php echo esc_attr($login_redirect); ?>" />
+								<input type="hidden" name="_redirect_url" value="<?php echo esc_attr($login_redirect); ?>" />
+							<?php endif; ?>
 
 							<p class="woocommerce-form-row woocommerce-form-row--wide form-row form-row-wide">
 								<label for="username"><?php esc_html_e('Username or email address', 'woocommerce'); ?>&nbsp;<span class="required">*</span></label>

@@ -92,30 +92,41 @@ $upload_fields = array(
 			<div class="woocommerce-order-images trimvia-upload-gallery">
 				<?php foreach ($patient_images as $image) : ?>
 					<?php
+					$image_path = $image['path'] ?? '';
+					if (function_exists('trimvia_resolve_consultation_file_path')) {
+						$resolved_path = trimvia_resolve_consultation_file_path($image);
+						if (!empty($resolved_path)) {
+							$image_path = $resolved_path;
+						}
+					}
+					if (empty($image_path) || !is_file($image_path)) {
+						continue;
+					}
 					$finfo = new finfo(FILEINFO_MIME_TYPE);
-					$type  = $finfo->file($image['path']);
+					$type  = $finfo->file($image_path);
 					if (!in_array($type, array('image/png', 'image/jpeg', 'image/jpg', 'image/webp'), true)) {
 						continue;
 					}
-					$data_base64 = 'data:' . $type . ';base64,' . base64_encode(file_get_contents($image['path'])); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
+					$data_base64 = 'data:' . $type . ';base64,' . base64_encode(file_get_contents($image_path)); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
 					$image_label = '';
 					if (!empty($image['field_name'])) {
 						$image_label = ucwords(str_replace('_', ' ', $image['field_name']));
 					}
 					?>
 					<figure class="trimvia-upload-gallery__item">
-						<?php if ('pre-screen' === $order_status || 'processing' === $order_status) : ?>
-							<div class="trimvia-upload-gallery__loading disabled d-none" aria-hidden="true"><i class="fa fa-circle-o-notch fa-spin fa-fw"></i></div>
-							<a href="#" class="delete-img-btn trimvia-upload-gallery__delete" aria-label="<?php esc_attr_e('Delete this image', 'woopw'); ?>">
-						<?php endif; ?>
-						<div class="trimvia-upload-gallery__media">
-							<img class="img-squared" src="<?php echo esc_attr($data_base64); ?>" alt="<?php echo esc_attr($image_label ?: $image['file']); ?>" data-title="<?php echo esc_attr($image['file']); ?>" />
+						<div class="trimvia-upload-gallery__media" style="aspect-ratio: 4 / 3; background: var(--off-white); display: flex; align-items: center; justify-content: center; overflow: hidden;">
+							<img class="img-squared" src="<?php echo esc_attr($data_base64); ?>" alt="<?php echo esc_attr($image_label ?: $image['file']); ?>" data-title="<?php echo esc_attr($image['file']); ?>" style="width: 100%; height: 100%; object-fit: contain; display: block;" />
 						</div>
 						<?php if ($image_label) : ?>
 							<figcaption><?php echo esc_html($image_label); ?></figcaption>
 						<?php endif; ?>
 						<?php if ('pre-screen' === $order_status || 'processing' === $order_status) : ?>
-							<i class="fa-solid fa-xmark close-btn trimvia-upload-gallery__close" title="<?php esc_attr_e('Delete this image', 'woopw'); ?>" aria-hidden="true"></i>
+							<div class="trimvia-upload-gallery__loading disabled d-none" aria-hidden="true" style="position: absolute !important; inset: 0 !important; z-index: 20 !important; align-items: center !important; justify-content: center !important; background: rgba(17, 24, 39, 0.72) !important;"><i class="fa fa-circle-o-notch fa-spin fa-fw" style="color: #fff !important; font-size: 28px !important; line-height: 1 !important; display: inline-block !important; margin: 0 !important; padding: 0 !important; float: none !important; position: static !important;"></i></div>
+							<a href="#" class="delete-img-btn trimvia-upload-gallery__delete" aria-label="<?php esc_attr_e('Delete this image', 'woopw'); ?>" title="<?php esc_attr_e('Delete this image', 'woopw'); ?>" style="position: absolute; top: 10px; right: 10px; width: 28px; height: 28px; border-radius: 50%; background: rgba(17, 24, 39, 0.72); color: #fff; display: flex; align-items: center; justify-content: center; text-decoration: none; z-index: 10;">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="trimvia-upload-gallery__close-svg" style="width: 12px; height: 12px; stroke: currentColor; display: block; pointer-events: none;">
+									<line x1="18" y1="6" x2="6" y2="18"></line>
+									<line x1="6" y1="6" x2="18" y2="18"></line>
+								</svg>
 							</a>
 						<?php endif; ?>
 					</figure>
@@ -153,6 +164,7 @@ $upload_fields = array(
 									id="<?php echo esc_attr($field['id']); ?>"
 									accept="image/*"
 								/>
+								<span class="trimvia-upload-field__status" aria-live="polite"><?php esc_html_e('No file chosen', 'woocommerce'); ?></span>
 							</div>
 						</div>
 					<?php endforeach; ?>
@@ -173,6 +185,17 @@ $upload_fields = array(
 
 <script>
 	jQuery(document).ready(function ($) {
+		var noFileChosenLabel = '<?php echo esc_js(__('No file chosen', 'woocommerce')); ?>';
+
+		$('.trimvia-upload-field__input[type="file"]').on('change', function () {
+			var file = this.files && this.files[0];
+			var $status = $(this).siblings('.trimvia-upload-field__status');
+
+			if ($status.length) {
+				$status.text(file ? file.name : noFileChosenLabel);
+			}
+		});
+
 		jQuery('#pre-screen-images').on('submit', function (e) {
 			e.preventDefault();
 
@@ -248,21 +271,19 @@ $upload_fields = array(
 
 		jQuery('.delete-img-btn').on('click', function (e) {
 			e.preventDefault();
+			let $btn = jQuery(this);
 			if (window.confirm('<?php echo esc_js(__('Are you sure you want to delete this image?', 'theme-woopm-child')); ?>')) {
-				deleteImage(e);
+				deleteImage($btn);
 			}
 		});
 
-		function deleteImage(el) {
-			let img = jQuery(el.target).data('title');
-
-			if (!img) {
-				img = jQuery(el.currentTarget).find('img').data('title');
-			}
+		function deleteImage($btn) {
+			let $figure = $btn.closest('.trimvia-upload-gallery__item');
+			let img = $figure.find('img').data('title');
 
 			let errorMessage = '<?php echo esc_js(__('Sorry! This file could not be removed.', 'woopw')); ?>';
 
-			jQuery(el.currentTarget).closest('figure').find('.disabled').removeClass('d-none').addClass('d-grid');
+			$figure.find('.disabled').removeClass('d-none').addClass('d-flex');
 
 			const nonce = jQuery('#_wpnonce').val();
 			const referrer = jQuery('input[name="_wp_http_referer"]').val();
@@ -285,20 +306,20 @@ $upload_fields = array(
 				data: formData,
 				success: function (response) {
 					if (response.success) {
-						jQuery(el.currentTarget).closest('figure').remove();
+						$figure.remove();
 						return;
 					}
 
 					setTimeout(function () {
-						jQuery(el.currentTarget).closest('figure').find('.disabled').html(errorMessage);
+						$figure.find('.disabled').html(errorMessage);
 					}, 3000);
-					jQuery(el.currentTarget).closest('figure').find('.disabled').removeClass('d-grid').addClass('d-none');
+					$figure.find('.disabled').removeClass('d-flex').addClass('d-none');
 				},
 				error: function () {
 					setTimeout(function () {
-						jQuery(el.currentTarget).closest('figure').find('.disabled').html(errorMessage);
+						$figure.find('.disabled').html(errorMessage);
 					}, 3000);
-					jQuery(el.currentTarget).closest('figure').find('.disabled').removeClass('d-grid').addClass('d-none');
+					$figure.find('.disabled').removeClass('d-flex').addClass('d-none');
 				}
 			});
 		}

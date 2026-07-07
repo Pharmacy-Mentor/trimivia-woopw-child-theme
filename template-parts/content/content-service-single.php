@@ -36,10 +36,22 @@ $help_text           = __('Email info@trimvia.co.uk or call us during opening ho
 $breadcrumb_current_label = get_the_title($post_id);
 
 $default_features = array(
-	array('feature_icon' => 'clock', 'feature_text' => __('2-min consultation', 'theme-woopm-child')),
-	array('feature_icon' => 'truck', 'feature_text' => __('Next-day delivery', 'theme-woopm-child')),
-	array('feature_icon' => 'shield', 'feature_text' => __('GPhC regulated', 'theme-woopm-child')),
-	array('feature_icon' => 'user', 'feature_text' => __('Prescriber support', 'theme-woopm-child')),
+	array(
+		'feature_text' => __('2-min consultation', 'theme-woopm-child'),
+		'feature_icon_config' => array('type' => 'builtin', 'builtin' => 'clock', 'fa' => '', 'upload' => null),
+	),
+	array(
+		'feature_text' => __('Next-day delivery', 'theme-woopm-child'),
+		'feature_icon_config' => array('type' => 'builtin', 'builtin' => 'truck', 'fa' => '', 'upload' => null),
+	),
+	array(
+		'feature_text' => __('GPhC regulated', 'theme-woopm-child'),
+		'feature_icon_config' => array('type' => 'builtin', 'builtin' => 'shield', 'fa' => '', 'upload' => null),
+	),
+	array(
+		'feature_text' => __('Prescriber support', 'theme-woopm-child'),
+		'feature_icon_config' => array('type' => 'builtin', 'builtin' => 'user', 'fa' => '', 'upload' => null),
+	),
 );
 
 if (function_exists('get_field') && $post_id) {
@@ -72,14 +84,21 @@ if (function_exists('get_field') && $post_id) {
 	if (is_array($features_rows) && !empty($features_rows)) {
 		$clean = array();
 		foreach ($features_rows as $row) {
-			$icon = isset($row['feature_icon']) ? (string) $row['feature_icon'] : 'clock';
 			$text = isset($row['feature_text']) ? trim((string) $row['feature_text']) : '';
 			if ('' === $text) {
 				continue;
 			}
+			$icon_config = function_exists('trimvia_parse_service_icon_config')
+				? trimvia_parse_service_icon_config($row, 'feature')
+				: array(
+					'type'    => 'builtin',
+					'builtin' => isset($row['feature_icon']) ? (string) $row['feature_icon'] : 'clock',
+					'fa'      => '',
+					'upload'  => null,
+				);
 			$clean[] = array(
-				'feature_icon' => $icon,
-				'feature_text' => $text,
+				'feature_text'        => $text,
+				'feature_icon_config' => $icon_config,
 			);
 		}
 		if (!empty($clean)) {
@@ -144,15 +163,22 @@ if (function_exists('get_field') && $post_id) {
 			$t  = isset($row['highlight_title']) ? trim((string) $row['highlight_title']) : '';
 			$st = isset($row['highlight_subtitle']) ? trim((string) $row['highlight_subtitle']) : '';
 			$u  = isset($row['highlight_url']) ? trim((string) $row['highlight_url']) : '';
-			$ic = isset($row['highlight_icon']) ? (string) $row['highlight_icon'] : 'shield';
 			if ('' === $t && '' === $st) {
 				continue;
 			}
+			$icon_config = function_exists('trimvia_parse_service_icon_config')
+				? trimvia_parse_service_icon_config($row, 'highlight')
+				: array(
+					'type'    => 'builtin',
+					'builtin' => isset($row['highlight_icon']) ? (string) $row['highlight_icon'] : 'shield',
+					'fa'      => '',
+					'upload'  => null,
+				);
 			$hclean[] = array(
-				'highlight_title'    => $t,
-				'highlight_subtitle' => $st,
-				'highlight_url'      => $u,
-				'highlight_icon'     => $ic,
+				'highlight_title'       => $t,
+				'highlight_subtitle'    => $st,
+				'highlight_url'         => $u,
+				'highlight_icon_config' => $icon_config,
 			);
 		}
 		if (!empty($hclean)) {
@@ -194,10 +220,15 @@ if (function_exists('get_field') && $post_id) {
 			$price_html = $product->get_price_html();
 			$subtitle   = $price_html ? wp_strip_all_tags(html_entity_decode($price_html, ENT_QUOTES | ENT_HTML5, 'UTF-8')) : '';
 			$from_products[] = array(
-				'highlight_title'    => $product->get_name(),
-				'highlight_subtitle' => $subtitle,
-				'highlight_url'      => get_permalink($prod_id),
-				'highlight_icon'     => $icons_cycle[ $icon_i % count($icons_cycle) ],
+				'highlight_title'       => $product->get_name(),
+				'highlight_subtitle'    => $subtitle,
+				'highlight_url'         => get_permalink($prod_id),
+				'highlight_icon_config' => array(
+					'type'    => 'builtin',
+					'builtin' => $icons_cycle[ $icon_i % count($icons_cycle) ],
+					'fa'      => '',
+					'upload'  => null,
+				),
 			);
 			++$icon_i;
 		}
@@ -317,12 +348,14 @@ $grid_modifier_class = ($has_sidebar && !$main_has_body) ? ' content-grid--sideb
 			<?php foreach ($features_items as $feature_row) : ?>
 			<div class="quick-info-item">
 				<?php
-				$f_icon = isset($feature_row['feature_icon']) ? $feature_row['feature_icon'] : 'clock';
-				if (!isset($trimvia_service_icon_svgs[ $f_icon ])) {
-					$f_icon = 'clock';
-				}
-				// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- hardcoded SVG sprite map.
-				echo $trimvia_service_icon_svgs[ $f_icon ];
+				$icon_config = isset($feature_row['feature_icon_config']) && is_array($feature_row['feature_icon_config'])
+					? $feature_row['feature_icon_config']
+					: array('type' => 'builtin', 'builtin' => 'clock', 'fa' => '', 'upload' => null);
+				$icon_html   = function_exists('trimvia_render_service_icon_html')
+					? trimvia_render_service_icon_html($icon_config, $trimvia_service_icon_svgs)
+					: ($trimvia_service_icon_svgs['clock'] ?? '');
+				// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- sanitized in helper or hardcoded SVG map.
+				echo $icon_html;
 				?>
 				<span><?php echo esc_html($feature_row['feature_text']); ?></span>
 			</div>
@@ -365,16 +398,24 @@ $grid_modifier_class = ($has_sidebar && !$main_has_body) ? ' content-grid--sideb
 					<h4><?php echo esc_html($highlights_title); ?></h4>
 					<?php foreach ($highlights_items as $hi) : ?>
 						<?php
-						$h_icon = isset($hi['highlight_icon']) ? $hi['highlight_icon'] : 'shield';
-						if (!isset($trimvia_service_icon_svgs[ $h_icon ])) {
-							$h_icon = 'shield';
-						}
 						$h_url = isset($hi['highlight_url']) ? trim((string) $hi['highlight_url']) : '';
 						?>
 					<div class="contact-item">
 						<div class="contact-icon">
-							<?php // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- hardcoded SVG sprite map.
-							echo $trimvia_service_icon_svgs[ $h_icon ];
+							<?php
+							$icon_config = isset($hi['highlight_icon_config']) && is_array($hi['highlight_icon_config'])
+								? $hi['highlight_icon_config']
+								: array(
+									'type'    => 'builtin',
+									'builtin' => isset($hi['highlight_icon']) ? (string) $hi['highlight_icon'] : 'shield',
+									'fa'      => '',
+									'upload'  => null,
+								);
+							$icon_html   = function_exists('trimvia_render_service_icon_html')
+								? trimvia_render_service_icon_html($icon_config, $trimvia_service_icon_svgs)
+								: ($trimvia_service_icon_svgs['shield'] ?? '');
+							// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- sanitized in helper or hardcoded SVG map.
+							echo $icon_html;
 							?>
 						</div>
 						<div>

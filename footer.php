@@ -44,7 +44,7 @@ $bottom_note_text = get_theme_mod('trimvia_footer_bottom_description', __('Trimv
 				<div class="logo-text footer-logo-text"><strong><?php echo esc_html($footer_logo_text_primary); ?></strong><span><?php echo esc_html($footer_logo_text_secondary); ?></span></div>
 			<?php endif; ?>
 			<?php if (!empty($footer_description)) : ?>
-				<p><?php echo wp_kses_post(nl2br($footer_description)); ?></p>
+				<div class="footer-description-copy"><?php echo wp_kses_post(wpautop((string) $footer_description)); ?></div>
 			<?php endif; ?>
 			<?php if (!empty($footer_email)) : ?>
 				<a href="mailto:<?php echo esc_attr($footer_email); ?>" class="footer-email">
@@ -134,20 +134,25 @@ $bottom_note_text = get_theme_mod('trimvia_footer_bottom_description', __('Trimv
 		</div>
 	</div>
 	<div class="footer-bottom">
-		<span><?php echo wp_kses_post(nl2br(html_entity_decode((string) $copyright_text, ENT_QUOTES, 'UTF-8'))); ?></span>
+		<div class="footer-copyright-copy"><?php echo wp_kses_post(wpautop((string) $copyright_text)); ?></div>
 		<div class="f-badges">
 			<?php if (!empty($right_label_one)) : ?>
-				<span class="f-badge"><?php echo wp_kses_post(nl2br(html_entity_decode((string) $right_label_one, ENT_QUOTES, 'UTF-8'))); ?></span>
+				<div class="f-badge"><?php echo wp_kses_post(wpautop((string) $right_label_one)); ?></div>
 			<?php endif; ?>
 			<?php if (!empty($right_label_two)) : ?>
-				<span class="f-badge"><?php echo wp_kses_post(nl2br(html_entity_decode((string) $right_label_two, ENT_QUOTES, 'UTF-8'))); ?></span>
+				<div class="f-badge"><?php echo wp_kses_post(wpautop((string) $right_label_two)); ?></div>
 			<?php endif; ?>
 		</div>
 	</div>
 	<?php if (!empty($bottom_note_text)) : ?>
-		<div class="f-legal"><p><?php echo wp_kses_post(nl2br(html_entity_decode((string) $bottom_note_text, ENT_QUOTES, 'UTF-8'))); ?></p></div>
+		<div class="f-legal"><?php echo wp_kses_post(wpautop((string) $bottom_note_text)); ?></div>
 	<?php endif; ?>
 </footer>
+<button type="button" class="trimvia-scroll-top" id="trimviaScrollTop" aria-label="<?php esc_attr_e('Scroll to top', 'theme-woopm-child'); ?>" hidden>
+	<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+		<polyline points="18 15 12 9 6 15"/>
+	</svg>
+</button>
 <?php wp_footer(); ?>
 </body>
 </html>

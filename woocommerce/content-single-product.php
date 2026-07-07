@@ -54,11 +54,21 @@ if ($is_prescription) {
 }
 $product_type_label = !empty($type_parts) ? implode(' · ', $type_parts) : __('Prescription treatment', 'theme-woopm-child');
 
-$stock_text = ($product instanceof WC_Product && $product->is_in_stock())
-	? __('In stock - ships after approval', 'theme-woopm-child')
-	: __('Out of stock', 'theme-woopm-child');
+$stock_in_text      = __('In stock - ships after approval', 'theme-woopm-child');
+$stock_out_text     = __('Out of stock', 'theme-woopm-child');
+$stock_pending_text = __('Select options to check availability', 'theme-woopm-child');
+$is_variable_product = $product instanceof WC_Product && $product->is_type('variable');
+$is_product_out_of_stock = function_exists('trimvia_product_is_out_of_stock')
+	? trimvia_product_is_out_of_stock($product)
+	: !($product instanceof WC_Product && $product->is_in_stock());
 
-$stock_class = ($product instanceof WC_Product && $product->is_in_stock()) ? 'single-product-stock' : 'single-product-stock single-product-stock--out';
+if ($is_variable_product && !$is_product_out_of_stock) {
+	$stock_text = $stock_pending_text;
+	$stock_class = 'single-product-stock';
+} else {
+	$stock_text = $is_product_out_of_stock ? $stock_out_text : $stock_in_text;
+	$stock_class = $is_product_out_of_stock ? 'single-product-stock single-product-stock--out' : 'single-product-stock';
+}
 $plines_class = ('plines' === $is_prescription_value) ? 'plines-products' : '';
 $consultation_url = function_exists('trimvia_get_consultation_url')
 	? trimvia_get_consultation_url($condition_slug)
@@ -127,7 +137,12 @@ $consultation_url = function_exists('trimvia_get_consultation_url')
 						<div class="trimvia-single-product-price">
 							<?php woocommerce_template_single_price(); ?>
 						</div>
-						<span class="<?php echo esc_attr($stock_class); ?>"><?php echo esc_html($stock_text); ?></span>
+						<span
+							class="<?php echo esc_attr($stock_class); ?>"
+							data-default-stock-text="<?php echo esc_attr($stock_text); ?>"
+							data-in-stock-text="<?php echo esc_attr($stock_in_text); ?>"
+							data-out-of-stock-text="<?php echo esc_attr($stock_out_text); ?>"
+						><?php echo esc_html($stock_text); ?></span>
 					</div>
 
 					<div class="trimvia-single-product-cart">
@@ -182,10 +197,7 @@ $consultation_url = function_exists('trimvia_get_consultation_url')
 
 <section class="page-section rv rv-d3 trimvia-single-product-related">
 	<div class="container">
-		<?php
-		woocommerce_upsell_display();
-		woocommerce_output_related_products();
-		?>
+		<?php woocommerce_output_related_products(); ?>
 	</div>
 </section>
 

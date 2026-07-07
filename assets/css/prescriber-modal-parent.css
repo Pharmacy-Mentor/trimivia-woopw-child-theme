@@ -10,7 +10,7 @@
   position: fixed;
   top: 0;
   left: 0;
-  z-index: 1055;
+  z-index: 100060;
   display: none;
   width: 100%;
   height: 100%;
@@ -34,7 +34,7 @@
   position: relative;
   width: calc(100% - 2rem);
   margin: 0 auto;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 #practitioner-order-modal .modal-content,
@@ -121,7 +121,7 @@
   position: fixed;
   top: 0;
   left: 0;
-  z-index: 1050;
+  z-index: 100050;
   width: 100vw;
   height: 100vh;
   background-color: #000;
@@ -1994,6 +1994,42 @@ body.modal-open {
   display: none !important;
 }
 
+:is(#practitioner-order-modal, #practitioner-order-prescription-modal, #prescription-extra-content-modal)
+  .pm-prescription-review #pmPreviousConsultations.trimvia-previous-consultations,
+:is(#practitioner-order-modal, #practitioner-order-prescription-modal, #prescription-extra-content-modal)
+  .pm-prescription-review #pmPreviousConsultations .trimvia-prev-card-body,
+:is(#practitioner-order-modal, #practitioner-order-prescription-modal, #prescription-extra-content-modal)
+  .pm-prescription-review #pmPreviousConsultations .trimvia-prev-card-meta-grid,
+:is(#practitioner-order-modal, #practitioner-order-prescription-modal, #prescription-extra-content-modal)
+  .pm-prescription-review #pmPreviousConsultations .trimvia-prev-card-meta-item,
+:is(#practitioner-order-modal, #practitioner-order-prescription-modal, #prescription-extra-content-modal)
+  .pm-prescription-review #pmPreviousConsultations .trimvia-prev-card-responses,
+:is(#practitioner-order-modal, #practitioner-order-prescription-modal, #prescription-extra-content-modal)
+  .pm-prescription-review #pmPreviousConsultations .prescription-patient-data.patient-consultation,
+:is(#practitioner-order-modal, #practitioner-order-prescription-modal, #prescription-extra-content-modal)
+  .pm-prescription-review #pmPreviousConsultations .patient-row,
+:is(#practitioner-order-modal, #practitioner-order-prescription-modal, #prescription-extra-content-modal)
+  .pm-prescription-review #pmPreviousConsultations .q-label,
+:is(#practitioner-order-modal, #practitioner-order-prescription-modal, #prescription-extra-content-modal)
+  .pm-prescription-review #pmPreviousConsultations .q-field-label,
+:is(#practitioner-order-modal, #practitioner-order-prescription-modal, #prescription-extra-content-modal)
+  .pm-prescription-review #pmPreviousConsultations .pm-answer-row,
+:is(#practitioner-order-modal, #practitioner-order-prescription-modal, #prescription-extra-content-modal)
+  .pm-prescription-review #pmPreviousConsultations :is(.user-sub-detail, .user-submission, .child-description, p, h2, h3, h4, .cons-title, .cons-completedby) {
+  text-align: left !important;
+}
+
+:is(#practitioner-order-modal, #practitioner-order-prescription-modal, #prescription-extra-content-modal)
+  .pm-prescription-review #pmPreviousConsultations :is(.cons-title, .cons-completedby) {
+  justify-content: flex-start !important;
+}
+
+:is(#practitioner-order-modal, #practitioner-order-prescription-modal, #prescription-extra-content-modal)
+  .pm-prescription-review #pmPreviousConsultations :is(.q-field-label, .patient-group-title, .patient-group-left, .pm-file-preview-grid) {
+  justify-content: flex-start !important;
+  align-items: flex-start !important;
+}
+
 @media (max-width: 767px) {
   :is(#practitioner-order-modal, #practitioner-order-prescription-modal, #prescription-extra-content-modal)
     .pm-prescription-review #pmPreviousConsultations.trimvia-previous-consultations {
@@ -2350,7 +2386,6 @@ body.modal-open {
 
 :is(#practitioner-order-modal, #practitioner-order-prescription-modal)
   .practitioner-prescription-wrapper .prescriber-approve-now {
-  width: auto !important;
   min-width: 180px !important;
   min-height: 50px !important;
   padding: 14px 30px !important;
@@ -2414,5 +2449,201 @@ body.modal-open {
     .template-wrapper.decline-pres-popup .trimvia-decline-cancel {
     width: 100%;
     justify-content: center;
+  }
+}
+
+/* Trimvia prescription view modal layout fix. */
+#practitioner-order-prescription-modal .modal-dialog {
+  max-width: 1040px;
+}
+
+#practitioner-order-prescription-modal .modal-content {
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+#practitioner-order-prescription-modal .modal-body {
+  padding: 0;
+  background: #fff;
+}
+
+#practitioner-order-prescription-modal .practitioner-order-wrapper {
+  padding: 18px 20px 22px;
+}
+
+#practitioner-order-prescription-modal .practitioner-prescription-wrapper {
+  max-width: 960px;
+  margin: 0 auto;
+  color: var(--g900, #141929);
+  font-family: var(--fb, 'Outfit', Arial, sans-serif);
+  overflow-wrap: anywhere;
+}
+
+#practitioner-order-prescription-modal .practitioner-prescription-wrapper .presc-header-row {
+  margin-bottom: 22px !important;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(20, 25, 41, 0.16);
+}
+
+#practitioner-order-prescription-modal .practitioner-prescription-wrapper .presc-header-row > .presc-row {
+  display: grid !important;
+  grid-template-columns: minmax(160px, 260px) minmax(0, 1fr);
+  align-items: center;
+  gap: 24px;
+}
+
+#practitioner-order-prescription-modal .practitioner-prescription-wrapper .header-col-left,
+#practitioner-order-prescription-modal .practitioner-prescription-wrapper .header-col-right {
+  float: none !important;
+  width: auto !important;
+  max-width: none !important;
+  flex: initial !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+#practitioner-order-prescription-modal .practitioner-prescription-wrapper .site-logo {
+  width: 100%;
+  max-width: 250px;
+  line-height: 0;
+}
+
+#practitioner-order-prescription-modal .practitioner-prescription-wrapper .site-logo img {
+  display: block;
+  width: auto !important;
+  max-width: 100% !important;
+  max-height: 150px;
+  object-fit: contain;
+}
+
+#practitioner-order-prescription-modal .practitioner-prescription-wrapper .header-col-right {
+  text-align: right !important;
+}
+
+#practitioner-order-prescription-modal .practitioner-prescription-wrapper .header-col-right h2 {
+  margin: 0 !important;
+  color: var(--g700, #38415f);
+  font-family: var(--fb, 'Outfit', Arial, sans-serif);
+  font-size: clamp(28px, 4vw, 40px);
+  font-weight: 500;
+  line-height: 1.12;
+  letter-spacing: 0;
+  word-break: normal;
+}
+
+#practitioner-order-prescription-modal .practitioner-prescription-wrapper .presc-user-details-wrapper {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 32px;
+}
+
+#practitioner-order-prescription-modal .practitioner-prescription-wrapper .user-detail {
+  float: none !important;
+  width: auto !important;
+  max-width: none !important;
+  padding: 0 !important;
+  margin-bottom: 18px !important;
+}
+
+#practitioner-order-prescription-modal .practitioner-prescription-wrapper .user-title {
+  margin: 0 0 10px !important;
+  color: #000;
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+#practitioner-order-prescription-modal .practitioner-prescription-wrapper p {
+  margin: 0 0 10px !important;
+  color: #424266;
+  font-size: 20px;
+  line-height: 1.35;
+}
+
+#practitioner-order-prescription-modal .practitioner-prescription-wrapper p strong {
+  color: #000;
+  font-weight: 800;
+}
+
+#practitioner-order-prescription-modal .practitioner-prescription-wrapper .pharmacy-prec-table h3,
+#practitioner-order-prescription-modal .practitioner-prescription-wrapper .notes-column h3,
+#practitioner-order-prescription-modal .practitioner-prescription-wrapper .prescriber-order-note h3 {
+  margin: 18px 0 10px !important;
+  color: var(--g700, #38415f);
+  font-size: 30px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+#practitioner-order-prescription-modal .practitioner-prescription-wrapper table.prescription-table {
+  width: 100% !important;
+  table-layout: fixed;
+  border-collapse: separate !important;
+  border-spacing: 0;
+  overflow: hidden;
+  border: 1px solid rgba(20, 25, 41, 0.14) !important;
+  border-radius: 6px !important;
+}
+
+#practitioner-order-prescription-modal .practitioner-prescription-wrapper table.prescription-table th,
+#practitioner-order-prescription-modal .practitioner-prescription-wrapper table.prescription-table td {
+  padding: 8px 12px !important;
+  color: var(--g700, #38415f);
+  font-size: 18px;
+  line-height: 1.35;
+  vertical-align: top;
+  word-break: break-word;
+}
+
+#practitioner-order-prescription-modal .practitioner-prescription-wrapper .modal-action-wrapper,
+#practitioner-order-prescription-modal .practitioner-prescription-wrapper .text-right:last-child {
+  clear: both;
+  margin-top: 24px;
+  text-align: right !important;
+}
+
+@media (max-width: 767px) {
+  #practitioner-order-prescription-modal.show {
+    align-items: flex-start;
+    padding: 12px 8px;
+  }
+
+  #practitioner-order-prescription-modal .modal-dialog {
+    width: 100%;
+  }
+
+  #practitioner-order-prescription-modal .practitioner-order-wrapper {
+    padding: 14px;
+  }
+
+  #practitioner-order-prescription-modal .practitioner-prescription-wrapper .presc-header-row > .presc-row,
+  #practitioner-order-prescription-modal .practitioner-prescription-wrapper .presc-user-details-wrapper {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  #practitioner-order-prescription-modal .practitioner-prescription-wrapper .header-col-right {
+    text-align: left !important;
+  }
+
+  #practitioner-order-prescription-modal .practitioner-prescription-wrapper .header-col-right h2 {
+    font-size: 28px;
+  }
+
+  #practitioner-order-prescription-modal .practitioner-prescription-wrapper .site-logo img {
+    max-height: 110px;
+  }
+
+  #practitioner-order-prescription-modal .practitioner-prescription-wrapper .user-title {
+    font-size: 22px;
+  }
+
+  #practitioner-order-prescription-modal .practitioner-prescription-wrapper p {
+    font-size: 16px;
+  }
+
+  #practitioner-order-prescription-modal .practitioner-prescription-wrapper table.prescription-table th,
+  #practitioner-order-prescription-modal .practitioner-prescription-wrapper table.prescription-table td {
+    font-size: 15px;
   }
 }

@@ -1,0 +1,40 @@
+/**
+ * WooCommerce admin — View Prescription modal logo sizing.
+ * Template: woopw/woocommerce/myaccount/practitioner-prescription.php (.site-logo img)
+ */
+
+#order-prescrption-inner-modal .practitioner-prescription-wrapper .presc-header-row .presc-row,
+#eprescription-order-modal .practitioner-prescription-wrapper .presc-header-row .presc-row,
+#order-prescrptions-modal .practitioner-prescription-wrapper .presc-header-row .presc-row {
+  height: auto;
+  min-height: 80px;
+  align-items: center;
+  overflow: hidden;
+}
+
+#order-prescrption-inner-modal .practitioner-prescription-wrapper .header-col-left,
+#eprescription-order-modal .practitioner-prescription-wrapper .header-col-left,
+#order-prescrptions-modal .practitioner-prescription-wrapper .header-col-left {
+  width: auto !important;
+  max-width: 45% !important;
+  flex: 0 0 auto !important;
+}
+
+#order-prescrption-inner-modal .practitioner-prescription-wrapper .site-logo,
+#eprescription-order-modal .practitioner-prescription-wrapper .site-logo,
+#order-prescrptions-modal .practitioner-prescription-wrapper .site-logo {
+  width: auto !important;
+  max-width: 200px !important;
+  line-height: 0;
+}
+
+#order-prescrption-inner-modal .practitioner-prescription-wrapper .site-logo img,
+#eprescription-order-modal .practitioner-prescription-wrapper .site-logo img,
+#order-prescrptions-modal .practitioner-prescription-wrapper .site-logo img {
+  display: block;
+  width: auto !important;
+  max-width: 60px !important;
+  max-height: 72px !important;
+  height: auto !important;
+  object-fit: contain;
+}

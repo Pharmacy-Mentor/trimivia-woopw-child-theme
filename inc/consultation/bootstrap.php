@@ -18,6 +18,7 @@ function trimvia_get_consultation_context()
 {
 	$is_under_process    = false;
 	$recommend_enabled   = class_exists('WOOPW_ADDON_MANAGER') ? WOOPW_ADDON_MANAGER::enable_product_recommend() : false;
+	$fpr_enabled         = class_exists('WOOPW_ADDON_MANAGER') ? WOOPW_ADDON_MANAGER::enable_product_recommendation_rules() : false;
 	$slug                = isset($_GET['condition-slug']) && $_GET['condition-slug'] ? sanitize_text_field(wp_unslash($_GET['condition-slug'])) : '';
 	$condition_slug      = $slug;
 	$questionnaire_id    = '';
@@ -66,6 +67,24 @@ function trimvia_get_consultation_context()
 
 	$recommend_error = isset($_GET['recommend_error']) && (string) $_GET['recommend_error'] === '1';
 
+	$current_params = array();
+	foreach ($_GET as $key => $value) {
+		if (is_scalar($value)) {
+			$current_params[sanitize_key((string) $key)] = sanitize_text_field(wp_unslash((string) $value));
+		}
+	}
+
+	$redirect_back = add_query_arg($current_params, get_permalink());
+	$account_base_url = function_exists('wc_get_page_permalink') ? wc_get_page_permalink('myaccount') : wp_login_url();
+	$login_url = add_query_arg(
+		array(
+			'redirect_to'   => $redirect_back,
+			'_redirect_url' => $redirect_back,
+		),
+		$account_base_url
+	);
+	$account_url = add_query_arg('tab', 'register', $login_url);
+
 	$show_questionnaire_sidebar = !$is_under_process
 		&& $term instanceof WP_Term
 		&& !empty($questionnaire_id);
@@ -109,12 +128,15 @@ function trimvia_get_consultation_context()
 	return compact(
 		'is_under_process',
 		'recommend_enabled',
+		'fpr_enabled',
 		'condition_slug',
 		'questionnaire_id',
 		'term',
 		'old_consultation_order_complete',
 		'previous_completed_order_id',
 		'recommend_error',
+		'login_url',
+		'account_url',
 		'show_questionnaire_sidebar',
 		'consult_hero_sub',
 		'consult_approx_minutes',

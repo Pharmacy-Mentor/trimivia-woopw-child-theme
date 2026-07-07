@@ -107,7 +107,10 @@ $contact_url = home_url('/contact/');
 			$status_class = $order->has_status(array('completed', 'processing')) ? 'order-status--dispatched' : 'order-status--review';
 			?>
 			<article class="account-order-card rv rv-d<?php echo esc_attr((string) min($index + 1, 3)); ?>">
-				<div>
+				<a class="account-order-thumb" href="<?php echo esc_url($order->get_view_order_url()); ?>" aria-hidden="true" tabindex="-1">
+					<?php echo wp_kses_post(trimvia_get_order_primary_product_thumbnail($order)); ?>
+				</a>
+				<div class="account-order-main">
 					<div class="account-order-meta">
 						<?php
 						echo esc_html(

@@ -43,39 +43,57 @@ function trimvia_normalise_order_condition_ids($raw)
  * @param WC_Order $current_order Current review order.
  * @return array<int, WC_Order>
  */
-function trimvia_get_previous_consultation_orders_for_review(WC_Order $current_order)
+function trimvia_get_previous_consultation_orders_for_review($current_order)
 {
-	$customer_id = (int) $current_order->get_customer_id();
-	if ($customer_id < 1) {
+	static $cache = array();
+
+	if (!$current_order instanceof WC_Order) {
 		return array();
 	}
 
-	$current_id       = (int) $current_order->get_id();
-	$condition_ids    = trimvia_normalise_order_condition_ids($current_order->get_meta('_order_conditions'));
-	$previous_orders  = wc_get_orders(
+	$current_id = (int) $current_order->get_id();
+	if ($current_id < 1) {
+		return array();
+	}
+
+	if (isset($cache[ $current_id ])) {
+		return $cache[ $current_id ];
+	}
+
+	$customer_id = (int) $current_order->get_customer_id();
+	if ($customer_id < 1) {
+		$cache[ $current_id ] = array();
+		return $cache[ $current_id ];
+	}
+
+	$condition_ids   = trimvia_normalise_order_condition_ids($current_order->get_meta('_order_conditions'));
+	$previous_orders = wc_get_orders(
 		array(
-			'customer_id'  => $customer_id,
-			'status'       => trimvia_get_previous_consultation_order_statuses(),
-			'exclude'      => array($current_id),
-			'limit'        => 25,
-			'orderby'      => 'date',
-			'order'        => 'DESC',
-			'meta_query'   => array(
-				array(
-					'key'     => '_cflp_form_data',
-					'compare' => 'EXISTS',
-				),
-			),
+			'customer_id' => $customer_id,
+			'status'      => trimvia_get_previous_consultation_order_statuses(),
+			'exclude'     => array($current_id),
+			'limit'       => 15,
+			'orderby'     => 'date',
+			'order'       => 'DESC',
+			'return'      => 'objects',
 		)
 	);
 
-	if (empty($previous_orders)) {
-		return array();
+	if (empty($previous_orders) || !is_array($previous_orders)) {
+		$cache[ $current_id ] = array();
+		return $cache[ $current_id ];
 	}
 
-	$matched = array();
+	$matched      = array();
+	$current_date = $current_order->get_date_created();
+
 	foreach ($previous_orders as $order) {
 		if (!$order instanceof WC_Order) {
+			continue;
+		}
+
+		// Only match orders created before the current order to prevent matching future reorders
+		if ($current_date && $order->get_date_created() && $order->get_date_created()->getTimestamp() >= $current_date->getTimestamp()) {
 			continue;
 		}
 
@@ -92,15 +110,34 @@ function trimvia_get_previous_consultation_orders_for_review(WC_Order $current_o
 
 		if (!empty($condition_ids)) {
 			$order_conditions = trimvia_normalise_order_condition_ids($order->get_meta('_order_conditions'));
-			if (empty($order_conditions) || !array_intersect($condition_ids, $order_conditions)) {
-				continue;
+			$matches_order    = !empty($order_conditions) && array_intersect($condition_ids, $order_conditions);
+
+			if (!$matches_order) {
+				$matches_form = false;
+				foreach ($form_data as $entry) {
+					if (!is_array($entry)) {
+						continue;
+					}
+
+					$entry_condition_id = absint($entry['condition_id'] ?? 0);
+					if ($entry_condition_id && in_array($entry_condition_id, $condition_ids, true)) {
+						$matches_form = true;
+						break;
+					}
+				}
+
+				if (!$matches_form) {
+					continue;
+				}
 			}
 		}
 
 		$matched[] = $order;
 	}
 
-	return $matched;
+	$cache[ $current_id ] = $matched;
+
+	return $cache[ $current_id ];
 }
 
 /**
@@ -110,8 +147,13 @@ function trimvia_get_previous_consultation_orders_for_review(WC_Order $current_o
  */
 function trimvia_get_patient_consultation_template_path()
 {
+	$child_path = get_stylesheet_directory() . '/woocommerce/myaccount/patient-order-consultation.php';
+	if (file_exists($child_path)) {
+		return $child_path;
+	}
+
 	if (function_exists('default_template_path')) {
-		$path = default_template_path() . 'woocommerce/myaccount/patient-order-consultation.php';
+		$path = default_template_path() . 'myaccount/patient-order-consultation.php';
 		if (file_exists($path)) {
 			return $path;
 		}
@@ -163,8 +205,12 @@ function trimvia_consultation_field_has_value($field)
  * @param array<string,mixed> $form_data Stored answers.
  * @return int
  */
-function trimvia_count_populated_consultation_fields(array $form_data)
+function trimvia_count_populated_consultation_fields($form_data)
 {
+	if (!is_array($form_data)) {
+		return 0;
+	}
+
 	$count = 0;
 
 	foreach ($form_data as $field) {
@@ -377,7 +423,7 @@ function trimvia_merge_consultation_entries(array $base, array $overlay)
  * @param string              $form_key   Entry key on the source order.
  * @return array<string,mixed>
  */
-function trimvia_resolve_consultation_display_entry(WC_Order $order, array $form_entry, $form_key = '')
+function trimvia_resolve_consultation_display_entry(WC_Order $order, array $form_entry, $form_key = '', ?array $history_orders = null)
 {
 	$answered_fields = trimvia_count_populated_consultation_fields($form_entry['form_data'] ?? array());
 	$needs_merge     = !empty($form_entry['is_reorder']) || $answered_fields < 2;
@@ -386,8 +432,8 @@ function trimvia_resolve_consultation_display_entry(WC_Order $order, array $form
 		return $form_entry;
 	}
 
-	$skip_keys       = '' !== (string) $form_key ? array((string) $form_key) : array();
-	$original_entry  = null;
+	$skip_keys         = '' !== (string) $form_key ? array((string) $form_key) : array();
+	$original_entry    = null;
 	$previous_order_id = absint($form_entry['previous_order'] ?? 0);
 
 	if ($previous_order_id > 0) {
@@ -402,9 +448,11 @@ function trimvia_resolve_consultation_display_entry(WC_Order $order, array $form
 	}
 
 	if (!$original_entry) {
-		$history_orders = trimvia_get_previous_consultation_orders_for_review($order);
+		if (null === $history_orders) {
+			$history_orders = trimvia_get_previous_consultation_orders_for_review($order);
+		}
 		$original_entry = trimvia_find_consultation_entry_in_order_history(
-			$history_orders,
+			is_array($history_orders) ? $history_orders : array(),
 			$form_entry,
 			array((int) $order->get_id())
 		);
@@ -424,8 +472,12 @@ function trimvia_resolve_consultation_display_entry(WC_Order $order, array $form
  * @param array<string,mixed>            $form_data   Stored answers.
  * @return array<int,array<string,mixed>>
  */
-function trimvia_filter_consultation_groups_with_answers(array $form_groups, array $form_data)
+function trimvia_filter_consultation_groups_with_answers(array $form_groups, $form_data)
 {
+	if (!is_array($form_data)) {
+		return array();
+	}
+
 	if (empty($form_groups)) {
 		return $form_groups;
 	}
@@ -484,6 +536,65 @@ function trimvia_find_consultation_entry_in_order_history(array $previous_orders
 }
 
 /**
+ * Build consultation_data for patient-order-consultation.php from a stored entry.
+ *
+ * When reorder form_groups do not match merged answers, falls back to flat field rendering.
+ *
+ * @param array<string,mixed> $form_entry    Stored consultation payload.
+ * @param string              $fallback_name Display name when form_title is missing.
+ * @return array<string,mixed>
+ */
+function trimvia_prepare_consultation_display_data(array $form_entry, $fallback_name = '')
+{
+	$form_data = $form_entry['form_data'] ?? array();
+	if (!is_array($form_data)) {
+		$form_data = maybe_unserialize($form_data);
+	}
+	if (!is_array($form_data)) {
+		$form_data = array();
+	}
+
+	$form_data = apply_filters('woopw_consultation_form_entry', $form_data);
+	if (!is_array($form_data)) {
+		$form_data = array();
+	}
+
+	$form_groups = is_array($form_entry['form_groups'] ?? null) ? $form_entry['form_groups'] : array();
+	if (!empty($form_groups)) {
+		$form_groups = trimvia_filter_consultation_groups_with_answers($form_groups, $form_data);
+
+		$has_renderable_field = false;
+		foreach ($form_groups as $group) {
+			if (!is_array($group)) {
+				continue;
+			}
+
+			$field_names = isset($group['field_names']) && is_array($group['field_names']) ? $group['field_names'] : array();
+			foreach ($field_names as $field_name) {
+				if (isset($form_data[ $field_name ]) && trimvia_consultation_field_has_value($form_data[ $field_name ])) {
+					$has_renderable_field = true;
+					break 2;
+				}
+			}
+		}
+
+		if (!$has_renderable_field) {
+			$form_groups = array();
+		}
+	}
+
+	$name = '' !== (string) $fallback_name
+		? (string) $fallback_name
+		: (string) ($form_entry['form_title'] ?? __('Consultation', 'woopw'));
+
+	return array(
+		'name'        => $name,
+		'attempts'    => $form_data,
+		'form_groups' => $form_groups,
+	);
+}
+
+/**
  * Render consultation Q&A markup for a stored form entry.
  *
  * @param WC_Order $order      Source order.
@@ -491,27 +602,16 @@ function trimvia_find_consultation_entry_in_order_history(array $previous_orders
  * @param string   $form_key   Entry key on the source order.
  * @return string
  */
-function trimvia_render_previous_consultation_body(WC_Order $order, array $form_entry, $form_key = '')
+function trimvia_render_previous_consultation_body(WC_Order $order, array $form_entry, $form_key = '', ?array $history_orders = null)
 {
-	$form_entry = trimvia_resolve_consultation_display_entry($order, $form_entry, $form_key);
-
-	if (!empty($form_entry['form_data']) && is_array($form_entry['form_data'])) {
-		$form_entry['form_data'] = apply_filters('woopw_consultation_form_entry', $form_entry['form_data']);
-	}
+	$form_entry = trimvia_resolve_consultation_display_entry($order, $form_entry, $form_key, $history_orders);
 
 	$template = trimvia_get_patient_consultation_template_path();
 	if ('' === $template) {
 		return '';
 	}
 
-	$consultation_data = array(
-		'name'        => $form_entry['form_title'] ?? __('Consultation', 'woopw'),
-		'attempts'    => $form_entry['form_data'] ?? array(),
-		'form_groups' => trimvia_filter_consultation_groups_with_answers(
-			is_array($form_entry['form_groups'] ?? null) ? $form_entry['form_groups'] : array(),
-			is_array($form_entry['form_data'] ?? null) ? $form_entry['form_data'] : array()
-		),
-	);
+	$consultation_data = trimvia_prepare_consultation_display_data($form_entry);
 
 	$ordered_by = trim($order->get_formatted_billing_full_name());
 	if ('' === $ordered_by) {
@@ -522,6 +622,7 @@ function trimvia_render_previous_consultation_body(WC_Order $order, array $form_
 		? $order->get_date_created()->date_i18n('F j, Y h:i A')
 		: '—';
 
+	$order_number = (int) $order->get_id();
 	$is_prescriber = 1;
 	$show_q_desc   = true;
 
@@ -537,10 +638,11 @@ function trimvia_render_previous_consultation_body(WC_Order $order, array $form_
  * @param WC_Order $order      Previous order.
  * @param array    $form_entry Consultation payload.
  * @param string   $form_key   Unique form key.
- * @param int      $index      Zero-based index.
+ * @param int                $index           Zero-based index.
+ * @param array<int,WC_Order>|null $history_orders Cached prior orders for resolve.
  * @return string
  */
-function trimvia_build_previous_consultation_accordion_item(WC_Order $order, array $form_entry, $form_key, $index)
+function trimvia_build_previous_consultation_accordion_item(WC_Order $order, array $form_entry, $form_key, $index, ?array $history_orders = null)
 {
 	$order_id   = (int) $order->get_id();
 	$collapse_id = 'trimvia-prev-consult-' . $order_id . '-' . $index;
@@ -579,7 +681,7 @@ function trimvia_build_previous_consultation_accordion_item(WC_Order $order, arr
 		$completed_by = (string) $form_entry['completed_by'];
 	}
 
-	$body_html = trimvia_render_previous_consultation_body($order, $form_entry, (string) $form_key);
+	$body_html = trimvia_render_previous_consultation_body($order, $form_entry, (string) $form_key, $history_orders);
 
 	$reorder_notice = '';
 	if (!empty($form_entry['is_reorder'])) {
@@ -698,43 +800,81 @@ function trimvia_build_previous_consultation_accordion_item(WC_Order $order, arr
 }
 
 /**
+ * Pick the richest resolved consultation entry on an order for modal display.
+ *
+ * @param WC_Order        $order         Source order.
+ * @param array<int, int> $condition_ids Optional condition IDs to match.
+ * @return array{key:string,entry:array<string,mixed>}|null
+ */
+function trimvia_get_best_form_entry_for_order_display(WC_Order $order, array $condition_ids = array(), ?array $history_orders = null)
+{
+	$entries    = trimvia_get_order_form_entries($order);
+	$best       = null;
+	$best_score = -1;
+
+	foreach ($entries as $form_key => $entry) {
+		if (!is_array($entry)) {
+			continue;
+		}
+
+		$entry_condition_id = absint($entry['condition_id'] ?? 0);
+		if (!empty($condition_ids) && $entry_condition_id && !in_array($entry_condition_id, $condition_ids, true)) {
+			continue;
+		}
+
+		$resolved = trimvia_resolve_consultation_display_entry($order, $entry, (string) $form_key, $history_orders);
+		$score    = trimvia_count_populated_consultation_fields($resolved['form_data'] ?? array());
+		if ($score > $best_score) {
+			$best_score = $score;
+			$best       = array(
+				'key'   => (string) $form_key,
+				'entry' => $resolved,
+			);
+		}
+	}
+
+	if (!$best || $best_score < 1) {
+		return null;
+	}
+
+	return $best;
+}
+
+/**
  * Build the full #pmPreviousConsultations block.
  *
  * @param WC_Order             $current_order   Current order.
  * @param array<int, WC_Order> $previous_orders Previous orders.
  * @return string
  */
-function trimvia_build_previous_consultations_section_html(WC_Order $current_order, array $previous_orders)
+function trimvia_build_previous_consultations_section_html($current_order, array $previous_orders)
 {
-	$items_html = '';
-	$item_index = 0;
+	if (!$current_order instanceof WC_Order || empty($previous_orders)) {
+		return '';
+	}
+
+	$items_html    = '';
+	$item_index    = 0;
+	$condition_ids = trimvia_normalise_order_condition_ids($current_order->get_meta('_order_conditions'));
 
 	foreach ($previous_orders as $previous_order) {
 		if (!$previous_order instanceof WC_Order) {
 			continue;
 		}
 
-		$form_data = $previous_order->get_meta('_cflp_form_data');
-		if (!is_array($form_data)) {
-			$form_data = maybe_unserialize($form_data);
-		}
-		if (!is_array($form_data) || empty($form_data)) {
+		$best = trimvia_get_best_form_entry_for_order_display($previous_order, $condition_ids, $previous_orders);
+		if (!$best) {
 			continue;
 		}
 
-		foreach ($form_data as $form_key => $form_entry) {
-			if (!is_array($form_entry)) {
-				continue;
-			}
-
-			$items_html .= trimvia_build_previous_consultation_accordion_item(
-				$previous_order,
-				$form_entry,
-				(string) $form_key,
-				$item_index
-			);
-			++$item_index;
-		}
+		$items_html .= trimvia_build_previous_consultation_accordion_item(
+			$previous_order,
+			$best['entry'],
+			$best['key'],
+			$item_index,
+			$previous_orders
+		);
+		++$item_index;
 	}
 
 	if ('' === $items_html) {
@@ -907,7 +1047,42 @@ function trimvia_inject_previous_consultations_into_modal_html($html, $order = n
  */
 function trimvia_enrich_prescriber_modal_html($html, $order = null)
 {
-	$html = trimvia_inject_previous_consultations_into_modal_html($html, $order);
+	if ('' === trim((string) $html) || !$order instanceof WC_Order) {
+		return (string) $html;
+	}
+
+	try {
+		$html = trimvia_inject_previous_consultations_into_modal_html($html, $order);
+	} catch (Throwable $exception) {
+		if (defined('WP_DEBUG') && WP_DEBUG) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			error_log('Trimvia prescriber modal inject: ' . $exception->getMessage());
+		}
+	}
 
 	return (string) apply_filters('trimvia_enrich_prescriber_modal_html', $html, $order);
+}
+
+/**
+ * Safe entry point for prescriber-order-review.php — never throws.
+ *
+ * @param mixed $order Current review order.
+ * @return string
+ */
+function trimvia_render_previous_consultations_for_review_modal($order)
+{
+	if (!$order instanceof WC_Order) {
+		return '';
+	}
+
+	try {
+		$previous_orders = trimvia_get_previous_consultation_orders_for_review($order);
+		return trimvia_build_previous_consultations_section_html($order, $previous_orders);
+	} catch (Throwable $exception) {
+		if (defined('WP_DEBUG') && WP_DEBUG) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			error_log('Trimvia previous consultations modal: ' . $exception->getMessage());
+		}
+		return '';
+	}
 }

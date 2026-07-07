@@ -13,7 +13,23 @@ $term                     = $args['term'] ?? null;
 $questionnaire_id         = $args['questionnaire_id'] ?? '';
 $consult_hero_sub         = $args['consult_hero_sub'] ?? '';
 $consult_approx_minutes   = max(1, (int) ($args['consult_approx_minutes'] ?? 5));
+$login_url                = $args['login_url'] ?? (function_exists('wc_get_page_permalink') ? wc_get_page_permalink('myaccount') : wp_login_url());
+$account_url              = $args['account_url'] ?? $login_url;
 ?>
+<?php if (!is_user_logged_in()) : ?>
+	<div class="consult-login-bar">
+		<div class="consult-login-bar__inner">
+			<div class="consult-login-bar__text">
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+				<span><strong><?php esc_html_e('Existing patient?', 'woopw'); ?></strong> <?php esc_html_e('Log in to pre-fill your details and speed up your consultation.', 'woopw'); ?></span>
+			</div>
+			<div class="consult-login-bar__actions">
+				<a href="<?php echo esc_url($login_url); ?>" class="consult-login-bar__btn consult-login-bar__btn--primary"><?php esc_html_e('Log In', 'woopw'); ?></a>
+				<a href="<?php echo esc_url($account_url); ?>" class="consult-login-bar__btn consult-login-bar__btn--ghost"><?php esc_html_e('Create Account', 'woopw'); ?></a>
+			</div>
+		</div>
+	</div>
+<?php endif; ?>
 <section class="page-hero page-hero--consultation">
 	<div class="hero-noise" aria-hidden="true"></div>
 	<div class="container">

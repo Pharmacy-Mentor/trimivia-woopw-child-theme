@@ -94,5 +94,9 @@
     });
   }
 
-  $(initAllControls);
+  if (window.wp && window.wp.customize) {
+    wp.customize.bind("ready", initAllControls);
+  } else {
+    $(initAllControls);
+  }
 })(jQuery);

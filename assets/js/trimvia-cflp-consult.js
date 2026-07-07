@@ -121,6 +121,14 @@
 		});
 	}
 
+	function resetProgressStepScroll(form) {
+		var indicator = form.querySelector('.cflp-v2-progress-head .step-indicator');
+		if (!indicator || !indicator.classList.contains('step-indicator--few')) {
+			return;
+		}
+		indicator.scrollLeft = 0;
+	}
+
 	var sidebarSyncTimer = null;
 
 	function scheduleSidebarSync(form) {
@@ -136,6 +144,7 @@
 	function syncAll(form) {
 		if (document.body.classList.contains('cflp-multistep-v2')) {
 			syncTrimviaSidebar(form);
+			resetProgressStepScroll(form);
 		}
 		syncRadioPills(form);
 	}
@@ -214,7 +223,11 @@
 		// WooPW v2 init runs after DOMContentLoaded — resync once it has applied state.
 		window.setTimeout(function () {
 			syncAll(form);
+			resetProgressStepScroll(form);
 		}, 350);
+		window.setTimeout(function () {
+			resetProgressStepScroll(form);
+		}, 700);
 	}
 
 	if (document.readyState === 'loading') {

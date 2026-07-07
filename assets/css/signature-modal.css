@@ -152,10 +152,10 @@
   opacity: 1 !important;
 }
 
-.prescriber-pin-gen-wrapper .form-input-wrapper .btn,
-.prescriber-pin-gen-wrapper .form-input-wrapper a.btn,
-.prescriber-sign-gen-wrapper .form-input-wrapper .btn,
-.prescriber-sign-gen-wrapper .form-input-wrapper a.btn {
+.prescriber-pin-gen-wrapper .form-input-wrapper .btn:not(.d-none),
+.prescriber-pin-gen-wrapper .form-input-wrapper a.btn:not(.d-none),
+.prescriber-sign-gen-wrapper .form-input-wrapper .btn:not(.d-none),
+.prescriber-sign-gen-wrapper .form-input-wrapper a.btn:not(.d-none) {
   display: inline-flex !important;
   align-items: center;
   justify-content: center;
@@ -166,6 +166,15 @@
   font-weight: 600 !important;
   font-size: 14px !important;
   cursor: pointer;
+}
+
+.prescriber-pin-gen-wrapper .form-input-wrapper .btn.d-none,
+.prescriber-pin-gen-wrapper .form-input-wrapper a.btn.d-none,
+.prescriber-sign-gen-wrapper .form-input-wrapper .btn.d-none,
+.prescriber-sign-gen-wrapper .form-input-wrapper a.btn.d-none {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
 }
 
 .prescriber-pin-gen-wrapper .form-input-wrapper .theme-btn,

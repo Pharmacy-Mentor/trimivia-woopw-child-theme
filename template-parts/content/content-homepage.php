@@ -381,18 +381,20 @@ if (function_exists('get_field') && $home_page_id) {
     }
 
     $why_stats_rows = get_field('why_section_stats', $home_page_id);
-    if (is_array($why_stats_rows) && !empty($why_stats_rows)) {
+    if (metadata_exists('post', $home_page_id, 'why_section_stats')) {
         $why_stats = array();
-        foreach ($why_stats_rows as $stat_row) {
-            $stat_value = trim((string) ($stat_row['stat_value'] ?? ''));
-            $stat_label = trim((string) ($stat_row['stat_label'] ?? ''));
-            if ($stat_value === '' && $stat_label === '') {
-                continue;
+        if (is_array($why_stats_rows)) {
+            foreach ($why_stats_rows as $stat_row) {
+                $stat_value = trim((string) ($stat_row['stat_value'] ?? ''));
+                $stat_label = trim((string) ($stat_row['stat_label'] ?? ''));
+                if ($stat_value === '' && $stat_label === '') {
+                    continue;
+                }
+                $why_stats[] = array(
+                    'value' => $stat_value,
+                    'label' => $stat_label,
+                );
             }
-            $why_stats[] = array(
-                'value' => $stat_value,
-                'label' => $stat_label,
-            );
         }
     }
 

@@ -1,6 +1,112 @@
 (() => {
   document.documentElement.classList.add("js");
 
+  const PRESCRIBER_AJAX_ACTIONS = [
+    "prescriber_sec_pin",
+    "prescriber_signature",
+    "prescriber_update_signature",
+    "prescriber_auth_sess",
+    "render_prescription_more_info_form",
+    "process_prescription_more_info",
+    "render_prescription_requested_info",
+    "prescriber_verification",
+    "prescriber_order_status_action",
+    "prescriber_order_actions",
+    "prescriber_view_prescription",
+  ];
+
+  const extractPrescriberAjaxAction = (data) => {
+    if (typeof data === "string") {
+      const match = data.match(/(?:^|&)action=([^&]+)/);
+      return match ? decodeURIComponent(match[1].replace(/\+/g, " ")) : "";
+    }
+    if (data instanceof FormData) {
+      return data.get("action") || "";
+    }
+    if (data && typeof data === "object") {
+      return data.action || "";
+    }
+    return "";
+  };
+
+  const parsePrescriberAjaxResponse = (raw) => {
+    if (raw == null || raw === "") {
+      return null;
+    }
+    if (typeof raw === "object") {
+      return raw;
+    }
+
+    const text = String(raw).trim();
+    try {
+      return JSON.parse(text);
+    } catch (error) {
+      const start = text.indexOf("{");
+      const end = text.lastIndexOf("}");
+      if (start !== -1 && end > start) {
+        return JSON.parse(text.slice(start, end + 1));
+      }
+      throw error;
+    }
+  };
+
+  const initPrescriberAjaxJsonCompat = () => {
+    const jq = window.jQuery;
+    if (!jq || typeof jq.ajaxPrefilter !== "function") {
+      return;
+    }
+
+    jq.ajaxPrefilter((options, originalOptions) => {
+      const action = extractPrescriberAjaxAction(originalOptions.data);
+      if (!PRESCRIBER_AJAX_ACTIONS.includes(action)) {
+        return;
+      }
+
+      options.dataType = "text";
+
+      const originalSuccess = options.success;
+      const originalError = options.error;
+
+      options.success = function prescriberAjaxSuccess(data, textStatus, jqXHR) {
+        let parsed;
+        try {
+          parsed = parsePrescriberAjaxResponse(data);
+        } catch (error) {
+          if (typeof originalError === "function") {
+            originalError.call(this, jqXHR, "parsererror", error);
+          }
+          return;
+        }
+
+        jqXHR.responseJSON = parsed;
+        if (typeof originalSuccess === "function") {
+          originalSuccess.call(this, parsed, textStatus, jqXHR);
+        }
+      };
+
+      options.error = function prescriberAjaxError(jqXHR, textStatus, errorThrown) {
+        if (textStatus === "parsererror" && jqXHR && jqXHR.responseText) {
+          try {
+            const parsed = parsePrescriberAjaxResponse(jqXHR.responseText);
+            jqXHR.responseJSON = parsed;
+            if (typeof originalSuccess === "function") {
+              originalSuccess.call(this, parsed, "success", jqXHR);
+              return;
+            }
+          } catch (error) {
+            // Fall through to the original error handler.
+          }
+        }
+
+        if (typeof originalError === "function") {
+          originalError.call(this, jqXHR, textStatus, errorThrown);
+        }
+      };
+    });
+  };
+
+  initPrescriberAjaxJsonCompat();
+
   const ensureLegacyAdminAjaxGlobal = () => {
     const defaultAjaxUrl = "/wp-admin/admin-ajax.php";
     const fromTrimvia =
@@ -59,6 +165,9 @@
   };
 
   const closeSignaturePopup = () => {
+    document.querySelectorAll(PRESCRIBER_ONBOARDING_POPUP_SELECTOR).forEach((popup) => {
+      popup.remove();
+    });
     const popup =
       document.querySelector("body > .prescriber-sign-gen-wrapper.make-popup") ||
       document.querySelector(".prescriber-sign-gen-wrapper.make-popup.presc-edit-popup") ||
@@ -70,6 +179,7 @@
     if (host) {
       host.innerHTML = "";
     }
+    document.body.classList.remove("presc-filter-page");
     document.querySelectorAll(".signature-modal.disabled").forEach((btn) => {
       btn.classList.remove("disabled");
       const loader = btn.querySelector(".loader");
@@ -99,6 +209,75 @@
     }
   };
 
+  const clearPrescriberModalSpinner = (modal) => {
+    if (!modal) {
+      return;
+    }
+
+    modal.classList.remove("spinner-added");
+    modal.querySelectorAll(".fa-spin, .loader").forEach((loader) => {
+      loader.style.display = "none";
+    });
+  };
+
+  const syncPrescriberModalStacking = () => {
+    movePractitionerModalsToBody();
+
+    document.querySelectorAll(".modal-backdrop").forEach((backdrop) => {
+      backdrop.style.zIndex = "100050";
+    });
+
+    PRACTITIONER_MODAL_IDS.forEach((id) => {
+      const modal = document.getElementById(id);
+      if (!modal || !modal.classList.contains("show")) {
+        return;
+      }
+
+      modal.style.zIndex = "100060";
+    });
+  };
+
+  const initPrescriberModalInteractionFix = () => {
+    const onModalShown = (modal) => {
+      if (!modal || !PRACTITIONER_MODAL_IDS.includes(modal.id)) {
+        return;
+      }
+
+      movePractitionerModalsToBody();
+      syncPrescriberModalStacking();
+    };
+
+    document.addEventListener("shown.bs.modal", (event) => {
+      onModalShown(event.target);
+    });
+
+    const jq = window.jQuery;
+    if (jq) {
+      jq(document).on(
+        "shown.bs.modal",
+        PRACTITIONER_MODAL_IDS.map((id) => `#${id}`).join(", "),
+        function onPrescriberModalShown() {
+          onModalShown(this);
+        }
+      );
+
+      const finishPrescriberAjaxLoading = (_event, _xhr, settings) => {
+        const action = extractPrescriberAjaxAction(settings?.data);
+        if (!PRESCRIBER_AJAX_ACTIONS.includes(action)) {
+          return;
+        }
+
+        PRACTITIONER_MODAL_IDS.forEach((id) => {
+          clearPrescriberModalSpinner(document.getElementById(id));
+        });
+        jq(".fa-spin").hide();
+      };
+
+      jq(document).ajaxComplete(finishPrescriberAjaxLoading);
+      jq(document).ajaxError(finishPrescriberAjaxLoading);
+    }
+  };
+
   const ensureLegacyJqueryModalSupport = () => {
     const jq = window.jQuery;
     if (!jq || !jq.fn) return;
@@ -120,6 +299,8 @@
         backdrop.className = "modal-backdrop fade show";
         document.body.appendChild(backdrop);
       }
+
+      syncPrescriberModalStacking();
     };
 
     const hideModal = (modal) => {
@@ -271,12 +452,74 @@
     };
   }
 
+  const initCommerceViewportLock = () => {
+    const isCommercePage =
+      document.body.classList.contains("trimvia-checkout-page") ||
+      document.body.classList.contains("trimvia-cart-page");
+    if (!isCommercePage) {
+      return;
+    }
+
+    const resetHorizontalScroll = () => {
+      if (window.scrollX !== 0) {
+        window.scrollTo(0, window.scrollY);
+      }
+      document.documentElement.scrollLeft = 0;
+      document.body.scrollLeft = 0;
+    };
+
+    resetHorizontalScroll();
+    window.addEventListener("load", resetHorizontalScroll, { passive: true });
+    window.addEventListener("pageshow", resetHorizontalScroll, { passive: true });
+    window.addEventListener(
+      "resize",
+      () => {
+        window.requestAnimationFrame(resetHorizontalScroll);
+      },
+      { passive: true }
+    );
+
+    const jq = window.jQuery;
+    if (jq) {
+      jq(document.body).on("updated_checkout updated_cart_totals", resetHorizontalScroll);
+    }
+  };
+
   const initHeaderScroll = () => {
     const header = document.getElementById("header");
     if (!header) return;
-    const onScroll = () => header.classList.toggle("scrolled", window.scrollY > 20);
+    const isSolidHeaderPage =
+      document.body.classList.contains("consultation-page");
+
+    const onScroll = () => {
+      if (isSolidHeaderPage) {
+        header.classList.add("scrolled");
+        return;
+      }
+      header.classList.toggle("scrolled", window.scrollY > 20);
+    };
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
+  };
+
+  const initScrollToTop = () => {
+    const button = document.getElementById("trimviaScrollTop");
+    if (!button) return;
+
+    const showThreshold = 400;
+
+    const updateVisibility = () => {
+      const visible = window.scrollY > showThreshold;
+      button.hidden = !visible;
+      button.classList.toggle("is-visible", visible);
+    };
+
+    button.addEventListener("click", () => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+
+    updateVisibility();
+    window.addEventListener("scroll", updateVisibility, { passive: true });
   };
 
   const initRevealOnScroll = () => {
@@ -733,26 +976,86 @@
       return;
     }
 
+    const refreshGalleryViewport = () => {
+      const viewport = gallery.querySelector(".flex-viewport");
+      if (!viewport) {
+        return;
+      }
+
+      const activeSlide =
+        gallery.querySelector(".woocommerce-product-gallery__image.flex-active-slide") ||
+        gallery.querySelector(".woocommerce-product-gallery__image");
+
+      const img = activeSlide ? activeSlide.querySelector("img") : null;
+      if (!img) {
+        return;
+      }
+
+      const applyHeight = () => {
+        const measured = Math.ceil(
+          Math.max(img.getBoundingClientRect().height, img.offsetHeight)
+        );
+        if (measured > 0) {
+          viewport.style.height = `${measured}px`;
+        }
+      };
+
+      if (img.complete && img.naturalHeight > 0) {
+        applyHeight();
+        return;
+      }
+
+      img.loading = "eager";
+      img.addEventListener("load", applyHeight, { once: true });
+    };
+
     const syncGalleryLayout = () => {
       const thumbs = gallery.querySelector(".flex-control-thumbs");
       if (thumbs && thumbs.parentElement !== galleryWrap) {
         thumbs.classList.add("single-product-thumbs");
         galleryWrap.appendChild(thumbs);
       }
+
+      gallery.querySelectorAll(".woocommerce-product-gallery__image img").forEach((slideImg) => {
+        slideImg.loading = "eager";
+      });
+
+      refreshGalleryViewport();
+
+      if (window.jQuery) {
+        const slider = window.jQuery(gallery).data("flexslider");
+        if (slider && typeof slider.resize === "function") {
+          slider.resize();
+        }
+      }
     };
 
     syncGalleryLayout();
 
+    galleryWrap.addEventListener("click", (event) => {
+      if (!event.target.closest(".flex-control-thumbs li, .single-product-thumbs li")) {
+        return;
+      }
+      window.setTimeout(refreshGalleryViewport, 40);
+      window.setTimeout(refreshGalleryViewport, 280);
+    });
+
     if (window.jQuery) {
       window.jQuery(document.body).on(
         "woocommerce_gallery_init_zoom wc-product-gallery-after-init found_variation reset_data flexslider-before flexslider-after",
-        syncGalleryLayout
+        () => {
+          syncGalleryLayout();
+          refreshGalleryViewport();
+        }
       );
+      window.jQuery(gallery).on("flexslider-after", refreshGalleryViewport);
     }
 
-    window.addEventListener("resize", syncGalleryLayout);
+    window.addEventListener("resize", refreshGalleryViewport);
     window.setTimeout(syncGalleryLayout, 120);
+    window.setTimeout(refreshGalleryViewport, 160);
     window.setTimeout(syncGalleryLayout, 600);
+    window.setTimeout(refreshGalleryViewport, 640);
   };
 
   const initCheckoutDeliveryPanel = () => {
@@ -997,6 +1300,7 @@
         placeholder: "Enter GP Surgery Here ...",
         width: "100%",
         minimumInputLength: 4,
+        dropdownParent: $(document.body),
         ajax: {
           delay: 1000,
           url: "https://api.nhs.uk/service-search/search?api-version=1",
@@ -1085,6 +1389,311 @@
     syncGpPanels(false);
   };
 
+  const initCheckoutValidationGuard = () => {
+    if (
+      !document.body.classList.contains("trimvia-checkout-page") ||
+      document.body.classList.contains("trimvia-order-pay-page") ||
+      !window.jQuery
+    ) {
+      return;
+    }
+
+    const $ = window.jQuery;
+    const $form = $("form.checkout");
+
+    if (!$form.length || $form.data("trimviaCheckoutValidation") === 1) {
+      return;
+    }
+
+    $form.data("trimviaCheckoutValidation", 1);
+
+    const mollieErrorPattern = /not all required components are mounted|mollie\.com\/guides\/mollie-components/i;
+
+    const getNoticeTarget = () => {
+      let $target = $(".trimvia-checkout-form-notices").first();
+
+      if (!$target.length) {
+        $target = $(
+          '<div class="trimvia-checkout-form-notices woocommerce-notices-wrapper" aria-live="polite"></div>'
+        );
+        $(".checkout-form").first().prepend($target);
+      }
+
+      return $target;
+    };
+
+    const moveCheckoutNoticesToForm = () => {
+      const $target = getNoticeTarget();
+
+      $(
+        ".trimvia-checkout-before-form .woocommerce-NoticeGroup, .trimvia-checkout-before-form > .woocommerce-notices-wrapper, .trimvia-checkout-before-form > .woocommerce-error"
+      ).each(function moveNotice() {
+        const $group = $(this);
+
+        if ($group.is($target) || $group.find($target).length) {
+          return;
+        }
+
+        if ($group.children().length) {
+          $target.append($group.contents());
+        }
+
+        $group.remove();
+      });
+    };
+
+    const showValidationNotice = (message) => {
+      const $target = getNoticeTarget();
+
+      $target.html(
+        `<ul class="woocommerce-error trimvia-checkout-validation-error" role="alert"><li>${message}</li></ul>`
+      );
+      moveCheckoutNoticesToForm();
+
+      const top = Math.max(0, ($target.offset()?.top || 0) - 100);
+      $("html, body").animate({ scrollTop: top }, 300);
+    };
+
+    const clearValidationNotice = () => {
+      $(".trimvia-checkout-validation-error").remove();
+    };
+
+    const validateCheckoutForm = () => {
+      let valid = true;
+      let $firstInvalid = null;
+
+      $form
+        .find(".woocommerce-invalid-required-field")
+        .add($(".trimvia-checkout-gp-section .woocommerce-invalid-required-field"))
+        .removeClass("woocommerce-invalid woocommerce-invalid-required-field");
+      clearValidationNotice();
+
+      const $requiredRows = $form
+        .find(".validate-required:visible")
+        .add(".trimvia-checkout-gp-section .validate-required:visible");
+
+      $requiredRows.each(function validateRow() {
+        const $row = $(this);
+        const $inputs = $row.find(".input-text, select, textarea").filter(":visible");
+
+        if ($row.find("input:checkbox").filter(":visible").length) {
+          if (!$row.find("input:checkbox:checked").length) {
+            valid = false;
+            $row.addClass("woocommerce-invalid woocommerce-invalid-required-field");
+            if (!$firstInvalid) {
+              $firstInvalid = $row;
+            }
+          }
+          return;
+        }
+
+        if (!$inputs.length) {
+          return;
+        }
+
+        $inputs.each(function validateInput() {
+          const $input = $(this);
+
+          if ($input.is(":hidden, [type=submit], [type=button], [type=file]")) {
+            return;
+          }
+
+          if (!String($input.val() || "").trim()) {
+            valid = false;
+            $row.addClass("woocommerce-invalid woocommerce-invalid-required-field");
+            if (!$firstInvalid) {
+              $firstInvalid = $row;
+            }
+          }
+        });
+      });
+
+      if (!valid) {
+        const invalidCount =
+          $form.find(".woocommerce-invalid-required-field").length +
+          $(".trimvia-checkout-gp-section .woocommerce-invalid-required-field").length;
+        const message =
+          invalidCount > 1
+            ? "Please complete all required fields below before placing your order."
+            : "Please complete the required field below before placing your order.";
+
+        showValidationNotice(message);
+
+        if ($firstInvalid && $firstInvalid.length) {
+          const scrollTop = Math.max(0, ($firstInvalid.offset()?.top || 0) - 120);
+          $("html, body").animate({ scrollTop }, 300);
+        }
+      }
+
+      return valid;
+    };
+
+    const blockInvalidCheckout = (event) => {
+      if (!validateCheckoutForm()) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        $form.removeClass("processing");
+
+        if (typeof $form.unblock === "function") {
+          $form.unblock();
+        }
+
+        return false;
+      }
+
+      return true;
+    };
+
+    const formEl = $form.get(0);
+
+    if (formEl) {
+      formEl.addEventListener("submit", blockInvalidCheckout, true);
+    }
+
+    document.addEventListener(
+      "click",
+      (event) => {
+        const placeOrder = event.target.closest("#place_order");
+
+        if (!placeOrder || placeOrder.disabled || !placeOrder.closest("form.checkout")) {
+          return;
+        }
+
+        blockInvalidCheckout(event);
+      },
+      true
+    );
+
+    $form.on("checkout_place_order", function onCheckoutPlaceOrder() {
+      return validateCheckoutForm();
+    });
+
+    $(document.body).on("checkout_error", () => {
+      window.setTimeout(() => {
+        let replacedMollie = false;
+
+        $(".woocommerce-error li").each(function stripMollieError() {
+          if (mollieErrorPattern.test($(this).text())) {
+            $(this).closest(".woocommerce-error, .woocommerce-NoticeGroup").remove();
+            replacedMollie = true;
+          }
+        });
+
+        if (replacedMollie) {
+          validateCheckoutForm();
+        }
+
+        moveCheckoutNoticesToForm();
+      }, 0);
+    });
+
+    $(document.body).on(
+      "input change",
+      "form.checkout .input-text, form.checkout select, form.checkout textarea, .trimvia-checkout-gp-section input, .trimvia-checkout-gp-section select, .trimvia-checkout-gp-section textarea",
+      function clearFieldError() {
+        const $row = $(this).closest(".form-row, .trimvia-gp-panel, .trimvia-gp-consent");
+
+        if (!$row.hasClass("woocommerce-invalid-required-field")) {
+          return;
+        }
+
+        if ($(this).is(":checkbox")) {
+          if ($(this).is(":checked")) {
+            $row.removeClass("woocommerce-invalid woocommerce-invalid-required-field");
+          }
+          return;
+        }
+
+        if (String($(this).val() || "").trim()) {
+          $row.removeClass("woocommerce-invalid woocommerce-invalid-required-field");
+        }
+      }
+    );
+  };
+
+  const enhanceCheckoutAccountPassword = () => {
+    const input = document.getElementById("account_password");
+    if (!input || input.dataset.trimviaPasswordToggle === "1") {
+      return;
+    }
+
+    let wrapper = input.closest(".woocommerce-input-wrapper.password-input, .password-input");
+
+    if (!wrapper) {
+      wrapper = document.createElement("span");
+      wrapper.className = "woocommerce-input-wrapper password-input";
+      input.parentNode.insertBefore(wrapper, input);
+      wrapper.appendChild(input);
+    } else if (!wrapper.classList.contains("woocommerce-input-wrapper")) {
+      wrapper.classList.add("woocommerce-input-wrapper");
+    }
+
+    if (wrapper.querySelector(".show-password-input")) {
+      input.dataset.trimviaPasswordToggle = "1";
+      return;
+    }
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "show-password-input";
+    button.setAttribute("aria-label", "Show password");
+    button.setAttribute("aria-pressed", "false");
+
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      const isHidden = input.type === "password";
+      input.type = isHidden ? "text" : "password";
+      button.classList.toggle("display-password", isHidden);
+      button.setAttribute("aria-label", isHidden ? "Hide password" : "Show password");
+      button.setAttribute("aria-pressed", String(isHidden));
+    });
+
+    wrapper.appendChild(button);
+    input.dataset.trimviaPasswordToggle = "1";
+  };
+
+  let checkoutAccountPasswordBound = false;
+
+  const initCheckoutAccountPasswordVisibility = () => {
+    if (!document.body.classList.contains("trimvia-checkout-page")) {
+      return;
+    }
+
+    enhanceCheckoutAccountPassword();
+
+    if (checkoutAccountPasswordBound) {
+      return;
+    }
+    checkoutAccountPasswordBound = true;
+
+    const createAccount = document.getElementById("createaccount");
+    if (createAccount) {
+      createAccount.addEventListener("change", () => {
+        window.setTimeout(enhanceCheckoutAccountPassword, 50);
+      });
+    }
+
+    const checkout = document.querySelector(".woocommerce-checkout");
+    if (checkout && checkout.dataset.trimviaAccountPasswordObserved !== "1") {
+      checkout.dataset.trimviaAccountPasswordObserved = "1";
+      new MutationObserver(() => {
+        window.requestAnimationFrame(enhanceCheckoutAccountPassword);
+      }).observe(checkout, { childList: true, subtree: true });
+    }
+
+    const jq = window.jQuery;
+    if (jq) {
+      jq(document.body).on("updated_checkout", () => {
+        const input = document.getElementById("account_password");
+        if (input) {
+          input.dataset.trimviaPasswordToggle = "";
+        }
+        window.setTimeout(enhanceCheckoutAccountPassword, 50);
+      });
+    }
+  };
+
   const initCommon = () => {
     ensureLegacyAdminAjaxGlobal();
     movePractitionerModalsToBody();
@@ -1107,10 +1716,48 @@
       if (event.target.closest(".signature-modal")) {
         window.setTimeout(moveSignaturePopupToBody, 120);
       }
+      if (event.target.closest(".woocommerce-MyAccount-navigation a")) {
+        closeSignaturePopup();
+      }
     });
+
+    const jq = window.jQuery;
+    if (jq) {
+      jq(document).ajaxComplete((_event, xhr, settings) => {
+        const data = settings?.data;
+        let action = "";
+
+        if (typeof data === "string") {
+          const match = data.match(/(?:^|&)action=([^&]+)/);
+          action = match ? decodeURIComponent(match[1]) : "";
+        } else if (data instanceof FormData) {
+          action = data.get("action") || "";
+        } else if (data && typeof data === "object") {
+          action = data.action || "";
+        }
+
+        if (action !== "prescriber_signature") {
+          return;
+        }
+
+        let saved = false;
+        try {
+          const response = xhr.responseJSON || JSON.parse(xhr.responseText || "{}");
+          saved = response && (response.success === 1 || response.success === true);
+        } catch (error) {
+          saved = false;
+        }
+
+        if (saved) {
+          closeSignaturePopup();
+        }
+      });
+    }
     ensureLegacyJqueryModalSupport();
     ensureGetOrderPrescriptionDataFallback();
+    initCommerceViewportLock();
     initHeaderScroll();
+    initScrollToTop();
     syncHeaderAuthButtons();
     initMobileMenu();
     syncHeaderAuthButtons();
@@ -1121,9 +1768,12 @@
     initSingleProductGallery();
     initCartQuantityUpdates();
     initCheckoutDeliveryPanel();
+    initCheckoutAccountPasswordVisibility();
     initCheckoutGpForm();
+    initCheckoutValidationGuard();
     initPrescriberConsultationAccordion();
     initPrescriberApprovalPinModal();
+    initPrescriberModalInteractionFix();
     initConsultationPatientModal();
   };
 

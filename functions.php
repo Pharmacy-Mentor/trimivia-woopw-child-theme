@@ -1,6 +1,10 @@
 <?php
 /**
  * Pharmacy Mentor - WooPW child theme bootstrap.
+ *
+ * DEPLOY: upload this file only to wp-content/themes/Pharmacy-Mentor -WooPW-child/
+ * Never copy it into wp-content/themes/pharmacymentor/ (parent). WordPress loads both
+ * theme functions.php files; duplicate function names cause a fatal error.
  */
 
 if (!defined('ABSPATH')) {
@@ -10,6 +14,19 @@ if (!defined('ABSPATH')) {
 require_once get_stylesheet_directory() . '/inc/class-trimvia-nav-walker.php';
 require_once get_stylesheet_directory() . '/inc/blog-content-images.php';
 require_once get_stylesheet_directory() . '/inc/prescriber-modal-enrichment.php';
+require_once get_stylesheet_directory() . '/inc/trimvia-service-icons.php';
+require_once get_stylesheet_directory() . '/inc/customizer/bootstrap.php';
+require_once get_stylesheet_directory() . '/inc/theme-options.php';
+
+$trimvia_patient_id_stream = get_stylesheet_directory() . '/inc/patient-id-stream.php';
+if (file_exists($trimvia_patient_id_stream)) {
+	require_once $trimvia_patient_id_stream;
+}
+
+$trimvia_consultation_file_stream = get_stylesheet_directory() . '/inc/consultation-file-stream.php';
+if (file_exists($trimvia_consultation_file_stream)) {
+	require_once $trimvia_consultation_file_stream;
+}
 
 /**
  * Theme supports required for WordPress and Yoast SEO document titles.
@@ -17,8 +34,20 @@ require_once get_stylesheet_directory() . '/inc/prescriber-modal-enrichment.php'
 function trimvia_child_theme_setup()
 {
 	add_theme_support('title-tag');
+	// Fixed header handles its own offset; prevent WP html margin-top double gap.
+	add_theme_support('admin-bar', array('callback' => '__return_false'));
 }
 add_action('after_setup_theme', 'trimvia_child_theme_setup', 0);
+
+/**
+ * Stop WordPress from injecting html { margin-top: 32px } for the admin bar.
+ */
+function trimvia_disable_admin_bar_bump()
+{
+	remove_action('wp_head', '_admin_bar_bump_cb');
+}
+add_action('get_header', 'trimvia_disable_admin_bar_bump', 0);
+add_action('admin_init', 'trimvia_disable_admin_bar_bump', 0);
 
 /**
  * Match parent theme WooCommerce gallery support (zoom, lightbox, slider).
@@ -86,33 +115,6 @@ function trimvia_document_title_fallback($title)
 	return 'Trimvia';
 }
 add_filter('pre_get_document_title', 'trimvia_document_title_fallback', 100);
-
-/**
- * Parent-template compatibility helper.
- * Some parent templates call get_placeholder_image(); define a safe fallback
- * in child theme so include() of parent templates cannot fatally error.
- */
-if (!function_exists('get_placeholder_image')) {
-	function get_placeholder_image($return_url = true, $size = 'medium', $loading = 'lazy')
-	{
-		$placeholder_id = (int) get_theme_mod('placeholder_image');
-		if ($placeholder_id < 1) {
-			return $return_url ? '' : '';
-		}
-
-		if ($return_url) {
-			$url = wp_get_attachment_image_url($placeholder_id, $size);
-			return $url ? $url : '';
-		}
-
-		return (string) wp_get_attachment_image(
-			$placeholder_id,
-			$size,
-			false,
-			array('loading' => $loading)
-		);
-	}
-}
 
 /**
  * Keep legacy frontend scripts stable (signature, practitioner dashboard, modal scripts).
@@ -263,6 +265,41 @@ function trimvia_enqueue_bootstrap_modal_assets($parent_theme, array &$style_dep
  */
 function trimvia_child_enqueue_assets()
 {
+	if (trimvia_is_customizer_preview()) {
+		$parent_theme = wp_get_theme(get_template());
+		$child_theme  = wp_get_theme();
+
+		wp_enqueue_style(
+			'theme-woopw-parent-style',
+			get_template_directory_uri() . '/style.css',
+			array(),
+			$parent_theme->get('Version')
+		);
+
+		wp_enqueue_style(
+			'theme-woopw-child-style',
+			get_stylesheet_uri(),
+			array('theme-woopw-parent-style'),
+			$child_theme->get('Version')
+		);
+
+		wp_enqueue_style(
+			'theme-woopw-child-responsive',
+			get_stylesheet_directory_uri() . '/assets/css/style.css',
+			array('theme-woopw-child-style'),
+			filemtime(get_stylesheet_directory() . '/assets/css/style.css')
+		);
+
+		wp_enqueue_style(
+			'trimvia-font-awesome',
+			'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css',
+			array(),
+			'6.5.2'
+		);
+
+		return;
+	}
+
 	$parent_theme = wp_get_theme(get_template());
 	$child_theme = wp_get_theme();
 	$fonts_path   = get_stylesheet_directory() . '/assets/css/trimvia-fonts.css';
@@ -291,7 +328,7 @@ function trimvia_child_enqueue_assets()
 	$child_responsive_deps = array('theme-woopw-child-style', 'theme-woopw-child-fonts');
 	$common_script_deps    = array('jquery');
 
-	// Parent Bootstrap 4 — required for WooPW consultation modal (thank you / view order) and prescriber popups.
+	// Parent Bootstrap 4 â€” required for WooPW consultation modal (thank you / view order) and prescriber popups.
 	if (trimvia_needs_bootstrap_modal_assets()) {
 		$bootstrap_script_deps = trimvia_enqueue_bootstrap_modal_assets($parent_theme, $child_responsive_deps);
 		$common_script_deps    = array_merge($common_script_deps, $bootstrap_script_deps);
@@ -395,6 +432,68 @@ function trimvia_child_enqueue_assets()
 add_action('wp_enqueue_scripts', 'trimvia_child_enqueue_assets', 110);
 
 /**
+ * WooCommerce admin order screen — constrain prescription modal logo size.
+ */
+function trimvia_enqueue_admin_prescription_modal_styles($hook)
+{
+	if (!in_array($hook, array('post.php', 'post-new.php'), true)) {
+		return;
+	}
+
+	$screen = function_exists('get_current_screen') ? get_current_screen() : null;
+	if (!$screen) {
+		return;
+	}
+
+	$is_order_screen = ('shop_order' === $screen->post_type)
+		|| (false !== strpos($screen->id, 'wc-orders'))
+		|| (false !== strpos($screen->id, 'shop_order'));
+
+	if (!$is_order_screen) {
+		return;
+	}
+
+	$css_path = get_stylesheet_directory() . '/assets/css/admin-prescription-modal.css';
+	if (!file_exists($css_path)) {
+		return;
+	}
+
+	wp_enqueue_style(
+		'trimvia-admin-prescription-modal',
+		get_stylesheet_directory_uri() . '/assets/css/admin-prescription-modal.css',
+		array(),
+		filemtime($css_path)
+	);
+}
+add_action('admin_enqueue_scripts', 'trimvia_enqueue_admin_prescription_modal_styles');
+
+/**
+ * Cart and checkout use Trimvia full-width layout — parent Bootstrap/responsive CSS causes mobile overflow.
+ * Parent registers handles `bootstrap`, `responsive`, and WooCommerce layout CSS in pharmacy_register_styles() / WC.
+ */
+function trimvia_dequeue_parent_bootstrap_on_commerce_pages()
+{
+	if (function_exists('trimvia_is_customizer_preview') && trimvia_is_customizer_preview()) {
+		return;
+	}
+
+	$is_commerce = (function_exists('is_cart') && is_cart())
+		|| (function_exists('is_checkout') && is_checkout() && !(function_exists('is_order_received_page') && is_order_received_page()));
+
+	if (!$is_commerce) {
+		return;
+	}
+
+	$handles = array('bootstrap', 'responsive', 'woocommerce-layout', 'woocommerce-smallscreen');
+	foreach ($handles as $handle) {
+		wp_dequeue_style($handle);
+		wp_deregister_style($handle);
+	}
+}
+
+add_action('wp_enqueue_scripts', 'trimvia_dequeue_parent_bootstrap_on_commerce_pages', 100000);
+
+/**
  * Ensure WooPW prescriber dashboard JS runs after Bootstrap modal plugin.
  */
 function trimvia_prescriber_dashboard_script_deps()
@@ -409,6 +508,30 @@ function trimvia_prescriber_dashboard_script_deps()
 			wp_scripts()->registered['cflp-prescriber-dashboard']->deps[] = 'trimvia-parent-bootstrap';
 		}
 	}
+
+	if (wp_script_is('theme-woopw-child-common', 'registered')) {
+		$deps = wp_scripts()->registered['cflp-prescriber-dashboard']->deps;
+		if (!in_array('theme-woopw-child-common', $deps, true)) {
+			wp_scripts()->registered['cflp-prescriber-dashboard']->deps[] = 'theme-woopw-child-common';
+		}
+	}
+
+	// Always localize woopwAjax to support security nonces required by version 1.8.2
+	wp_localize_script(
+		'cflp-prescriber-dashboard',
+		'woopwAjax',
+		array(
+			'ajax'                    => admin_url('admin-ajax.php'),
+			'myaccount_url'           => function_exists('wc_get_page_permalink') ? wc_get_page_permalink('myaccount') : '#',
+			'nonce_order_actions'     => wp_create_nonce('woopw_order_actions'),
+			'nonce_presc_actions'     => wp_create_nonce('woopw_presc_actions'),
+			'nonce_more_info_form'    => wp_create_nonce('woopw_more_info_form'),
+			'nonce_requested_info'    => wp_create_nonce('woopw_requested_info'),
+			'nonce_process_more_info' => wp_create_nonce('woopw_process_more_info'),
+			'nonce_view_prescription' => wp_create_nonce('woopw_view_prescription'),
+			'nonce_prescriber_note'   => wp_create_nonce('woopw_prescriber_note'),
+		)
+	);
 }
 add_action('wp_enqueue_scripts', 'trimvia_prescriber_dashboard_script_deps', 111);
 
@@ -521,624 +644,6 @@ function trimvia_condition_field_visible($field_name, $term)
 	return (bool) $value;
 }
 
-/**
- * Sanitize image setting value (supports attachment ID or URL).
- *
- * @param mixed $value Raw value.
- * @return string|int
- */
-function trimvia_sanitize_logo_image_value($value)
-{
-	if (is_numeric($value)) {
-		return absint($value);
-	}
-
-	return esc_url_raw((string) $value);
-}
-
-/**
- * Sanitize text area content.
- *
- * @param string $value Raw text.
- * @return string
- */
-function trimvia_sanitize_textarea($value)
-{
-	return wp_kses_post((string) $value);
-}
-
-/**
- * Sanitize footer social links textarea.
- *
- * Format per line: icon-class|https://url|Label
- *
- * @param string $value Raw textarea value.
- * @return string
- */
-function trimvia_sanitize_social_links_text($value)
-{
-	$lines = preg_split('/\r\n|\r|\n/', (string) $value);
-	$clean = array();
-
-	foreach ($lines as $line) {
-		$line = trim($line);
-		if ('' === $line) {
-			continue;
-		}
-
-		$parts = array_map('trim', explode('|', $line));
-		$icon  = trimvia_sanitize_icon_class($parts[0] ?? '');
-		$url   = esc_url_raw($parts[1] ?? '');
-		$label = sanitize_text_field($parts[2] ?? '');
-
-		if ('' === $icon || '' === $url) {
-			continue;
-		}
-
-		$clean[] = $icon . '|' . $url . '|' . $label;
-	}
-
-	return implode("\n", $clean);
-}
-
-/**
- * Parse social links list from customizer textarea.
- *
- * @param string $value Sanitized textarea value.
- * @return array<int, array<string,string>>
- */
-function trimvia_parse_social_links($value)
-{
-	$items = array();
-	$lines = preg_split('/\r\n|\r|\n/', (string) $value);
-
-	foreach ($lines as $line) {
-		$line = trim($line);
-		if ('' === $line) {
-			continue;
-		}
-
-		$parts = array_map('trim', explode('|', $line));
-		$icon  = trimvia_sanitize_icon_class($parts[0] ?? '');
-		$url   = esc_url($parts[1] ?? '');
-		$label = sanitize_text_field($parts[2] ?? '');
-
-		if ('' === $icon || '' === $url) {
-			continue;
-		}
-
-		$items[] = array(
-			'icon'  => $icon,
-			'url'   => $url,
-			'label' => $label,
-		);
-	}
-
-	return $items;
-}
-
-/**
- * Available social icon choices for footer links.
- *
- * @return array<string,string>
- */
-function trimvia_get_social_icon_choices()
-{
-	return array(
-		'fa-brands fa-facebook-f' => __('Facebook', 'theme-woopm-child'),
-		'fa-brands fa-instagram'  => __('Instagram', 'theme-woopm-child'),
-		'fa-brands fa-x-twitter'  => __('X (Twitter)', 'theme-woopm-child'),
-		'fa-brands fa-linkedin-in' => __('LinkedIn', 'theme-woopm-child'),
-		'fa-brands fa-youtube'    => __('YouTube', 'theme-woopm-child'),
-		'fa-brands fa-whatsapp'   => __('WhatsApp', 'theme-woopm-child'),
-		'fa-brands fa-telegram'   => __('Telegram', 'theme-woopm-child'),
-		'fa-brands fa-pinterest-p' => __('Pinterest', 'theme-woopm-child'),
-		'fa-brands fa-tiktok'     => __('TikTok', 'theme-woopm-child'),
-		'fa-brands fa-snapchat'   => __('Snapchat', 'theme-woopm-child'),
-		'fa-brands fa-discord'    => __('Discord', 'theme-woopm-child'),
-		'fa-solid fa-globe'       => __('Website', 'theme-woopm-child'),
-	);
-}
-
-if (class_exists('WP_Customize_Control')) {
-	/**
-	 * Repeater control for footer social links.
-	 */
-	class Trimvia_Social_Repeater_Control extends WP_Customize_Control
-	{
-		public $type = 'trimvia_social_repeater';
-
-		/**
-		 * Render control content.
-		 */
-		public function render_content()
-		{
-			$icon_choices = trimvia_get_social_icon_choices();
-?>
-			<div class="trimvia-social-repeater-control">
-				<?php if (!empty($this->label)) : ?>
-					<span class="customize-control-title"><?php echo esc_html($this->label); ?></span>
-				<?php endif; ?>
-				<?php if (!empty($this->description)) : ?>
-					<span class="description customize-control-description"><?php echo esc_html($this->description); ?></span>
-				<?php endif; ?>
-				<input type="hidden" class="trimvia-social-raw" <?php $this->link(); ?> value="<?php echo esc_attr((string) $this->value()); ?>">
-				<div class="trimvia-social-items"></div>
-				<script type="text/template" class="trimvia-social-template">
-					<div class="trimvia-social-item">
-						<select class="trimvia-social-icon">
-							<?php foreach ($icon_choices as $icon_class => $icon_label) : ?>
-								<option value="<?php echo esc_attr($icon_class); ?>"><?php echo esc_html($icon_label); ?></option>
-							<?php endforeach; ?>
-						</select>
-						<input type="url" class="trimvia-social-link" placeholder="<?php echo esc_attr__('https://example.com', 'theme-woopm-child'); ?>">
-						<input type="text" class="trimvia-social-label" placeholder="<?php echo esc_attr__('Label (optional)', 'theme-woopm-child'); ?>">
-						<button type="button" class="button-link button-link-delete trimvia-social-remove"><?php echo esc_html__('Remove', 'theme-woopm-child'); ?></button>
-					</div>
-				</script>
-				<button type="button" class="button button-secondary trimvia-social-add"><?php echo esc_html__('Add New', 'theme-woopm-child'); ?></button>
-			</div>
-<?php
-		}
-	}
-}
-
-/**
- * Enqueue assets for custom Customizer controls.
- */
-function trimvia_enqueue_customizer_control_assets()
-{
-	$script_path = get_stylesheet_directory() . '/assets/js/customizer-social-repeater.js';
-	$script_url  = get_stylesheet_directory_uri() . '/assets/js/customizer-social-repeater.js';
-
-	wp_enqueue_script(
-		'trimvia-customizer-social-repeater',
-		$script_url,
-		array('jquery', 'customize-controls'),
-		file_exists($script_path) ? filemtime($script_path) : null,
-		true
-	);
-
-	$customizer_css = '.trimvia-social-item{display:grid;grid-template-columns:1fr;gap:8px;padding:10px;margin-bottom:10px;background:#fff;border:1px solid #dcdcde;border-radius:6px}.trimvia-social-remove{justify-self:start}.trimvia-social-add{margin-top:6px}';
-	wp_add_inline_style('customize-controls', $customizer_css);
-}
-add_action('customize_controls_enqueue_scripts', 'trimvia_enqueue_customizer_control_assets');
-
-/**
- * Hide parent-theme Customizer options and keep child options visible.
- *
- * This removes parent-only sections/controls from the Customizer UI.
- * It does not delete saved values from the database.
- *
- * @param WP_Customize_Manager $wp_customize Customizer manager instance.
- */
-function trimvia_hide_parent_customizer_options($wp_customize)
-{
-	// Parent sections registered in class-pharmacy-customize.php.
-	$parent_sections = array(
-		'options',
-		'footer_options',
-		'theme_color_section',
-		'theme_fonts_section',
-	);
-
-	foreach ($parent_sections as $section_id) {
-		$wp_customize->remove_section($section_id);
-	}
-
-	// Parent controls that may live in core sections (for example Site Identity).
-	$parent_controls = array(
-		'footer_custom_logo',
-		'placeholder_image',
-		'placeholder_avatar',
-	);
-	foreach ($parent_controls as $control_id) {
-		$wp_customize->remove_control($control_id);
-	}
-
-	// Defensive cleanup for parent settings with predictable prefixes.
-	$parent_setting_prefixes = array(
-		'theme_',
-		'pharmacy_',
-	);
-
-	foreach ($wp_customize->settings() as $setting_id => $setting_obj) {
-		foreach ($parent_setting_prefixes as $prefix) {
-			if (0 === strpos((string) $setting_id, $prefix)) {
-				$wp_customize->remove_setting($setting_id);
-				break;
-			}
-		}
-	}
-}
-add_action('customize_register', 'trimvia_hide_parent_customizer_options', 999);
-
-/**
- * Sanitize selected nav menu ID.
- *
- * @param mixed $value Selected value.
- * @return int
- */
-function trimvia_sanitize_menu_id($value)
-{
-	$menu_id = absint($value);
-	if (!$menu_id) {
-		return 0;
-	}
-
-	return wp_get_nav_menu_object($menu_id) ? $menu_id : 0;
-}
-
-/**
- * Register header controls in the Customizer.
- *
- * @param WP_Customize_Manager $wp_customize Customizer manager instance.
- */
-function trimvia_register_header_customizer_options($wp_customize)
-{
-	$wp_customize->add_section(
-		'trimvia_header_options',
-		array(
-			'title'    => __('Header Options', 'theme-woopm-child'),
-			'priority' => 35,
-		)
-	);
-
-	$wp_customize->add_setting(
-		'trimvia_header_logo_type',
-		array(
-			'default'           => 'text',
-			'sanitize_callback' => function ($value) {
-				return in_array($value, array('text', 'image'), true) ? $value : 'text';
-			},
-		)
-	);
-
-	$wp_customize->add_control(
-		'trimvia_header_logo_type',
-		array(
-			'type'     => 'radio',
-			'label'    => __('Header Logo Type', 'theme-woopm-child'),
-			'section'  => 'trimvia_header_options',
-			'choices'  => array(
-				'text'  => __('Text Logo', 'theme-woopm-child'),
-				'image' => __('Image Logo', 'theme-woopm-child'),
-			),
-			'settings' => 'trimvia_header_logo_type',
-		)
-	);
-
-	$wp_customize->add_setting(
-		'trimvia_header_logo_text_primary',
-		array(
-			'default'           => 'Trim',
-			'sanitize_callback' => 'sanitize_text_field',
-		)
-	);
-
-	$wp_customize->add_control(
-		'trimvia_header_logo_text_primary',
-		array(
-			'type'        => 'text',
-			'label'       => __('Text Logo Primary Part', 'theme-woopm-child'),
-			'description' => __('Example: "Trim" (bold part).', 'theme-woopm-child'),
-			'section'     => 'trimvia_header_options',
-			'settings'    => 'trimvia_header_logo_text_primary',
-		)
-	);
-
-	$wp_customize->add_setting(
-		'trimvia_header_logo_text_secondary',
-		array(
-			'default'           => 'via',
-			'sanitize_callback' => 'sanitize_text_field',
-		)
-	);
-
-	$wp_customize->add_control(
-		'trimvia_header_logo_text_secondary',
-		array(
-			'type'        => 'text',
-			'label'       => __('Text Logo Secondary Part', 'theme-woopm-child'),
-			'description' => __('Example: "via" (light part).', 'theme-woopm-child'),
-			'section'     => 'trimvia_header_options',
-			'settings'    => 'trimvia_header_logo_text_secondary',
-		)
-	);
-
-	$wp_customize->add_setting(
-		'trimvia_header_logo',
-		array(
-			'default'           => '',
-			'sanitize_callback' => 'trimvia_sanitize_logo_image_value',
-		)
-	);
-
-	$wp_customize->add_control(
-		new WP_Customize_Image_Control(
-			$wp_customize,
-			'trimvia_header_logo',
-			array(
-				'label'    => __('Header Logo', 'theme-woopm-child'),
-				'section'  => 'trimvia_header_options',
-				'settings' => 'trimvia_header_logo',
-			)
-		)
-	);
-
-	$wp_customize->add_setting(
-		'trimvia_header_sticky_logo',
-		array(
-			'default'           => '',
-			'sanitize_callback' => 'trimvia_sanitize_logo_image_value',
-		)
-	);
-
-	$wp_customize->add_control(
-		new WP_Customize_Image_Control(
-			$wp_customize,
-			'trimvia_header_sticky_logo',
-			array(
-				'label'       => __('Sticky Header Logo', 'theme-woopm-child'),
-				'description' => __('Shown when header becomes sticky/scrolled.', 'theme-woopm-child'),
-				'section'     => 'trimvia_header_options',
-				'settings'    => 'trimvia_header_sticky_logo',
-			)
-		)
-	);
-
-	$menu_choices = array(
-		0 => __('Select a menu', 'theme-woopm-child'),
-	);
-
-	$menus = wp_get_nav_menus();
-	if (!empty($menus) && !is_wp_error($menus)) {
-		foreach ($menus as $menu) {
-			$menu_choices[$menu->term_id] = $menu->name;
-		}
-	}
-
-	$wp_customize->add_setting(
-		'trimvia_header_primary_menu',
-		array(
-			'default'           => 0,
-			'sanitize_callback' => 'trimvia_sanitize_menu_id',
-		)
-	);
-
-	$wp_customize->add_control(
-		'trimvia_header_primary_menu',
-		array(
-			'type'     => 'select',
-			'label'    => __('Primary Menu', 'theme-woopm-child'),
-			'section'  => 'trimvia_header_options',
-			'choices'  => $menu_choices,
-			'settings' => 'trimvia_header_primary_menu',
-		)
-	);
-
-	$wp_customize->add_setting(
-		'trimvia_header_icon_class',
-		array(
-			'default'           => 'fa-solid fa-user',
-			'sanitize_callback' => 'trimvia_sanitize_icon_class',
-		)
-	);
-
-	$wp_customize->add_control(
-		'trimvia_header_icon_class',
-		array(
-			'type'        => 'select',
-			'label'       => __('Header Icon (Font Awesome)', 'theme-woopm-child'),
-			'description' => __('Choose an icon for the quick action link.', 'theme-woopm-child'),
-			'section'     => 'trimvia_header_options',
-			'choices'     => array(
-				''                           => __('None', 'theme-woopm-child'),
-				'fa-solid fa-user'           => __('User', 'theme-woopm-child'),
-				'fa-solid fa-cart-shopping'  => __('Cart', 'theme-woopm-child'),
-				'fa-solid fa-phone'          => __('Phone', 'theme-woopm-child'),
-				'fa-solid fa-envelope'       => __('Email', 'theme-woopm-child'),
-				'fa-solid fa-heart'          => __('Heart', 'theme-woopm-child'),
-				'fa-solid fa-circle-info'    => __('Info', 'theme-woopm-child'),
-				'fa-brands fa-whatsapp'      => __('WhatsApp', 'theme-woopm-child'),
-				'fa-brands fa-instagram'     => __('Instagram', 'theme-woopm-child'),
-				'fa-brands fa-facebook-f'    => __('Facebook', 'theme-woopm-child'),
-			),
-			'settings'    => 'trimvia_header_icon_class',
-		)
-	);
-
-	$wp_customize->add_setting(
-		'trimvia_header_icon_link',
-		array(
-			'default'           => home_url('/'),
-			'sanitize_callback' => 'esc_url_raw',
-		)
-	);
-
-	$wp_customize->add_control(
-		'trimvia_header_icon_link',
-		array(
-			'type'     => 'url',
-			'label'    => __('Header Icon Link', 'theme-woopm-child'),
-			'section'  => 'trimvia_header_options',
-			'settings' => 'trimvia_header_icon_link',
-		)
-	);
-
-	$wp_customize->add_setting(
-		'trimvia_header_primary_button_text',
-		array(
-			'default'           => __('Start Consultation', 'theme-woopm-child'),
-			'sanitize_callback' => 'sanitize_text_field',
-		)
-	);
-
-	$wp_customize->add_control(
-		'trimvia_header_primary_button_text',
-		array(
-			'type'     => 'text',
-			'label'    => __('Primary Button Text', 'theme-woopm-child'),
-			'section'  => 'trimvia_header_options',
-			'settings' => 'trimvia_header_primary_button_text',
-		)
-	);
-
-	$wp_customize->add_setting(
-		'trimvia_header_primary_button_link',
-		array(
-			'default'           => home_url('/shop/'),
-			'sanitize_callback' => 'esc_url_raw',
-		)
-	);
-
-	$wp_customize->add_control(
-		'trimvia_header_primary_button_link',
-		array(
-			'type'     => 'url',
-			'label'    => __('Primary Button Link', 'theme-woopm-child'),
-			'section'  => 'trimvia_header_options',
-			'settings' => 'trimvia_header_primary_button_link',
-		)
-	);
-
-	$wp_customize->add_setting(
-		'trimvia_header_secondary_button_text',
-		array(
-			'default'           => __('Login', 'theme-woopm-child'),
-			'sanitize_callback' => 'sanitize_text_field',
-		)
-	);
-
-	$wp_customize->add_control(
-		'trimvia_header_secondary_button_text',
-		array(
-			'type'     => 'text',
-			'label'    => __('Secondary Button Text', 'theme-woopm-child'),
-			'section'  => 'trimvia_header_options',
-			'settings' => 'trimvia_header_secondary_button_text',
-		)
-	);
-
-	$wp_customize->add_setting(
-		'trimvia_header_secondary_button_link',
-		array(
-			'default'           => home_url('/my-account/'),
-			'sanitize_callback' => 'esc_url_raw',
-		)
-	);
-
-	$wp_customize->add_control(
-		'trimvia_header_secondary_button_link',
-		array(
-			'type'     => 'url',
-			'label'    => __('Secondary Button Link', 'theme-woopm-child'),
-			'section'  => 'trimvia_header_options',
-			'settings' => 'trimvia_header_secondary_button_link',
-		)
-	);
-}
-add_action('customize_register', 'trimvia_register_header_customizer_options');
-
-/**
- * Register Customizer options for service page behaviour.
- *
- * @param WP_Customize_Manager $wp_customize Customizer manager instance.
- */
-function trimvia_register_service_customizer_options($wp_customize)
-{
-	$wp_customize->add_section(
-		'trimvia_service_options',
-		array(
-			'title'       => __('Service Pages', 'theme-woopm-child'),
-			'description' => __('The Weight Loss demo WordPress page (slug weight-loss-service) redirects to your real service when a matching service post is found.', 'theme-woopm-child'),
-			'priority'    => 34,
-		)
-	);
-
-	$wp_customize->add_setting(
-		'trimvia_weight_loss_service_id',
-		array(
-			'default'           => 0,
-			'sanitize_callback' => 'absint',
-		)
-	);
-
-	$wp_customize->add_control(
-		'trimvia_weight_loss_service_id',
-		array(
-			'type'        => 'number',
-			'label'       => __('Weight Loss service post ID', 'theme-woopm-child'),
-			'description' => __('Leave at 0 to look up by slug below.', 'theme-woopm-child'),
-			'section'     => 'trimvia_service_options',
-			'settings'    => 'trimvia_weight_loss_service_id',
-			'input_attrs' => array(
-				'min'  => 0,
-				'step' => 1,
-			),
-		)
-	);
-
-	$wp_customize->add_setting(
-		'trimvia_weight_loss_service_slug',
-		array(
-			'default'           => 'weight-loss-service',
-			'sanitize_callback' => 'sanitize_title',
-		)
-	);
-
-	$wp_customize->add_control(
-		'trimvia_weight_loss_service_slug',
-		array(
-			'type'        => 'text',
-			'label'       => __('Weight Loss service slug (primary)', 'theme-woopm-child'),
-			'description' => __('First slug tried when post ID is 0. Default: weight-loss-service', 'theme-woopm-child'),
-			'section'     => 'trimvia_service_options',
-			'settings'    => 'trimvia_weight_loss_service_slug',
-		)
-	);
-
-	$wp_customize->add_setting(
-		'trimvia_treatments_page_condition_slug',
-		array(
-			'default'           => 'weight-loss',
-			'sanitize_callback' => 'sanitize_title',
-		)
-	);
-
-	$wp_customize->add_control(
-		'trimvia_treatments_page_condition_slug',
-		array(
-			'type'        => 'text',
-			'label'       => __('Treatments page condition slug', 'theme-woopm-child'),
-			'description' => __('WordPress page using page-treatments.php shows the same layout as the condition archive. Set the `condition` taxonomy slug (e.g. weight-loss). Override per request with ?condition-slug= slug.', 'theme-woopm-child'),
-			'section'     => 'trimvia_service_options',
-			'settings'    => 'trimvia_treatments_page_condition_slug',
-		)
-	);
-
-	$wp_customize->add_setting(
-		'trimvia_condition_archive_always_public_layout',
-		array(
-			'default'           => false,
-			'sanitize_callback' => function ($value) {
-				return (bool) $value;
-			},
-		)
-	);
-
-	$wp_customize->add_control(
-		'trimvia_condition_archive_always_public_layout',
-		array(
-			'type'        => 'checkbox',
-			'label'       => __('Condition URLs: always show full treatments page', 'theme-woopm-child'),
-			'description' => __('If checked, /condition/… always uses the hero + product grid (for everyone), even when a logged-in user has already completed a consultation for that condition. Leave unchecked to show the post-consultation “submission complete” layout for those users.', 'theme-woopm-child'),
-			'section'     => 'trimvia_service_options',
-			'settings'    => 'trimvia_condition_archive_always_public_layout',
-		)
-	);
-}
-add_action('customize_register', 'trimvia_register_service_customizer_options');
 
 /**
  * Condition term for the Treatments landing page (page-treatments.php).
@@ -1449,329 +954,6 @@ function trimvia_get_weight_loss_service_permalink()
 	return '';
 }
 
-/**
- * Register footer controls in the Customizer.
- *
- * @param WP_Customize_Manager $wp_customize Customizer manager instance.
- */
-function trimvia_register_footer_customizer_options($wp_customize)
-{
-	$wp_customize->add_section(
-		'trimvia_footer_options',
-		array(
-			'title'    => __('Footer Options', 'theme-woopm-child'),
-			'priority' => 36,
-		)
-	);
-
-	$wp_customize->add_setting(
-		'trimvia_footer_logo_type',
-		array(
-			'default'           => 'text',
-			'sanitize_callback' => function ($value) {
-				return in_array($value, array('text', 'image'), true) ? $value : 'text';
-			},
-		)
-	);
-
-	$wp_customize->add_control(
-		'trimvia_footer_logo_type',
-		array(
-			'type'     => 'radio',
-			'label'    => __('Footer Logo Type', 'theme-woopm-child'),
-			'section'  => 'trimvia_footer_options',
-			'choices'  => array(
-				'text'  => __('Text Logo', 'theme-woopm-child'),
-				'image' => __('Image Logo', 'theme-woopm-child'),
-			),
-		)
-	);
-
-	$wp_customize->add_setting(
-		'trimvia_footer_logo_text_primary',
-		array(
-			'default'           => 'Trim',
-			'sanitize_callback' => 'sanitize_text_field',
-		)
-	);
-
-	$wp_customize->add_control(
-		'trimvia_footer_logo_text_primary',
-		array(
-			'type'     => 'text',
-			'label'    => __('Footer Text Logo Primary Part', 'theme-woopm-child'),
-			'section'  => 'trimvia_footer_options',
-		)
-	);
-
-	$wp_customize->add_setting(
-		'trimvia_footer_logo_text_secondary',
-		array(
-			'default'           => 'via',
-			'sanitize_callback' => 'sanitize_text_field',
-		)
-	);
-
-	$wp_customize->add_control(
-		'trimvia_footer_logo_text_secondary',
-		array(
-			'type'     => 'text',
-			'label'    => __('Footer Text Logo Secondary Part', 'theme-woopm-child'),
-			'section'  => 'trimvia_footer_options',
-		)
-	);
-
-	$wp_customize->add_setting(
-		'trimvia_footer_logo_image',
-		array(
-			'default'           => '',
-			'sanitize_callback' => 'trimvia_sanitize_logo_image_value',
-		)
-	);
-
-	$wp_customize->add_control(
-		new WP_Customize_Image_Control(
-			$wp_customize,
-			'trimvia_footer_logo_image',
-			array(
-				'label'    => __('Footer Logo Image', 'theme-woopm-child'),
-				'section'  => 'trimvia_footer_options',
-				'settings' => 'trimvia_footer_logo_image',
-			)
-		)
-	);
-
-	$wp_customize->add_setting(
-		'trimvia_footer_description',
-		array(
-			'default'           => __('Transform your health with confidence. Expert care, proven treatments, and a journey tailored to you.', 'theme-woopm-child'),
-			'sanitize_callback' => 'sanitize_text_field',
-		)
-	);
-
-	$wp_customize->add_control(
-		'trimvia_footer_description',
-		array(
-			'type'    => 'textarea',
-			'label'   => __('Footer Description', 'theme-woopm-child'),
-			'section' => 'trimvia_footer_options',
-		)
-	);
-
-	$wp_customize->add_setting(
-		'trimvia_footer_email',
-		array(
-			'default'           => 'info@trimvia.co.uk',
-			'sanitize_callback' => 'sanitize_email',
-		)
-	);
-
-	$wp_customize->add_control(
-		'trimvia_footer_email',
-		array(
-			'type'    => 'email',
-			'label'   => __('Footer Email', 'theme-woopm-child'),
-			'section' => 'trimvia_footer_options',
-		)
-	);
-
-	$wp_customize->add_setting(
-		'trimvia_footer_social_links',
-		array(
-			'default'           => "fa-brands fa-facebook-f|https://facebook.com|Facebook\nfa-brands fa-instagram|https://instagram.com|Instagram",
-			'sanitize_callback' => 'trimvia_sanitize_social_links_text',
-		)
-	);
-
-	$wp_customize->add_control(
-		new Trimvia_Social_Repeater_Control(
-			$wp_customize,
-			'trimvia_footer_social_links',
-			array(
-				'label'       => __('Social Media Links', 'theme-woopm-child'),
-				'description' => __('Select icon, add link, and click Add New for more social items.', 'theme-woopm-child'),
-				'section'     => 'trimvia_footer_options',
-				'settings'    => 'trimvia_footer_social_links',
-			)
-		)
-	);
-
-	$menu_choices = array(
-		0 => __('Select a menu', 'theme-woopm-child'),
-	);
-
-	$menus = wp_get_nav_menus();
-	if (!empty($menus) && !is_wp_error($menus)) {
-		foreach ($menus as $menu) {
-			$menu_choices[$menu->term_id] = $menu->name;
-		}
-	}
-
-	$wp_customize->add_setting(
-		'trimvia_footer_quick_menu_title',
-		array(
-			'default'           => __('Quick Links', 'theme-woopm-child'),
-			'sanitize_callback' => 'sanitize_text_field',
-		)
-	);
-	$wp_customize->add_control(
-		'trimvia_footer_quick_menu_title',
-		array(
-			'type'    => 'text',
-			'label'   => __('Menu 1 Title', 'theme-woopm-child'),
-			'section' => 'trimvia_footer_options',
-		)
-	);
-	$wp_customize->add_setting(
-		'trimvia_footer_quick_menu',
-		array(
-			'default'           => 0,
-			'sanitize_callback' => 'trimvia_sanitize_menu_id',
-		)
-	);
-	$wp_customize->add_control(
-		'trimvia_footer_quick_menu',
-		array(
-			'type'    => 'select',
-			'label'   => __('Menu 1: Quick Links', 'theme-woopm-child'),
-			'choices' => $menu_choices,
-			'section' => 'trimvia_footer_options',
-		)
-	);
-
-	$wp_customize->add_setting(
-		'trimvia_footer_legal_menu_title',
-		array(
-			'default'           => __('Legal', 'theme-woopm-child'),
-			'sanitize_callback' => 'sanitize_text_field',
-		)
-	);
-	$wp_customize->add_control(
-		'trimvia_footer_legal_menu_title',
-		array(
-			'type'    => 'text',
-			'label'   => __('Menu 2 Title', 'theme-woopm-child'),
-			'section' => 'trimvia_footer_options',
-		)
-	);
-	$wp_customize->add_setting(
-		'trimvia_footer_legal_menu',
-		array(
-			'default'           => 0,
-			'sanitize_callback' => 'trimvia_sanitize_menu_id',
-		)
-	);
-	$wp_customize->add_control(
-		'trimvia_footer_legal_menu',
-		array(
-			'type'    => 'select',
-			'label'   => __('Menu 2: Legal', 'theme-woopm-child'),
-			'choices' => $menu_choices,
-			'section' => 'trimvia_footer_options',
-		)
-	);
-
-	$wp_customize->add_setting(
-		'trimvia_footer_support_menu_title',
-		array(
-			'default'           => __('Support', 'theme-woopm-child'),
-			'sanitize_callback' => 'sanitize_text_field',
-		)
-	);
-	$wp_customize->add_control(
-		'trimvia_footer_support_menu_title',
-		array(
-			'type'    => 'text',
-			'label'   => __('Menu 3 Title', 'theme-woopm-child'),
-			'section' => 'trimvia_footer_options',
-		)
-	);
-	$wp_customize->add_setting(
-		'trimvia_footer_support_menu',
-		array(
-			'default'           => 0,
-			'sanitize_callback' => 'trimvia_sanitize_menu_id',
-		)
-	);
-	$wp_customize->add_control(
-		'trimvia_footer_support_menu',
-		array(
-			'type'    => 'select',
-			'label'   => __('Menu 3: Support', 'theme-woopm-child'),
-			'choices' => $menu_choices,
-			'section' => 'trimvia_footer_options',
-		)
-	);
-
-	$wp_customize->add_setting(
-		'trimvia_footer_copyright',
-		array(
-			'default'           => __('© 2026 Trimvia. All rights reserved.', 'theme-woopm-child'),
-			'sanitize_callback' => 'trimvia_sanitize_textarea',
-		)
-	);
-	$wp_customize->add_control(
-		'trimvia_footer_copyright',
-		array(
-			'type'    => 'textarea',
-			'label'   => __('Copyright Text', 'theme-woopm-child'),
-			'description' => __('Supports links/HTML and line breaks (Enter key).', 'theme-woopm-child'),
-			'section' => 'trimvia_footer_options',
-		)
-	);
-
-	$wp_customize->add_setting(
-		'trimvia_footer_right_label_one',
-		array(
-			'default'           => __('GPhC Registered', 'theme-woopm-child'),
-			'sanitize_callback' => 'trimvia_sanitize_textarea',
-		)
-	);
-	$wp_customize->add_control(
-		'trimvia_footer_right_label_one',
-		array(
-			'type'    => 'textarea',
-			'label'   => __('Right Label 1', 'theme-woopm-child'),
-			'description' => __('Supports links/HTML and line breaks (Enter key).', 'theme-woopm-child'),
-			'section' => 'trimvia_footer_options',
-		)
-	);
-
-	$wp_customize->add_setting(
-		'trimvia_footer_right_label_two',
-		array(
-			'default'           => __('ICO Registered', 'theme-woopm-child'),
-			'sanitize_callback' => 'trimvia_sanitize_textarea',
-		)
-	);
-	$wp_customize->add_control(
-		'trimvia_footer_right_label_two',
-		array(
-			'type'    => 'textarea',
-			'label'   => __('Right Label 2', 'theme-woopm-child'),
-			'description' => __('Supports links/HTML and line breaks (Enter key).', 'theme-woopm-child'),
-			'section' => 'trimvia_footer_options',
-		)
-	);
-
-	$wp_customize->add_setting(
-		'trimvia_footer_bottom_description',
-		array(
-			'default'           => __('Trimvia is a private online weight management service that provides safe access to prescription weight loss treatments through UK-registered healthcare professionals. All prescriptions issued through Trimvia are dispensed by our partner, Mayberry Pharmacy, a fully regulated NHS-registered pharmacy. Always read the patient leaflet and speak to a healthcare professional before starting new treatments.', 'theme-woopm-child'),
-			'sanitize_callback' => 'trimvia_sanitize_textarea',
-		)
-	);
-	$wp_customize->add_control(
-		'trimvia_footer_bottom_description',
-		array(
-			'type'    => 'textarea',
-			'label'   => __('Bottom Footer Description', 'theme-woopm-child'),
-			'description' => __('Supports links/HTML and line breaks (Enter key).', 'theme-woopm-child'),
-			'section' => 'trimvia_footer_options',
-		)
-	);
-}
-add_action('customize_register', 'trimvia_register_footer_customizer_options');
 
 /**
  * Convert ACF image field value into a URL.
@@ -3256,7 +2438,7 @@ function trimvia_get_account_menu_item_url($endpoint, $nav_item)
 }
 
 /**
- * Patient Prescription Upload (WooPW add-on) — DISABLED FOR NOW.
+ * Patient Prescription Upload (WooPW add-on) â€” DISABLED FOR NOW.
  *
  * Flow when enabled:
  * 1. WooPW keeps this add-on off unless `enable_patient_rx_upload` returns true
@@ -3270,7 +2452,7 @@ function trimvia_get_account_menu_item_url($endpoint, $nav_item)
  * 5. woocommerce/myaccount/navigation.php supplies the sidebar icon for that item.
  *
  * Turned off because the endpoint only showed the raw shortcode text (add-on UI
- * not rendering). To re-enable: uncomment the block below and visit Settings →
+ * not rendering). To re-enable: uncomment the block below and visit Settings â†’
  * Permalinks once so rewrite rules refresh.
  */
 // add_filter('enable_patient_rx_upload', '__return_true');
@@ -3343,6 +2525,19 @@ function trimvia_prescriber_account_menu_items($items)
 	if (isset($items['practitioner-orders'])) {
 		$ordered['practitioner-orders'] = $items['practitioner-orders'];
 		unset($items['practitioner-orders']);
+	}
+
+	if (!isset($items['reset-pin-request'])) {
+		$items['reset-pin-request'] = array(
+			'title'       => __('Reset Prescriber Pin', 'woocommerce'),
+			'description' => __('Want to reset your prescription approval pin?', 'woocommerce'),
+			'buttons'     => array(
+				array(
+					'title' => __('Reset Pin', 'woocommerce'),
+					'class' => array('theme-btn'),
+				),
+			),
+		);
 	}
 
 	return $ordered + $items;
@@ -3500,8 +2695,8 @@ function trimvia_render_edit_account_fields()
 				$data_base64 = 'data:' . $type . ';base64,' . base64_encode((string) file_get_contents($image['path']));
 				?>
 				<figure class="trimvia-upload-gallery__item">
-					<div class="trimvia-upload-gallery__media">
-						<img src="<?php echo esc_attr($data_base64); ?>" alt="<?php echo esc_attr($image['file'] ?? __('ID image', 'theme-woopm-child')); ?>" />
+					<div class="trimvia-upload-gallery__media" style="aspect-ratio: 4 / 3; background: var(--off-white); display: flex; align-items: center; justify-content: center; overflow: hidden;">
+						<img src="<?php echo esc_attr($data_base64); ?>" alt="<?php echo esc_attr($image['file'] ?? __('ID image', 'theme-woopm-child')); ?>" style="width: 100%; height: 100%; object-fit: contain; display: block;" />
 					</div>
 					<?php if (!empty($image['file'])) : ?>
 						<figcaption><?php echo esc_html($image['file']); ?></figcaption>
@@ -3545,6 +2740,397 @@ function trimvia_render_edit_account_fields()
 	}
 	trimvia_account_form_section_close();
 }
+
+/**
+ * First line-item product thumbnail for account order cards.
+ *
+ * @param WC_Order $order Order object.
+ * @param string   $size  Image size.
+ * @return string HTML image markup or empty string.
+ */
+function trimvia_get_order_primary_product_thumbnail(WC_Order $order, $size = 'woocommerce_thumbnail')
+{
+	if (!$order instanceof WC_Order) {
+		return '';
+	}
+
+	foreach ($order->get_items() as $item) {
+		if (!$item instanceof WC_Order_Item_Product) {
+			continue;
+		}
+
+		$product = $item->get_product();
+		if (!$product instanceof WC_Product) {
+			continue;
+		}
+
+		$image = $product->get_image(
+			$size,
+			array(
+				'class' => 'account-order-thumb__img',
+				'alt'   => $product->get_name(),
+			)
+		);
+
+		if ($image) {
+			return $image;
+		}
+	}
+
+	return wc_placeholder_img(
+		$size,
+		array(
+			'class' => 'account-order-thumb__img account-order-thumb__img--placeholder',
+			'alt'   => '',
+		)
+	);
+}
+
+/**
+ * Order statuses that qualify for the My Account reorder action.
+ *
+ * WooPW only adds reorder for completed/recalled. Trimvia/POM orders often sit in
+ * prescriber-approved statuses before or instead of core "completed".
+ *
+ * @return string[]
+ */
+function trimvia_get_reorder_eligible_order_statuses()
+{
+	return apply_filters(
+		'trimvia_reorder_eligible_order_statuses',
+		array(
+			'completed',
+			'recalled',
+		)
+	);
+}
+
+/**
+ * Collect condition term IDs stored on a POM order.
+ *
+ * @param WC_Order $order Order object.
+ * @return int[]
+ */
+function trimvia_get_order_condition_ids(WC_Order $order)
+{
+	$condition_ids = array();
+
+	if (!$order instanceof WC_Order) {
+		return $condition_ids;
+	}
+
+	if (function_exists('woopw_get_new_order_conditions') && function_exists('woopw_get_reordered_conditions')) {
+		$new_conditions       = woopw_get_new_order_conditions($order->get_id());
+		$reordered_conditions = woopw_get_reordered_conditions($order->get_id());
+
+		if (is_array($new_conditions)) {
+			$condition_ids = array_merge($condition_ids, $new_conditions);
+		}
+
+		if (is_array($reordered_conditions)) {
+			$condition_ids = array_merge($condition_ids, $reordered_conditions);
+		}
+	}
+
+	if (function_exists('trimvia_normalise_order_condition_ids')) {
+		$condition_ids = array_merge(
+			$condition_ids,
+			trimvia_normalise_order_condition_ids($order->get_meta('_order_conditions')),
+			trimvia_normalise_order_condition_ids($order->get_meta('_order_conditions_reorder'))
+		);
+
+		foreach (array('_order_conditions', '_order_conditions_reorder') as $meta_key) {
+			$meta_values = $order->get_meta($meta_key, false);
+			if (!is_array($meta_values)) {
+				continue;
+			}
+
+			foreach ($meta_values as $meta_value) {
+				if ($meta_value instanceof WC_Meta_Data) {
+					$meta_value = $meta_value->get_data()['value'];
+				}
+
+				$condition_ids = array_merge(
+					$condition_ids,
+					trimvia_normalise_order_condition_ids($meta_value)
+				);
+			}
+		}
+	}
+
+	$form_data = $order->get_meta('_cflp_form_data');
+	if (!empty($form_data)) {
+		if (!is_array($form_data)) {
+			$form_data = maybe_unserialize($form_data);
+		}
+
+		if (is_array($form_data)) {
+			foreach ($form_data as $entry) {
+				if (!is_array($entry) || empty($entry['condition_id'])) {
+					continue;
+				}
+
+				$condition_ids[] = absint($entry['condition_id']);
+			}
+		}
+	}
+
+	if (function_exists('woopw_check_this_order_conditions')) {
+		$product_conditions = woopw_check_this_order_conditions((int) $order->get_id(), (int) $order->get_user_id());
+		if (is_array($product_conditions) && !isset($product_conditions['error'])) {
+			$condition_ids = array_merge($condition_ids, $product_conditions);
+		}
+	}
+
+	$condition_ids = array_filter(array_map('absint', $condition_ids));
+
+	return array_values(array_unique($condition_ids));
+}
+
+/**
+ * Base URL for the returning-patient reorder consultation flow.
+ *
+ * @return string
+ */
+function trimvia_get_reorder_consultation_url()
+{
+	$consultation_page = get_page_by_path('consultation');
+
+	if ($consultation_page instanceof WP_Post) {
+		return get_permalink($consultation_page);
+	}
+
+	return site_url('/consultation/');
+}
+
+/**
+ * Build nested re-order actions for My Account > Orders (parent/WooPW format).
+ *
+ * @param WC_Order $order Order object.
+ * @return array<int, array{url:string,name:string}>
+ */
+function trimvia_build_account_order_reorder_actions(WC_Order $order)
+{
+	$reorder_actions = array();
+
+	if (!$order instanceof WC_Order || !is_user_logged_in()) {
+		return $reorder_actions;
+	}
+
+	if (!$order->has_status(trimvia_get_reorder_eligible_order_statuses())) {
+		return $reorder_actions;
+	}
+
+	$condition_ids    = trimvia_get_order_condition_ids($order);
+	$consultation_url = trimvia_get_reorder_consultation_url();
+
+	foreach ($condition_ids as $condition_id) {
+		$condition = get_term_by('id', $condition_id, 'condition');
+		if (!$condition || is_wp_error($condition)) {
+			continue;
+		}
+
+		$reorder_actions[] = array(
+			'url'  => add_query_arg(
+				array(
+					'condition-slug' => $condition->slug,
+					'order_id'       => $order->get_id(),
+					'is_reorder'     => 1,
+				),
+				$consultation_url
+			),
+			'name' => sprintf(
+				/* translators: %s: condition name */
+				__('Re Order - %s', 'theme-woopm-child'),
+				$condition->name
+			),
+		);
+	}
+
+	return $reorder_actions;
+}
+
+/**
+ * Ensure reorder actions appear for eligible POM orders on My Account > Orders.
+ *
+ * Runs after WooPW (priority 10) and only fills in when reorder is still missing.
+ *
+ * @param array<string,mixed> $actions Order actions.
+ * @param WC_Order            $order   Order object.
+ * @return array<string,mixed>
+ */
+function trimvia_ensure_account_order_reorder_actions($actions, $order)
+{
+	if (!$order instanceof WC_Order || !is_user_logged_in()) {
+		return $actions;
+	}
+
+	if (isset($actions['re-order']) && is_array($actions['re-order']) && empty($actions['re-order'])) {
+		unset($actions['re-order']);
+	}
+
+	$reorder_actions = trimvia_build_account_order_reorder_actions($order);
+	if (empty($reorder_actions)) {
+		return $actions;
+	}
+
+	$actions['re-order'] = $reorder_actions;
+
+	return $actions;
+}
+add_filter('woocommerce_my_account_my_orders_actions', 'trimvia_ensure_account_order_reorder_actions', 15, 2);
+
+/**
+ * Whether an order must use the WooPW reorder consultation flow
+ * instead of WooCommerce's cart "order again" shortcut.
+ *
+ * @param WC_Order $order Order object.
+ * @return bool
+ */
+function trimvia_order_uses_consultation_reorder_flow(WC_Order $order)
+{
+	if (!$order instanceof WC_Order) {
+		return false;
+	}
+
+	return !empty(trimvia_get_order_condition_ids($order));
+}
+
+/**
+ * Replace WooCommerce "Order again" on view/thank-you pages with reorder consultation links.
+ *
+ * Parent/WooPW flow: /consultation/?condition-slug=…&order_id=…&is_reorder=1
+ * WC default adds items straight to cart and skips the reorder questionnaire.
+ */
+function trimvia_register_view_order_reorder_flow()
+{
+	remove_action('woocommerce_order_details_after_order_table', 'woocommerce_order_again_button');
+	add_action('woocommerce_order_details_after_order_table', 'trimvia_render_view_order_reorder_buttons', 10);
+}
+add_action('init', 'trimvia_register_view_order_reorder_flow');
+
+/**
+ * Disable WC order-again for consultation/POM orders (button + handler).
+ *
+ * @param string[]       $statuses Valid statuses.
+ * @param WC_Order|null  $order    Order object (not passed on all WooCommerce versions).
+ * @return string[]
+ */
+function trimvia_filter_order_again_statuses_for_consultation_orders($statuses, $order = null)
+{
+	if ($order instanceof WC_Order && trimvia_order_uses_consultation_reorder_flow($order)) {
+		return array();
+	}
+
+	return $statuses;
+}
+add_filter('woocommerce_valid_order_statuses_for_order_again', 'trimvia_filter_order_again_statuses_for_consultation_orders', 10, 2);
+
+/**
+ * Redirect legacy WC order-again URLs to the reorder consultation form.
+ */
+function trimvia_redirect_wc_order_again_to_consultation_reorder()
+{
+	if (!isset($_GET['order_again'])) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		return;
+	}
+
+	$order_id = absint(wp_unslash($_GET['order_again'])); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+	if ($order_id <= 0) {
+		return;
+	}
+
+	$order = wc_get_order($order_id);
+	if (!$order instanceof WC_Order || !trimvia_order_uses_consultation_reorder_flow($order)) {
+		return;
+	}
+
+	if (!is_user_logged_in() || (int) $order->get_user_id() !== get_current_user_id()) {
+		return;
+	}
+
+	$reorder_actions = trimvia_build_account_order_reorder_actions($order);
+	if (empty($reorder_actions[0]['url'])) {
+		return;
+	}
+
+	wp_safe_redirect($reorder_actions[0]['url']);
+	exit;
+}
+add_action('wp_loaded', 'trimvia_redirect_wc_order_again_to_consultation_reorder', 5);
+
+/**
+ * Render reorder consultation buttons on view order / thank you (parent/WooPW format).
+ *
+ * @param WC_Order|int $order Order object or ID.
+ */
+function trimvia_render_view_order_reorder_buttons($order)
+{
+	if (!$order instanceof WC_Order) {
+		$order = wc_get_order($order);
+	}
+
+	if (!$order instanceof WC_Order) {
+		return;
+	}
+
+	if ((int) $order->get_user_id() !== get_current_user_id()) {
+		return;
+	}
+
+	$reorder_actions = trimvia_build_account_order_reorder_actions($order);
+
+	if (!empty($reorder_actions)) {
+		echo '<p class="order-again trimvia-view-order-reorder">';
+
+		foreach ($reorder_actions as $reorder_action) {
+			if (empty($reorder_action['url']) || empty($reorder_action['name'])) {
+				continue;
+			}
+
+			printf(
+				'<a href="%s" class="woocommerce-button button btn-accent trimvia-view-order-reorder-btn re-order">%s</a>',
+				esc_url($reorder_action['url']),
+				esc_html($reorder_action['name'])
+			);
+		}
+
+		echo '</p>';
+		return;
+	}
+
+	if (function_exists('woocommerce_order_again_button')) {
+		woocommerce_order_again_button($order);
+	}
+}
+
+/**
+ * Allow guest order-received / thank-you pages to stream consultation uploads.
+ *
+ * WooPW registers wp_ajax only; guests viewing their consultation modal need nopriv too.
+ */
+function trimvia_register_consultation_file_stream_for_guests()
+{
+	if (function_exists('woopw_stream_consultation_file')) {
+		add_action('wp_ajax_nopriv_woopw_stream_consultation_file', 'woopw_stream_consultation_file');
+	}
+}
+add_action('init', 'trimvia_register_consultation_file_stream_for_guests', 20);
+
+/**
+ * Paginate My Account > Orders (WooCommerce default is often -1 / no pagination).
+ *
+ * @param array<string,mixed> $args Order query args.
+ * @return array<string,mixed>
+ */
+function trimvia_account_orders_pagination_query($args)
+{
+	$args['paginate'] = true;
+	$args['limit']    = (int) apply_filters('trimvia_account_orders_per_page', 10);
+
+	return $args;
+}
+add_filter('woocommerce_my_account_my_orders_query', 'trimvia_account_orders_pagination_query');
 
 /**
  * Replace plugin patient-history markup with Trimvia account card layout.
@@ -3668,7 +3254,7 @@ function trimvia_render_patient_history_endpoint()
 
 /**
  * Parent theme registers load_condition_tax_script on wp_enqueue_scripts; it prints inline JS
- * immediately (jQuery not loaded yet) for a non-existent .conditions-slider — causes console errors
+ * immediately (jQuery not loaded yet) for a non-existent .conditions-slider â€” causes console errors
  * on condition archives. Layout uses the child grid instead.
  */
 remove_action('wp_enqueue_scripts', 'load_condition_tax_script', 10);
@@ -3725,9 +3311,9 @@ function trimvia_disable_parent_variation_desc_script()
 add_action('wp', 'trimvia_disable_parent_variation_desc_script', 25);
 
 /**
- * Core wp_die() markup includes a global `body { max-width:700px; … }` rule. If that stylesheet is ever
+ * Core wp_die() markup includes a global `body { max-width:700px; â€¦ }` rule. If that stylesheet is ever
  * printed on a normal front-end request (plugin conflict, buffering bug), WooCommerce single product
- * pages look like the grey admin “error” box. Neutralise those rules only on single product views.
+ * pages look like the grey admin â€œerrorâ€ box. Neutralise those rules only on single product views.
  */
 function trimvia_single_product_neutralize_wp_die_styles()
 {
@@ -3744,10 +3330,10 @@ function trimvia_single_product_neutralize_wp_die_styles()
 add_action('wp_head', 'trimvia_single_product_neutralize_wp_die_styles', 99999);
 
 /**
- * Single product tabs: mirror HTML prototype “Treatment details” reliably.
+ * Single product tabs: mirror HTML prototype â€œTreatment detailsâ€ reliably.
  *
  * - WooCommerce only registers the Description tab when the long description is filled; many products
- *   only use the short description — add an Overview tab from short description when needed.
+ *   only use the short description â€” add an Overview tab from short description when needed.
  * - Parent theme (woocommerce-product-tabs.php) removes Additional information at priority 98; restore
  *   it when the product has attributes or dimensions so buyers still see product data.
  * - If nothing else registered any tab, output a minimal Overview panel so the section is never blank.
@@ -3892,7 +3478,7 @@ function trimvia_single_product_tabs_ensure_minimum($tabs)
 add_filter('woocommerce_product_tabs', 'trimvia_single_product_tabs_ensure_minimum', 10000);
 
 /**
- * Rename WooCommerce “Description” tab label to match HTML prototype.
+ * Rename WooCommerce â€œDescriptionâ€ tab label to match HTML prototype.
  *
  * @param array $tabs Tabs.
  * @return array
@@ -3908,7 +3494,7 @@ function trimvia_single_product_rename_description_tab($tabs)
 add_filter('woocommerce_product_tabs', 'trimvia_single_product_rename_description_tab', 97);
 
 /**
- * Add fixed “How it works” and “Safety” tabs (ACF optional fields or filtered defaults).
+ * Add fixed â€œHow it worksâ€ and â€œSafetyâ€ tabs (ACF optional fields or filtered defaults).
  *
  * @param array $tabs Tabs.
  * @return array
@@ -4000,7 +3586,7 @@ function trimvia_single_product_tab_safety_render($key, $tab)
 
 	$default_paras = array(
 		__('Report suspected side effects via the Yellow Card scheme. Your prescriber will discuss common side effects, warnings, and monitoring before treatment starts.', 'theme-woopm-child'),
-		__('This website does not replace the summary of product characteristics or patient information leaflet supplied with your medicine — always read those documents and follow clinical advice.', 'theme-woopm-child'),
+		__('This website does not replace the summary of product characteristics or patient information leaflet supplied with your medicine â€” always read those documents and follow clinical advice.', 'theme-woopm-child'),
 	);
 
 	$default = '';
@@ -4197,12 +3783,94 @@ function trimvia_get_single_product_quantity_value($product)
 }
 
 /**
+ * Whether consultation session bootstrapping should run on this request.
+ *
+ * Avoids creating a WooCommerce/PHP session on every front-end hit (homepage, blog, etc.),
+ * which can overload wp_woocommerce_sessions and slow the server under traffic.
+ *
+ * @return bool
+ */
+function trimvia_should_bootstrap_consultation_session()
+{
+	if (function_exists('is_customize_preview') && is_customize_preview()) {
+		return false;
+	}
+
+	global $pagenow;
+	if (is_admin() && isset($pagenow) && 'customize.php' === $pagenow) {
+		return false;
+	}
+
+	if (function_exists('wp_doing_ajax') && wp_doing_ajax()) {
+		return false;
+	}
+
+	if (function_exists('is_cart') && is_cart()) {
+		return true;
+	}
+	if (function_exists('is_checkout') && is_checkout()) {
+		return true;
+	}
+	if (function_exists('is_product') && is_product()) {
+		return true;
+	}
+	if (function_exists('is_shop') && is_shop()) {
+		return true;
+	}
+	if (function_exists('is_product_taxonomy') && is_product_taxonomy()) {
+		return true;
+	}
+	if (function_exists('is_account_page') && is_account_page()) {
+		return true;
+	}
+	if (function_exists('is_wc_endpoint_url') && is_wc_endpoint_url()) {
+		return true;
+	}
+	if (is_page('consultation')) {
+		return true;
+	}
+	if (is_tax('condition')) {
+		return true;
+	}
+	if (is_singular(array('service', 'product'))) {
+		return true;
+	}
+
+	return false;
+}
+
+/**
  * Ensure WooCommerce and PHP session consultation data is available (guest-safe).
  *
  * @return void
  */
 function trimvia_ensure_consultation_session()
 {
+	static $bootstrapped = false;
+
+	if ($bootstrapped) {
+		return;
+	}
+
+	if (!trimvia_should_bootstrap_consultation_session()) {
+		return;
+	}
+
+	$bootstrapped = true;
+
+	if (function_exists('is_customize_preview') && is_customize_preview()) {
+		return;
+	}
+
+	global $pagenow;
+	if (is_admin() && isset($pagenow) && 'customize.php' === $pagenow) {
+		return;
+	}
+
+	if (function_exists('wp_doing_ajax') && wp_doing_ajax()) {
+		return;
+	}
+
 	if (!function_exists('WC') || !WC()->session) {
 		return;
 	}
@@ -4215,7 +3883,11 @@ function trimvia_ensure_consultation_session()
 		return;
 	}
 
-	if (function_exists('session_status') && PHP_SESSION_NONE === session_status()) {
+	if (
+		function_exists('session_status')
+		&& PHP_SESSION_NONE === session_status()
+		&& !headers_sent()
+	) {
 		// WooPW stores a backup in PHP session when the WC session is unavailable.
 		session_start();
 	}
@@ -4224,8 +3896,17 @@ function trimvia_ensure_consultation_session()
 		WC()->session->set('cflp_form_data', $_SESSION['wp_cflp_form_data']); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 	}
 }
-add_action('woocommerce_init', 'trimvia_ensure_consultation_session', 1);
-add_action('template_redirect', 'trimvia_ensure_consultation_session', 1);
+
+/**
+ * Bootstrap consultation session only on WooCommerce-related front-end routes.
+ *
+ * @return void
+ */
+function trimvia_maybe_bootstrap_consultation_session()
+{
+	trimvia_ensure_consultation_session();
+}
+add_action('woocommerce_init', 'trimvia_maybe_bootstrap_consultation_session', 1);
 
 /**
  * Whether consultation/assessment session data exists in the current request.
@@ -4234,13 +3915,21 @@ add_action('template_redirect', 'trimvia_ensure_consultation_session', 1);
  */
 function trimvia_has_consultation_session()
 {
+	static $cached = null;
+
+	if (null !== $cached) {
+		return $cached;
+	}
+
 	trimvia_ensure_consultation_session();
 
 	if (function_exists('WC') && WC()->session && !empty(WC()->session->get('cflp_form_data'))) {
+		$cached = true;
 		return true;
 	}
 
-	return !empty($_SESSION['wp_cflp_form_data']); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+	$cached = !empty($_SESSION['wp_cflp_form_data']); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+	return $cached;
 }
 
 /**
@@ -4315,15 +4004,21 @@ function trimvia_product_has_completed_consultation($product_id)
 
 	if (!empty($terms) && !is_wp_error($terms)) {
 		foreach ($terms as $term) {
-			if ($term instanceof WP_Term && trimvia_has_consultation_for_condition($term->slug)) {
-				return true;
+			if ($term instanceof WP_Term) {
+				if (function_exists('has_consultation_for_condition')) {
+					if (has_consultation_for_condition($term->slug)) {
+						return true;
+					}
+				} elseif (trimvia_has_consultation_for_condition($term->slug)) {
+					return true;
+				}
 			}
 		}
 
 		return false;
 	}
 
-	// Product has no condition terms — mirror parent generic session check.
+	// Product has no condition terms â€” mirror parent generic session check.
 	return trimvia_has_consultation_session();
 }
 
@@ -4381,7 +4076,7 @@ function trimvia_product_is_prescription_type($product)
 }
 
 /**
- * Single product CTA button — mirrors parent simple.php assessment/add-to-basket flow.
+ * Single product CTA button â€” mirrors parent simple.php assessment/add-to-basket flow.
  *
  * @param WC_Product $product Product object.
  * @param string     $context Template context: simple|variation.
@@ -4434,7 +4129,7 @@ function trimvia_render_single_product_cart_button($product, $context = 'simple'
 }
 
 /**
- * Match single-product CTA copy with parent assessment → add-to-basket flow.
+ * Match single-product CTA copy with parent assessment â†’ add-to-basket flow.
  *
  * @param string           $text    Default button text.
  * @param WC_Product|false $product Product object.
@@ -4766,6 +4461,33 @@ function trimvia_single_product_variation_scripts()
 
 			var $priceWrap = $('.trimvia-single-product-price');
 			var defaultPriceHtml = $priceWrap.length ? $priceWrap.html() : '';
+			var $stockBadge = $('.single-product-price-row .single-product-stock');
+			var defaultStockText = $stockBadge.data('defaultStockText') || ($stockBadge.length ? $.trim($stockBadge.text()) : '');
+			var inStockText = $stockBadge.data('inStockText') || defaultStockText;
+			var outOfStockText = $stockBadge.data('outOfStockText') || 'Out of stock';
+			var defaultStockClass = $stockBadge.attr('class') || 'single-product-stock';
+
+			var restoreStockBadge = function () {
+				if (!$stockBadge.length) {
+					return;
+				}
+
+				$stockBadge.attr('class', defaultStockClass).text(defaultStockText);
+			};
+
+			var updateStockBadge = function (variation) {
+				if (!$stockBadge.length || !variation) {
+					restoreStockBadge();
+					return;
+				}
+
+				if (variation.is_in_stock) {
+					$stockBadge.attr('class', 'single-product-stock').text(inStockText);
+					return;
+				}
+
+				$stockBadge.attr('class', 'single-product-stock single-product-stock--out').text(outOfStockText);
+			};
 
 			$('.variations_form').each(function () {
 				var $form = $(this);
@@ -4776,10 +4498,14 @@ function trimvia_single_product_variation_scripts()
 					if ($priceWrap.length && variation && variation.price_html) {
 						$priceWrap.html(variation.price_html);
 					}
-				}).on('reset_data', function () {
+
+					updateStockBadge(variation);
+				}).on('reset_data hide_variation', function () {
 					if ($priceWrap.length) {
 						$priceWrap.html(defaultPriceHtml);
 					}
+
+					restoreStockBadge();
 					autoSelectSingleVariationOptions($form);
 				});
 			});
@@ -4921,6 +4647,112 @@ function trimvia_product_is_out_of_stock($product)
 	}
 
 	return !$product->is_purchasable();
+}
+
+/**
+ * Whether the current user is a patient (not prescriber/admin staff).
+ *
+ * @return bool
+ */
+function trimvia_is_patient_user()
+{
+	if (!is_user_logged_in()) {
+		return false;
+	}
+
+	return !trimvia_user_has_prescriber_access();
+}
+
+/**
+ * Latest open prescription order for a condition (processing / awaiting approval, etc.).
+ *
+ * Mirrors WooPW has_open_order_for_condition() used at checkout validation.
+ *
+ * @param string $condition_slug Condition taxonomy slug.
+ * @return WC_Order|null
+ */
+function trimvia_get_user_open_order_for_condition($condition_slug)
+{
+	if (!trimvia_is_patient_user() || !function_exists('wc_get_orders')) {
+		return null;
+	}
+
+	$condition_slug = sanitize_title((string) $condition_slug);
+	if ('' === $condition_slug) {
+		return null;
+	}
+
+	$term = get_term_by('slug', $condition_slug, 'condition');
+	if (!$term instanceof WP_Term) {
+		return null;
+	}
+
+	$orders = wc_get_orders(
+		array(
+			'customer'   => get_current_user_id(),
+			'orderby'    => 'date',
+			'order'      => 'DESC',
+			'limit'      => 1,
+			'status'     => array('pre-screen', 'processing', 'pending', 'await-approval', 'prescribe-approve', 'prescribe-decline'),
+			'meta_query' => array(
+				'relation' => 'AND',
+				array(
+					'key'     => '_cflp_form_data',
+					'compare' => 'EXISTS',
+				),
+				array(
+					'key'     => '_order_prescription_only_items',
+					'compare' => 'EXISTS',
+				),
+				array(
+					'relation' => 'OR',
+					array(
+						'key'     => '_order_conditions',
+						'value'   => (int) $term->term_id,
+						'compare' => 'IN',
+					),
+					array(
+						'key'     => '_order_conditions_reorder',
+						'value'   => (int) $term->term_id,
+						'compare' => 'IN',
+					),
+				),
+			),
+		)
+	);
+
+	if (empty($orders[0]) || !($orders[0] instanceof WC_Order)) {
+		return null;
+	}
+
+	return $orders[0];
+}
+
+/**
+ * Whether a logged-in patient already has an in-progress order for this product's condition.
+ *
+ * @param int|WC_Product $product Product ID or object.
+ * @return bool
+ */
+function trimvia_product_has_open_order_in_progress($product)
+{
+	$product_id = 0;
+	if ($product instanceof WC_Product) {
+		$product_id = (int) $product->get_id();
+	} elseif (is_numeric($product)) {
+		$product_id = (int) $product;
+	}
+
+	if ($product_id < 1) {
+		return false;
+	}
+
+	$condition_slug = trimvia_get_product_primary_condition_slug($product_id);
+	if ('' === $condition_slug) {
+		return false;
+	}
+
+	return trimvia_get_user_open_order_for_condition($condition_slug) instanceof WC_Order;
 }
 
 /**
@@ -5095,35 +4927,83 @@ function trimvia_is_product_consultation_required($product)
 
 	$condition_slug = trimvia_get_product_primary_condition_slug($product_id);
 
-	if (trimvia_product_has_completed_consultation($product_id)) {
-		if (is_user_logged_in() && '' !== $condition_slug) {
-			$needs_reassessment = trimvia_user_has_previous_completed_order_for_condition($condition_slug);
-
-			if (!$needs_reassessment) {
-				$condition_term = get_term_by('slug', $condition_slug, 'condition');
-				if ($condition_term instanceof WP_Term && function_exists('woopw_get_order_linked_with_term_status')) {
-					$needs_reassessment = (bool) woopw_get_order_linked_with_term_status(
-						get_current_user_id(),
-						(int) $condition_term->term_id
-					);
-				}
-			}
-
-			if ($needs_reassessment) {
-				return !trimvia_reassessment_approved_for_condition($condition_slug);
-			}
-		}
-
-		// First assessment completed in this session — parent theme shows add-to-basket.
-		return false;
+	if ('' === $condition_slug) {
+		return !trimvia_has_consultation_session();
 	}
 
-	if ('' !== $condition_slug) {
+	if (trimvia_product_has_open_order_in_progress($product_id)) {
 		return true;
 	}
 
-	return !trimvia_has_consultation_session();
+	trimvia_ensure_consultation_session();
+
+	$consultation_completed = function_exists('has_consultation_for_condition')
+		? has_consultation_for_condition($condition_slug)
+		: trimvia_has_consultation_for_condition($condition_slug);
+
+	if (!$consultation_completed) {
+		return true;
+	}
+
+	if (is_user_logged_in()) {
+		$needs_reassessment = trimvia_user_has_previous_completed_order_for_condition($condition_slug);
+
+		if (!$needs_reassessment) {
+			$condition_term = get_term_by('slug', $condition_slug, 'condition');
+			if ($condition_term instanceof WP_Term && function_exists('woopw_get_order_linked_with_term_status')) {
+				$needs_reassessment = (bool) woopw_get_order_linked_with_term_status(
+					get_current_user_id(),
+					(int) $condition_term->term_id
+				);
+			}
+		}
+
+		if ($needs_reassessment) {
+			return !trimvia_reassessment_approved_for_condition($condition_slug);
+		}
+	}
+
+	return false;
 }
+
+/**
+ * Use one consultation CTA on single product pages (child templates only).
+ *
+ * WooPW adds its own "Start Assessment" link on after_variations_table while the
+ * child variation/simple templates also render the same CTA — remove plugin hooks
+ * and keep the default cart-button location so only one button appears.
+ *
+ * @return void
+ */
+function trimvia_consolidate_product_consultation_masking()
+{
+	if (!function_exists('is_product') || !is_product()) {
+		return;
+	}
+
+	if (class_exists('WOOPW_FRONTEND_PRODUCTS')) {
+		$woopw_products = WOOPW_FRONTEND_PRODUCTS::get_instance();
+		remove_action('woocommerce_after_variations_table', array($woopw_products, 'single_product_consultation_button_masking'), 20);
+		remove_action('woocommerce_simple_add_to_cart', array($woopw_products, 'single_product_consultation_button_masking'), 30);
+		remove_action('woocommerce_grouped_add_to_cart', array($woopw_products, 'single_product_consultation_button_masking'), 30);
+		remove_action('woocommerce_external_add_to_cart', array($woopw_products, 'single_product_consultation_button_masking'), 30);
+	}
+
+	remove_action('woocommerce_after_variations_table', 'woocommerce_single_variation_add_to_cart_button', 20);
+	remove_action('woocommerce_after_variations_table', 'trimvia_render_masked_consultation_button', 20);
+	remove_action('woocommerce_simple_add_to_cart', 'trimvia_render_masked_consultation_button', 30);
+	remove_action('woocommerce_grouped_add_to_cart', 'trimvia_render_masked_consultation_button', 30);
+	remove_action('woocommerce_external_add_to_cart', 'trimvia_render_masked_consultation_button', 30);
+
+	if (!has_action('woocommerce_single_variation', 'woocommerce_single_variation_add_to_cart_button')) {
+		add_action('woocommerce_single_variation', 'woocommerce_single_variation_add_to_cart_button', 20);
+	}
+
+	if (!has_action('woocommerce_simple_add_to_cart', 'woocommerce_simple_add_to_cart')) {
+		add_action('woocommerce_simple_add_to_cart', 'woocommerce_simple_add_to_cart', 30);
+	}
+}
+add_action('template_redirect', 'trimvia_consolidate_product_consultation_masking', 25);
 
 /**
  * Resolve the condition archive ("treatments") URL for a product.
@@ -5258,40 +5138,128 @@ function trimvia_get_current_condition_slug_context()
 }
 
 /**
- * Ensure custom practitioner endpoint is always available from child theme.
+ * Prescriber My Account endpoints â€” ensure rewrite rules exist (same as parent/WooPW 1.8.2).
+ *
+ * WooPW registers handlers in WOOPW_FRONTEND_PRESCRIBER_DASH only when the user is
+ * already logged in at plugins_loaded. The child theme registers endpoints here so
+ * URLs like /my-account/reset-pin-request/ resolve reliably.
  */
-function trimvia_register_practitioner_orders_endpoint()
+function trimvia_register_prescriber_account_endpoints()
 {
-	add_rewrite_endpoint('practitioner-orders', EP_ROOT | EP_PAGES);
+	$endpoints = array(
+		'practitioner-orders',
+		'reset-pin-request',
+		'prescriber-signature',
+		'prescription-more-info',
+	);
+
+	foreach ($endpoints as $endpoint) {
+		add_rewrite_endpoint($endpoint, EP_ROOT | EP_PAGES);
+	}
 }
-add_action('init', 'trimvia_register_practitioner_orders_endpoint');
+add_action('init', 'trimvia_register_prescriber_account_endpoints', 5);
 
 /**
- * Make sure WordPress recognizes practitioner-orders query var.
+ * Register prescriber endpoints with WooCommerce query vars.
  *
- * @param array $vars Query vars.
- * @return array
+ * @param array<string, string> $vars WooCommerce account query vars.
+ * @return array<string, string>
  */
-function trimvia_add_practitioner_orders_query_var($vars)
+function trimvia_add_prescriber_account_wc_query_vars($vars)
 {
-	$vars[] = 'practitioner-orders';
+	$prescriber_endpoints = array(
+		'practitioner-orders',
+		'reset-pin-request',
+		'prescriber-signature',
+		'prescription-more-info',
+	);
+
+	foreach ($prescriber_endpoints as $endpoint) {
+		$vars[ $endpoint ] = $endpoint;
+	}
+
 	return $vars;
 }
-add_filter('query_vars', 'trimvia_add_practitioner_orders_query_var');
+add_filter('woocommerce_get_query_vars', 'trimvia_add_prescriber_account_wc_query_vars');
 
 /**
- * One-time rewrite flush after registering custom account endpoints.
- * Prevents practitioner-orders URL from failing until permalinks are resaved.
+ * Bind a WooCommerce account endpoint handler exactly once.
+ *
+ * WooPW and the child theme can both attempt registration; dedupe to prevent
+ * duplicated endpoint output (for example Change Signature rendering twice).
+ *
+ * @param string               $hook   WooCommerce account endpoint hook.
+ * @param WOOPW_FRONTEND_PRESCRIBER_DASH $dash   Prescriber dashboard instance.
+ * @param string               $method Callback method name.
+ * @return void
+ */
+function trimvia_bind_prescriber_account_endpoint_once($hook, $dash, $method)
+{
+	static $bound = array();
+
+	if (isset($bound[ $hook ])) {
+		return;
+	}
+
+	remove_all_actions($hook);
+	add_action($hook, array($dash, $method));
+	$bound[ $hook ] = true;
+}
+
+/**
+ * Bootstrap WooPW prescriber frontend hooks when plugin missed early registration.
+ */
+function trimvia_ensure_prescriber_frontend_dashboard_hooks()
+{
+	if (!trimvia_user_has_prescriber_access() || !class_exists('WOOPW_FRONTEND_PRESCRIBER_DASH')) {
+		return;
+	}
+
+	$dash = WOOPW_FRONTEND_PRESCRIBER_DASH::get_instance();
+
+	trimvia_bind_prescriber_account_endpoint_once(
+		'woocommerce_account_reset-pin-request_endpoint',
+		$dash,
+		'woo_my_account_reset_pin_request_endpoint_content'
+	);
+
+	if (!has_action('template_redirect', array($dash, 'prescriber_reset_pin_request'))) {
+		add_action('template_redirect', array($dash, 'prescriber_reset_pin_request'));
+	}
+	if (!has_action('template_redirect', array($dash, 'prescriber_reset_pin'))) {
+		add_action('template_redirect', array($dash, 'prescriber_reset_pin'));
+	}
+
+	trimvia_bind_prescriber_account_endpoint_once(
+		'woocommerce_account_practitioner-orders_endpoint',
+		$dash,
+		'woo_my_account_practitioner_orders_endpoint_content'
+	);
+
+	trimvia_bind_prescriber_account_endpoint_once(
+		'woocommerce_account_prescriber-signature_endpoint',
+		$dash,
+		'woo_my_account_prescriber_update_signature_endpoint_content'
+	);
+
+	if (!has_filter('woocommerce_account_menu_items', array($dash, 'add_prescriber_dashboard_endpoints_to_myaccount_menu'))) {
+		add_filter('woocommerce_account_menu_items', array($dash, 'add_prescriber_dashboard_endpoints_to_myaccount_menu'), 10, 2);
+	}
+}
+add_action('wp', 'trimvia_ensure_prescriber_frontend_dashboard_hooks', 5);
+
+/**
+ * One-time rewrite flush after registering prescriber account endpoints.
  */
 function trimvia_flush_rewrite_rules_once_for_account_endpoints()
 {
-	$flag = get_option('trimvia_practitioner_endpoint_flushed', '0');
-	if ('1' === (string) $flag) {
+	$flag = get_option('trimvia_prescriber_account_endpoints_flushed', '0');
+	if ('2' === (string) $flag) {
 		return;
 	}
 
 	flush_rewrite_rules(false);
-	update_option('trimvia_practitioner_endpoint_flushed', '1', false);
+	update_option('trimvia_prescriber_account_endpoints_flushed', '2', false);
 }
 add_action('init', 'trimvia_flush_rewrite_rules_once_for_account_endpoints', 30);
 
@@ -5343,6 +5311,7 @@ function trimvia_fix_prescriber_capabilities()
 	}
 }
 add_action('init', 'trimvia_fix_prescriber_capabilities');
+add_action('plugins_loaded', 'trimvia_fix_prescriber_capabilities', 5);
 
 /**
  * Remove the plugin footer renderer so the child theme can output one styled popup flow.
@@ -5364,48 +5333,70 @@ function trimvia_remove_plugin_prescriber_pin_footer()
 		}
 	}
 }
-add_action('wp_loaded', 'trimvia_remove_plugin_prescriber_pin_footer', 99);
+add_action('wp', 'trimvia_remove_plugin_prescriber_pin_footer', 20);
 
 /**
  * Whether the current prescriber still needs PIN and/or signature onboarding.
+ *
+ * WooPW 1.8.x stores PIN/signature as JSON; legacy data may still be serialized.
  *
  * @return array{no_pin_set:bool,no_sign:bool}|false
  */
 function trimvia_get_prescriber_onboarding_state()
 {
+	// Never show onboarding popups inside the Customizer preview.
+	if (function_exists('is_customize_preview') && is_customize_preview()) {
+		return false;
+	}
+
 	if (!trimvia_user_has_prescriber_access() || !function_exists('is_account_page') || !is_account_page()) {
 		return false;
 	}
 
-	$current_user = wp_get_current_user();
-	$user_pin_serialize = get_user_meta($current_user->ID, '_user_' . $current_user->ID . '_sec_pin_data', true);
-	$user_sign_serialize = get_user_meta($current_user->ID, '_user_' . $current_user->ID . '_sign_data', true);
+	// Prefer WooPW plugin validation (JSON + legacy formats, fixed timestamp checks).
+	if (class_exists('WOOPW_FRONTEND_PRESCRIBER_DASH')) {
+		$dash = WOOPW_FRONTEND_PRESCRIBER_DASH::get_instance();
+		if (method_exists($dash, 'check_presc_pin_and_esign')) {
+			$validation = $dash->check_presc_pin_and_esign();
+			if (!is_array($validation)) {
+				return false;
+			}
 
-	$no_pin_set = false;
-	if ($user_pin_serialize && is_array(unserialize($user_pin_serialize))) {
-		$user_pin_data = unserialize($user_pin_serialize);
-		if (empty(array_filter($user_pin_data))) {
-			$no_pin_set = true;
-		} elseif (
-			!isset($user_pin_data['id'], $user_pin_data['created_at'], $user_pin_data['user_seccode'])
-			|| (int) $user_pin_data['id'] !== (int) $current_user->ID
-			|| strtotime($user_pin_data['created_at']) >= time()
-			|| empty($user_pin_data['user_seccode'])
-		) {
-			$no_pin_set = true;
+			return array(
+				'no_pin_set' => !empty($validation['no_pin_set']),
+				'no_sign'    => !empty($validation['no_sign']),
+			);
 		}
-	} else {
-		$no_pin_set = true;
 	}
 
-	$no_sign = false;
-	if ($user_sign_serialize && is_array(unserialize($user_sign_serialize))) {
-		$user_sign_data = unserialize($user_sign_serialize);
-		if (empty(array_filter($user_sign_data))) {
-			$no_sign = true;
+	$current_user = wp_get_current_user();
+	$no_pin_set   = true;
+	$no_sign      = true;
+
+	if (function_exists('woopw_get_pin_data')) {
+		$pin_data = woopw_get_pin_data((int) $current_user->ID);
+		if ($pin_data && !empty(array_filter($pin_data))) {
+			$valid_id   = (int) ($pin_data['id'] ?? 0) === (int) $current_user->ID;
+			$has_code   = !empty($pin_data['user_seccode']);
+			$created_ts = strtotime($pin_data['created_at'] ?? '');
+			$not_future = false !== $created_ts && $created_ts <= (time() + DAY_IN_SECONDS);
+
+			if ($valid_id && $has_code && $not_future) {
+				$no_pin_set = false;
+			}
 		}
-	} else {
-		$no_sign = true;
+	}
+
+	$raw_sign = get_user_meta($current_user->ID, '_user_' . $current_user->ID . '_sign_data', true);
+	if ($raw_sign) {
+		$sign_data = json_decode($raw_sign, true);
+		if (!is_array($sign_data)) {
+			// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.serialize_unserialize
+			$sign_data = @unserialize($raw_sign);
+		}
+		if (is_array($sign_data) && !empty(array_filter($sign_data))) {
+			$no_sign = false;
+		}
 	}
 
 	return array(
@@ -5436,6 +5427,10 @@ add_filter('body_class', 'trimvia_prescriber_onboarding_body_class');
  */
 function trimvia_enqueue_prescriber_onboarding_assets()
 {
+	if (trimvia_is_customizer_preview() || trimvia_is_customizer_screen()) {
+		return;
+	}
+
 	if (!function_exists('is_account_page') || !is_account_page() || !trimvia_user_has_prescriber_access()) {
 		return;
 	}
@@ -5463,6 +5458,21 @@ function trimvia_enqueue_prescriber_onboarding_assets()
 			array('flashcanvas', 'jSignature'),
 			null,
 			true
+		);
+		wp_localize_script(
+			'cflp-prescriber-dashboard',
+			'woopwAjax',
+			array(
+				'ajax'                    => admin_url('admin-ajax.php'),
+				'myaccount_url'           => function_exists('wc_get_page_permalink') ? wc_get_page_permalink('myaccount') : '#',
+				'nonce_order_actions'     => wp_create_nonce('woopw_order_actions'),
+				'nonce_presc_actions'     => wp_create_nonce('woopw_presc_actions'),
+				'nonce_more_info_form'    => wp_create_nonce('woopw_more_info_form'),
+				'nonce_requested_info'    => wp_create_nonce('woopw_requested_info'),
+				'nonce_process_more_info' => wp_create_nonce('woopw_process_more_info'),
+				'nonce_view_prescription' => wp_create_nonce('woopw_view_prescription'),
+				'nonce_prescriber_note'   => wp_create_nonce('woopw_prescriber_note'),
+			)
 		);
 		wp_localize_script(
 			'cflp-prescriber-dashboard',
@@ -5531,3 +5541,323 @@ function trimvia_child_prescriber_popups()
 	}
 }
 add_action('wp_footer', 'trimvia_child_prescriber_popups', 99);
+
+/**
+ * Remove the minimum row requirement (min = 0) for the homepage "Why Choose Trimvia" stats repeater.
+ */
+add_filter('acf/load_field/name=why_section_stats', 'trimvia_remove_why_stats_min_requirement');
+function trimvia_remove_why_stats_min_requirement($field) {
+	$field['min'] = 0;
+	return $field;
+}
+
+/**
+ * WooPW prescriber dashboard admin-ajax action names.
+ *
+ * @return array<int, string>
+ */
+function trimvia_get_prescriber_ajax_actions()
+{
+	return array(
+		'prescriber_sec_pin',
+		'prescriber_signature',
+		'prescriber_update_signature',
+		'prescriber_auth_sess',
+		'render_prescription_more_info_form',
+		'process_prescription_more_info',
+		'render_prescription_requested_info',
+		'prescriber_verification',
+		'prescriber_order_status_action',
+		'prescriber_order_actions',
+		'prescriber_view_prescription',
+	);
+}
+
+/**
+ * Boot WooPW prescriber AJAX handlers after the current user is available.
+ */
+function trimvia_boot_woopw_prescriber_dashboard()
+{
+	if (!class_exists('WOOPW_ADMIN_PRESCRIBER_DASH') || !is_user_logged_in() || !trimvia_user_has_prescriber_access()) {
+		return;
+	}
+
+	WOOPW_ADMIN_PRESCRIBER_DASH::get_instance();
+}
+add_action('init', 'trimvia_boot_woopw_prescriber_dashboard', 1);
+
+/**
+ * Discard stray output before prescriber AJAX handlers (prevents jQuery parsererror).
+ */
+function trimvia_guard_prescriber_ajax_output()
+{
+	if (!wp_doing_ajax()) {
+		return;
+	}
+
+	$action = isset($_REQUEST['action']) ? sanitize_key(wp_unslash($_REQUEST['action'])) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+	if (!in_array($action, trimvia_get_prescriber_ajax_actions(), true)) {
+		return;
+	}
+
+	while (ob_get_level() > 0) {
+		ob_end_clean();
+	}
+}
+add_action('init', 'trimvia_guard_prescriber_ajax_output', 0);
+
+/**
+ * Register missing WooPW prescriber dashboard AJAX hooks that fail to register
+ * in the plugin constructor due to early is_user_logged_in() checks during load.
+ */
+function trimvia_register_missing_prescriber_ajax_hooks() {
+	if (!class_exists('WOOPW_ADMIN_PRESCRIBER_DASH')) {
+		return;
+	}
+
+	$ajax_actions = array(
+		'prescriber_sec_pin'                  => 'prescriber_pin_generation',
+		'prescriber_signature'                => 'prescriber_save_signature',
+		'prescriber_update_signature'         => 'signature_modal',
+		'prescriber_auth_sess'                => 'auth_prescriber_session',
+		'render_prescription_more_info_form'  => 'render_prescription_more_info_form',
+		'process_prescription_more_info'      => 'process_prescription_more_info',
+		'render_prescription_requested_info'  => 'render_prescription_requested_info',
+		'prescriber_verification'             => 'prescriber_verification',
+		'prescriber_order_status_action'      => 'prescriber_prescription_actions',
+		'prescriber_order_actions'            => 'prescriber_order_actions',
+		'prescriber_view_prescription'        => 'prescriber_view_prescription',
+	);
+
+	foreach ($ajax_actions as $action => $method) {
+		if (!has_action('wp_ajax_' . $action)) {
+			add_action('wp_ajax_' . $action, function() use ($method) {
+				$instance = WOOPW_ADMIN_PRESCRIBER_DASH::get_instance();
+				if (method_exists($instance, $method)) {
+					$instance->$method();
+				}
+			});
+		}
+	}
+}
+add_action('init', 'trimvia_register_missing_prescriber_ajax_hooks', 20);
+
+/**
+ * Clear stale reviewed prescription meta for orders that are still awaiting approval.
+ *
+ * Some WooPW orders can remain in `await-approval` while `_order_prescription_status`
+ * or `_order_prescription_admin_status` still says the prescription was already
+ * reviewed. That makes the modal show "View Prescription" instead of the expected
+ * "Approve / Decline" actions. The parent/plugin flow treats `await-approval`
+ * orders as actionable, so we normalize the stale meta before the AJAX handler
+ * renders the modal or processes the action.
+ *
+ * @return void
+ */
+function trimvia_normalize_prescriber_awaiting_order_meta()
+{
+	if (!wp_doing_ajax()) {
+		return;
+	}
+
+	$action = isset($_POST['action']) ? sanitize_key(wp_unslash($_POST['action'])) : '';
+	if ('prescriber_order_actions' !== $action) {
+		return;
+	}
+
+	$type = isset($_POST['type']) ? sanitize_key(wp_unslash($_POST['type'])) : '';
+	if (!in_array($type, array('view-prescriptions', 'approve', 'decline', 'decline_presc'), true)) {
+		return;
+	}
+
+	$order_id = isset($_POST['order']) ? absint(wp_unslash($_POST['order'])) : 0;
+	if ($order_id < 1) {
+		return;
+	}
+
+	$order = wc_get_order($order_id);
+	if (!$order instanceof WC_Order || 'await-approval' !== $order->get_status()) {
+		return;
+	}
+
+	$prescription_status = (string) $order->get_meta('_order_prescription_status');
+	$admin_status        = (string) $order->get_meta('_order_prescription_admin_status');
+	$is_stale_reviewed   = in_array($prescription_status, array('approved', 'declined'), true)
+		|| 'admin_declined' === $admin_status;
+
+	if (!$is_stale_reviewed) {
+		return;
+	}
+
+	$order->delete_meta_data('_order_prescription_status');
+	$order->delete_meta_data('_order_prescription_admin_status');
+	$order->delete_meta_data('_prescription_declined_reason');
+	$order->save();
+}
+add_action('wp_ajax_prescriber_order_actions', 'trimvia_normalize_prescriber_awaiting_order_meta', 1);
+
+
+/**
+ * Whether a URL belongs to the current site and is safe to redirect to.
+ *
+ * @param string $url Candidate URL.
+ * @return bool
+ */
+function trimvia_is_same_site_url($url)
+{
+	$url = trim((string) $url);
+	if ($url === '' || !wp_http_validate_url($url)) {
+		return false;
+	}
+
+	$home_host = wp_parse_url(home_url(), PHP_URL_HOST);
+	$url_host  = wp_parse_url($url, PHP_URL_HOST);
+
+	if ($home_host && $url_host && strcasecmp((string) $home_host, (string) $url_host) !== 0) {
+		return false;
+	}
+
+	return true;
+}
+
+/**
+ * Resolve a safe post-auth redirect from consultation entry links.
+ *
+ * @param string $fallback URL to use when no valid redirect is present.
+ * @return string
+ */
+function trimvia_get_request_auth_redirect_target($fallback = '')
+{
+	foreach (array('redirect_to', '_redirect_url', 'redirect') as $key) {
+		if (empty($_REQUEST[$key]) || !is_scalar($_REQUEST[$key])) {
+			continue;
+		}
+
+		$raw    = wp_unslash((string) $_REQUEST[$key]);
+		$target = wp_validate_redirect($raw, $fallback);
+
+		if ($target && ($fallback === '' || $target !== $fallback)) {
+			return $target;
+		}
+
+		if ($fallback === '' && trimvia_is_same_site_url($raw)) {
+			return esc_url_raw($raw);
+		}
+	}
+
+	return $fallback;
+}
+
+/**
+ * Persist consultation return URL for the next auth redirect.
+ *
+ * @param string $url Target URL.
+ */
+function trimvia_set_consultation_auth_redirect($url)
+{
+	$target = wp_validate_redirect($url, '');
+	if (!$target && trimvia_is_same_site_url($url)) {
+		$target = esc_url_raw($url);
+	}
+
+	if (!$target || !function_exists('WC') || !WC()->session) {
+		return;
+	}
+
+	WC()->session->set('trimvia_auth_redirect', $target);
+}
+
+/**
+ * Store consultation return URL when a guest opens the account login page.
+ */
+function trimvia_capture_consultation_auth_redirect()
+{
+	if (is_user_logged_in() || !function_exists('is_account_page') || !is_account_page()) {
+		return;
+	}
+
+	$target = trimvia_get_request_auth_redirect_target('');
+	if ($target) {
+		trimvia_set_consultation_auth_redirect($target);
+	}
+}
+add_action('wp', 'trimvia_capture_consultation_auth_redirect', 5);
+
+/**
+ * Honour consultation login/register redirect links from the guest prompt.
+ *
+ * @param string $redirect Default WooCommerce redirect URL.
+ * @return string
+ */
+function trimvia_consultation_auth_redirect($redirect)
+{
+	$target = trimvia_get_request_auth_redirect_target('');
+
+	if (!$target && function_exists('WC') && WC()->session) {
+		$stored = (string) WC()->session->get('trimvia_auth_redirect', '');
+		if ($stored !== '') {
+			$target = wp_validate_redirect($stored, '');
+			if (!$target && trimvia_is_same_site_url($stored)) {
+				$target = esc_url_raw($stored);
+			}
+		}
+	}
+
+	if ($target) {
+		if (function_exists('WC') && WC()->session) {
+			WC()->session->__unset('trimvia_auth_redirect');
+		}
+
+		return $target;
+	}
+
+	return $redirect;
+}
+add_filter('woocommerce_login_redirect', 'trimvia_consultation_auth_redirect', 999);
+add_filter('woocommerce_registration_redirect', 'trimvia_consultation_auth_redirect', 20);
+
+/**
+ * Fallback redirect after login when WooCommerce lands on the account page.
+ */
+function trimvia_consultation_finish_post_login_redirect()
+{
+	if (!is_user_logged_in() || !function_exists('is_account_page') || !is_account_page()) {
+		return;
+	}
+
+	if (function_exists('is_wc_endpoint_url') && is_wc_endpoint_url()) {
+		return;
+	}
+
+	$target = trimvia_get_request_auth_redirect_target('');
+	if (!$target && function_exists('WC') && WC()->session) {
+		$stored = (string) WC()->session->get('trimvia_auth_redirect', '');
+		if ($stored !== '') {
+			$target = wp_validate_redirect($stored, '');
+			if (!$target && trimvia_is_same_site_url($stored)) {
+				$target = esc_url_raw($stored);
+			}
+		}
+	}
+
+	if (!$target) {
+		return;
+	}
+
+	if (function_exists('WC') && WC()->session) {
+		WC()->session->__unset('trimvia_auth_redirect');
+	}
+
+	wp_safe_redirect($target);
+	exit;
+}
+add_action('template_redirect', 'trimvia_consultation_finish_post_login_redirect', 5);
+
+/**
+ * Hide the default WordPress admin footer area.
+ */
+function trimvia_hide_admin_footer_area()
+{
+	echo '<style id="trimvia-hide-admin-footer">#wpwrap #wpfooter{display:none!important;}</style>';
+}
+add_action('admin_head', 'trimvia_hide_admin_footer_area');

@@ -142,9 +142,9 @@ $saved_gp_post_id = ($has_saved_gp && !empty($saved_gp['post_id'])) ? absint($sa
 				<?php endif; ?>
 
 				<div class="trimvia-gp-panel trimvia-gp-panel--search<?php echo $show_search_panel ? ' is-active' : ''; ?>" data-gp-panel="nhs"<?php echo $show_search_panel ? '' : ' hidden'; ?>>
-					<p class="form-row form-row-wide trimvia-gp-field">
-						<label for="gp-surgery-selector"><?php esc_html_e('Search for GP Surgery', 'woocommerce'); ?>&nbsp;<span class="required">*</span></label>
-						<select id="gp-surgery-selector" class="gp-surgery-selector"<?php echo $show_search_panel ? '' : ' disabled'; ?>>
+					<p class="form-row form-row-wide trimvia-gp-field trimvia-gp-field--search">
+						<label for="gp-surgery-selector" class="screen-reader-text"><?php esc_html_e('Search for GP Surgery', 'woocommerce'); ?>&nbsp;<span class="required">*</span></label>
+						<select id="gp-surgery-selector" class="gp-surgery-selector" aria-label="<?php esc_attr_e('Search for GP Surgery', 'woocommerce'); ?>"<?php echo $show_search_panel ? '' : ' disabled'; ?>>
 							<option value=""><?php esc_html_e('Select GP Surgery', 'theme-woopm-child'); ?></option>
 						</select>
 					</p>

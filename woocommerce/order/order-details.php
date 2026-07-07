@@ -151,6 +151,8 @@ if ($patient_consultation) {
 								'ordered_by'        => $order->get_billing_first_name() . ' ' . $order->get_billing_last_name(),
 								'ordered_on'        => $order->get_date_created()->date('F d, Y h:i A'),
 								'show_q_desc'       => false,
+								'order_number'      => $order->get_id(),
+								'order'             => $order,
 							),
 							'',
 							function_exists('default_template_path') ? default_template_path() : ''

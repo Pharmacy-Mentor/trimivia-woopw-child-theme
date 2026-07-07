@@ -66,8 +66,22 @@
             "button_label": "Add feature",
             "sub_fields": [
                 {
+                    "key": "field_trimvia_service_feature_icon_type",
+                    "label": "Icon source",
+                    "name": "feature_icon_type",
+                    "type": "button_group",
+                    "choices": {
+                        "builtin": "Built-in",
+                        "fontawesome": "Font Awesome",
+                        "upload": "Upload"
+                    },
+                    "default_value": "builtin",
+                    "return_format": "value",
+                    "layout": "horizontal"
+                },
+                {
                     "key": "field_trimvia_service_feature_icon",
-                    "label": "Icon",
+                    "label": "Built-in icon",
                     "name": "feature_icon",
                     "type": "select",
                     "choices": {
@@ -80,7 +94,52 @@
                     },
                     "default_value": "clock",
                     "return_format": "value",
-                    "allow_null": 0
+                    "allow_null": 0,
+                    "conditional_logic": [
+                        [
+                            {
+                                "field": "field_trimvia_service_feature_icon_type",
+                                "operator": "==",
+                                "value": "builtin"
+                            }
+                        ]
+                    ]
+                },
+                {
+                    "key": "field_trimvia_service_feature_icon_fa",
+                    "label": "Font Awesome icon",
+                    "name": "feature_icon_fa",
+                    "type": "text",
+                    "instructions": "Click Browse icons to search the full Font Awesome library, or type a class (e.g. fa-solid fa-truck).",
+                    "placeholder": "fa-solid fa-truck",
+                    "conditional_logic": [
+                        [
+                            {
+                                "field": "field_trimvia_service_feature_icon_type",
+                                "operator": "==",
+                                "value": "fontawesome"
+                            }
+                        ]
+                    ]
+                },
+                {
+                    "key": "field_trimvia_service_feature_icon_upload",
+                    "label": "Custom icon image",
+                    "name": "feature_icon_upload",
+                    "type": "image",
+                    "return_format": "array",
+                    "preview_size": "thumbnail",
+                    "library": "all",
+                    "mime_types": "svg,png,jpg,jpeg,webp,gif",
+                    "conditional_logic": [
+                        [
+                            {
+                                "field": "field_trimvia_service_feature_icon_type",
+                                "operator": "==",
+                                "value": "upload"
+                            }
+                        ]
+                    ]
                 },
                 {
                     "key": "field_trimvia_service_feature_text",
@@ -207,8 +266,22 @@
                     "type": "url"
                 },
                 {
+                    "key": "field_trimvia_service_highlight_icon_type",
+                    "label": "Icon source",
+                    "name": "highlight_icon_type",
+                    "type": "button_group",
+                    "choices": {
+                        "builtin": "Built-in",
+                        "fontawesome": "Font Awesome",
+                        "upload": "Upload"
+                    },
+                    "default_value": "builtin",
+                    "return_format": "value",
+                    "layout": "horizontal"
+                },
+                {
                     "key": "field_trimvia_service_highlight_icon",
-                    "label": "Icon",
+                    "label": "Built-in icon",
                     "name": "highlight_icon",
                     "type": "select",
                     "choices": {
@@ -221,7 +294,52 @@
                     },
                     "default_value": "shield",
                     "return_format": "value",
-                    "allow_null": 0
+                    "allow_null": 0,
+                    "conditional_logic": [
+                        [
+                            {
+                                "field": "field_trimvia_service_highlight_icon_type",
+                                "operator": "==",
+                                "value": "builtin"
+                            }
+                        ]
+                    ]
+                },
+                {
+                    "key": "field_trimvia_service_highlight_icon_fa",
+                    "label": "Font Awesome icon",
+                    "name": "highlight_icon_fa",
+                    "type": "text",
+                    "instructions": "Click Browse icons to search the full Font Awesome library, or type a class (e.g. fa-solid fa-shield-halved).",
+                    "placeholder": "fa-solid fa-shield-halved",
+                    "conditional_logic": [
+                        [
+                            {
+                                "field": "field_trimvia_service_highlight_icon_type",
+                                "operator": "==",
+                                "value": "fontawesome"
+                            }
+                        ]
+                    ]
+                },
+                {
+                    "key": "field_trimvia_service_highlight_icon_upload",
+                    "label": "Custom icon image",
+                    "name": "highlight_icon_upload",
+                    "type": "image",
+                    "return_format": "array",
+                    "preview_size": "thumbnail",
+                    "library": "all",
+                    "mime_types": "svg,png,jpg,jpeg,webp,gif",
+                    "conditional_logic": [
+                        [
+                            {
+                                "field": "field_trimvia_service_highlight_icon_type",
+                                "operator": "==",
+                                "value": "upload"
+                            }
+                        ]
+                    ]
                 }
             ]
         },
@@ -303,5 +421,5 @@
     "active": true,
     "description": "Trimvia service singular layout (hero, features bar, content + sidebar) with section visibility toggles.",
     "show_in_rest": 0,
-    "modified": 1770400000
+    "modified": 1751366400
 }

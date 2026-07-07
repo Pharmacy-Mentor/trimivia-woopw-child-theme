@@ -96,8 +96,6 @@ $cart_count = WC()->cart ? WC()->cart->get_cart_contents_count() : 0;
 											</div>
 											<?php if ('' !== $cart_item_data) : ?>
 												<div class="cart-item-sub"><?php echo wp_kses_post($cart_item_data); ?></div>
-											<?php elseif ('' !== $product_categories) : ?>
-												<div class="cart-item-sub"><?php echo esc_html(wp_strip_all_tags($product_categories)); ?></div>
 											<?php endif; ?>
 											<?php if ($_product->is_on_backorder($cart_item['quantity'])) : ?>
 												<span class="cart-item-tag"><?php esc_html_e('Backorder', 'woocommerce'); ?></span>
@@ -146,7 +144,9 @@ $cart_count = WC()->cart ? WC()->cart->get_cart_contents_count() : 0;
 										data-thousand-separator="<?php echo esc_attr(wc_get_price_thousand_separator()); ?>"
 									>
 										<span class="cart-item-price-total"><?php echo apply_filters('woocommerce_cart_item_subtotal', WC()->cart->get_product_subtotal($_product, $cart_item['quantity']), $cart_item, $cart_item_key); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></span>
-										<small><?php echo apply_filters('woocommerce_cart_item_price', WC()->cart->get_product_price($_product), $cart_item, $cart_item_key); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></small>
+										<?php if ((int) $cart_item['quantity'] > 1) : ?>
+											<small class="cart-item-price-each"><?php echo apply_filters('woocommerce_cart_item_price', WC()->cart->get_product_price($_product), $cart_item, $cart_item_key); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?> <?php esc_html_e('each', 'theme-woopm-child'); ?></small>
+										<?php endif; ?>
 									</div>
 
 									<div class="cart-item-remove">

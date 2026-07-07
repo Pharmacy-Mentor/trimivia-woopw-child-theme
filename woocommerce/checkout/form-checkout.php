@@ -32,13 +32,15 @@ $cart_count = WC()->cart ? WC()->cart->get_cart_contents_count() : 0;
 	</div>
 </section>
 
-<section class="trimvia-checkout-section">
-	<div class="trimvia-checkout-before-form">
-		<?php do_action('woocommerce_before_checkout_form', $checkout); ?>
-	</div>
+<section class="page-section trimvia-checkout-section">
+	<div class="container">
+		<div class="trimvia-checkout-before-form">
+			<?php do_action('woocommerce_before_checkout_form', $checkout); ?>
+		</div>
 
-	<form name="checkout" method="post" class="checkout woocommerce-checkout checkout-layout" action="<?php echo esc_url(wc_get_checkout_url()); ?>" enctype="multipart/form-data" aria-label="<?php echo esc_attr__('Checkout', 'woocommerce'); ?>">
+		<form name="checkout" method="post" class="checkout woocommerce-checkout checkout-layout" action="<?php echo esc_url(wc_get_checkout_url()); ?>" enctype="multipart/form-data" aria-label="<?php echo esc_attr__('Checkout', 'woocommerce'); ?>">
 		<div class="checkout-form">
+			<div class="trimvia-checkout-form-notices woocommerce-notices-wrapper" aria-live="polite"></div>
 			<?php if ($checkout->get_checkout_fields()) : ?>
 				<?php do_action('woocommerce_checkout_before_customer_details'); ?>
 
@@ -115,7 +117,8 @@ $cart_count = WC()->cart ? WC()->cart->get_cart_contents_count() : 0;
 				<div class="security-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22 6 12 13 2 6"/></svg><?php esc_html_e('Discreet updates by email', 'theme-woopm-child'); ?></div>
 			</div>
 		</aside>
-	</form>
-</section>
+		</form>
 
-<?php do_action('woocommerce_after_checkout_form', $checkout); ?>
+		<?php do_action('woocommerce_after_checkout_form', $checkout); ?>
+	</div>
+</section>
