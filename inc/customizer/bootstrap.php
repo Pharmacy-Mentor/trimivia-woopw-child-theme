@@ -44,7 +44,7 @@ require_once $trimvia_customizer_dir . '/sanitize.php';
 require_once $trimvia_customizer_dir . '/controls.php';
 require_once $trimvia_customizer_dir . '/parent-cleanup.php';
 require_once $trimvia_customizer_dir . '/preview.php';
-require_once $trimvia_customizer_dir . '/register-service.php';
+//require_once $trimvia_customizer_dir . '/register-service.php';
 
 if (TRIMVIA_ENABLE_HEADER_FOOTER_CUSTOMIZER) {
 	require_once $trimvia_customizer_dir . '/register-header.php';

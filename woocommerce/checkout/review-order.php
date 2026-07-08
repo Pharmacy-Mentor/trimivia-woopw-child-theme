@@ -60,6 +60,39 @@ defined('ABSPATH') || exit;
 			<span><?php wc_cart_totals_subtotal_html(); ?></span>
 		</div>
 
+		<?php if (WC()->cart->needs_shipping()) : ?>
+			<?php
+			$shipping_label = __('Delivery', 'theme-woopm-child');
+			$shipping_cost_html = wp_kses_post(WC()->cart->get_cart_shipping_total());
+			$is_free = (float) WC()->cart->get_shipping_total() <= 0;
+
+			// WC()->shipping is a magic property (no __isset), so isset() on it is always false; call the method.
+			if (function_exists('WC') && WC()->shipping()) {
+				$chosen_shipping_methods = WC()->session ? WC()->session->get('chosen_shipping_methods') : array();
+				$packages = WC()->shipping()->get_packages();
+				foreach ($packages as $i => $package) {
+					$chosen_method = isset($chosen_shipping_methods[$i]) ? $chosen_shipping_methods[$i] : '';
+					if ($chosen_method && isset($package['rates'][$chosen_method])) {
+						$rate = $package['rates'][$chosen_method];
+						$shipping_label = $rate->get_label();
+
+						$cost = (float) $rate->cost;
+						if ($rate->taxes && WC()->cart->display_prices_including_tax()) {
+							$cost += array_sum($rate->taxes);
+						}
+						$shipping_cost_html = $cost > 0 ? wc_price($cost) : __('Free!', 'theme-woopm-child');
+						$is_free = $cost <= 0;
+						break;
+					}
+				}
+			}
+			?>
+			<div class="summary-line shipping-total<?php echo $is_free ? ' free' : ''; ?>">
+				<span><?php echo esc_html($shipping_label); ?></span>
+				<span><?php echo wp_kses_post($shipping_cost_html); ?></span>
+			</div>
+		<?php endif; ?>
+
 		<?php foreach (WC()->cart->get_coupons() as $code => $coupon) : ?>
 			<div class="summary-line cart-discount coupon-<?php echo esc_attr(sanitize_title($code)); ?>">
 				<span><?php wc_cart_totals_coupon_label($coupon); ?></span>

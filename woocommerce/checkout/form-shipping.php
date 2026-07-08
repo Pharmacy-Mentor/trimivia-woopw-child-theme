@@ -30,9 +30,8 @@ $trimvia_local_pickup_selected = function_exists('trimvia_checkout_chosen_method
 				id="trimvia_same_as_billing"
 				name="trimvia_same_as_billing"
 				value="1"
-				<?php checked($trimvia_local_pickup_selected); ?>
 			/>
-			<span><?php esc_html_e('Use billing address for delivery', 'theme-woopm-child'); ?></span>
+			<span><?php esc_html_e('Deliver to a different address?', 'theme-woopm-child'); ?></span>
 		</label>
 
 		<div class="shipping_address trimvia-checkout-shipping-address">

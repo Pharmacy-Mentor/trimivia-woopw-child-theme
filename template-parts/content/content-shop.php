@@ -181,13 +181,46 @@ $use_fallback_products      = false;
 $fallback_product_results   = null;
 if (!$render_native_product_loop && function_exists('wc_get_products')) {
 	$fallback_paged = max(1, (int) get_query_var('paged'), (int) get_query_var('page'));
+
+	$orderby_param = isset($_GET['orderby']) ? sanitize_text_field(wp_unslash($_GET['orderby'])) : 'menu_order';
+	$orderby = 'menu_order';
+	$order = 'ASC';
+
+	switch ($orderby_param) {
+		case 'price':
+			$orderby = 'price';
+			$order   = 'ASC';
+			break;
+		case 'price-desc':
+			$orderby = 'price';
+			$order   = 'DESC';
+			break;
+		case 'popularity':
+			$orderby = 'popularity';
+			$order   = 'DESC';
+			break;
+		case 'rating':
+			$orderby = 'rating';
+			$order   = 'DESC';
+			break;
+		case 'date':
+			$orderby = 'date';
+			$order   = 'DESC';
+			break;
+		case 'menu_order':
+		default:
+			$orderby = 'menu_order';
+			$order   = 'ASC';
+			break;
+	}
+
 	$fallback_product_results = wc_get_products(
 		array(
 			'status'             => 'publish',
 			'limit'              => (int) apply_filters('loop_shop_per_page', 12),
 			'page'               => $fallback_paged,
-			'orderby'            => 'date',
-			'order'              => 'DESC',
+			'orderby'            => $orderby,
+			'order'              => $order,
 			'catalog_visibility' => 'visible',
 			'paginate'           => true,
 		)
@@ -196,6 +229,23 @@ if (!$render_native_product_loop && function_exists('wc_get_products')) {
 	if (is_object($fallback_product_results) && !empty($fallback_product_results->products)) {
 		$use_fallback_products = true;
 		$shop_products_count   = (int) $fallback_product_results->total;
+
+		if ('price' === $orderby && is_array($fallback_product_results->products)) {
+			usort($fallback_product_results->products, function($a, $b) use ($order) {
+				$price_a = $a->is_type('variable') ? (float) $a->get_variation_price('min', true) : (float) $a->get_price();
+				$price_b = $b->is_type('variable') ? (float) $b->get_variation_price('min', true) : (float) $b->get_price();
+
+				if (abs($price_a - $price_b) < 0.001) {
+					return 0;
+				}
+
+				if ('ASC' === $order) {
+					return ($price_a < $price_b) ? -1 : 1;
+				} else {
+					return ($price_a > $price_b) ? -1 : 1;
+				}
+			});
+		}
 	}
 }
 ?>
@@ -232,6 +282,35 @@ if (!$render_native_product_loop && function_exists('wc_get_products')) {
 						?>
 					<?php endforeach; ?>
 				<?php else : ?>
+					<?php
+					$orderby_param = isset($_GET['orderby']) ? sanitize_text_field(wp_unslash($_GET['orderby'])) : '';
+					if (('price' === $orderby_param || 'price-desc' === $orderby_param) && isset($GLOBALS['wp_query']->posts) && is_array($GLOBALS['wp_query']->posts)) {
+						usort($GLOBALS['wp_query']->posts, function($a, $b) use ($orderby_param) {
+							$product_a = wc_get_product($a->ID);
+							$product_b = wc_get_product($b->ID);
+
+							if (!$product_a instanceof WC_Product) {
+								return 1;
+							}
+							if (!$product_b instanceof WC_Product) {
+								return -1;
+							}
+
+							$price_a = $product_a->is_type('variable') ? (float) $product_a->get_variation_price('min', true) : (float) $product_a->get_price();
+							$price_b = $product_b->is_type('variable') ? (float) $product_b->get_variation_price('min', true) : (float) $product_b->get_price();
+
+							if (abs($price_a - $price_b) < 0.001) {
+								return 0;
+							}
+
+							if ('price' === $orderby_param) {
+								return ($price_a < $price_b) ? -1 : 1;
+							} else {
+								return ($price_a > $price_b) ? -1 : 1;
+							}
+						});
+					}
+					?>
 					<?php while (have_posts()) : ?>
 						<?php
 						the_post();

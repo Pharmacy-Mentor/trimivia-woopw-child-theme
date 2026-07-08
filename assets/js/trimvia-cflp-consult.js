@@ -121,6 +121,52 @@
 		});
 	}
 
+	/**
+	 * WooPW v2 enables `.cflp-v2-next` when the active step has a checked radio.
+	 * Re-dispatch change so frontend-script.js syncState runs after pill clicks.
+	 */
+	function syncActiveStepNavigation(form) {
+		if (!document.body.classList.contains('cflp-multistep-v2')) {
+			return;
+		}
+
+		var activeGroup = form.querySelector('.form-group-wrapper.cflp-v2-step-active');
+		if (!activeGroup) {
+			return;
+		}
+
+		if (window.jQuery) {
+			window.jQuery(activeGroup).find('input[type="radio"]:checked').first().trigger('change');
+			return;
+		}
+
+		var nextBtn = activeGroup.querySelector('.cflp-v2-next');
+		if (!nextBtn) {
+			return;
+		}
+
+		var radioNames = {};
+		var pendingRadio = false;
+		qsa('.check-radio-group input[type="radio"]', activeGroup).forEach(function (input) {
+			if (input.disabled || input.type === 'hidden') {
+				return;
+			}
+			var question = input.closest('.form-input-group');
+			if (question && question.style.display === 'none') {
+				return;
+			}
+			if (!input.name || radioNames[input.name]) {
+				return;
+			}
+			radioNames[input.name] = true;
+			if (!form.querySelector('input[type="radio"][name="' + CSS.escape(input.name) + '"]:checked')) {
+				pendingRadio = true;
+			}
+		});
+
+		nextBtn.disabled = pendingRadio;
+	}
+
 	function resetProgressStepScroll(form) {
 		var indicator = form.querySelector('.cflp-v2-progress-head .step-indicator');
 		if (!indicator || !indicator.classList.contains('step-indicator--few')) {
@@ -145,6 +191,7 @@
 		if (document.body.classList.contains('cflp-multistep-v2')) {
 			syncTrimviaSidebar(form);
 			resetProgressStepScroll(form);
+			syncActiveStepNavigation(form);
 		}
 		syncRadioPills(form);
 	}
@@ -160,8 +207,24 @@
 		form.addEventListener('change', function (event) {
 			if (event.target && event.target.matches('input[type="radio"]')) {
 				syncRadioPills(form);
+				syncActiveStepNavigation(form);
 			}
 		});
+
+		form.addEventListener(
+			'click',
+			function (event) {
+				var label = event.target.closest('.form-check.radio label.form-check-label');
+				if (!label) {
+					return;
+				}
+				window.setTimeout(function () {
+					syncRadioPills(form);
+					syncActiveStepNavigation(form);
+				}, 0);
+			},
+			true
+		);
 
 		var groupObserver = new MutationObserver(function (mutations) {
 			var stepChanged = false;

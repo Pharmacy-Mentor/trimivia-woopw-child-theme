@@ -189,7 +189,8 @@
             "key": "field_trimvia_contact_email",
             "label": "Contact Email",
             "name": "contact_email",
-            "type": "email"
+            "type": "text",
+            "instructions": "Enter an email address, or use [pharmacy_email] to pull the email from Appearance → Customize → Pharmacy Mentor Options → Email Address."
         },
         {
             "key": "field_trimvia_contact_address_label",

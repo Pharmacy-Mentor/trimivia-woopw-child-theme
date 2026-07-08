@@ -151,7 +151,9 @@ if (function_exists('get_field') && $page_id) {
 
     $contact_email_value = trim((string) get_field('contact_email', $page_id));
     if ('' !== $contact_email_value) {
-        $contact_email = $contact_email_value;
+        $contact_email = function_exists('trimvia_resolve_contact_email')
+            ? trimvia_resolve_contact_email($contact_email_value)
+            : sanitize_email($contact_email_value);
     }
 
     $contact_address_label_value = trim((string) get_field('contact_address_label', $page_id));

@@ -69,7 +69,8 @@ add_action('after_setup_theme', 'trimvia_child_woocommerce_support', 11);
  */
 function trimvia_document_title_fallback($title)
 {
-	if (is_admin()) {
+	if (is_admin() || is_customize_preview()) 
+	{
 		return $title;
 	}
 
@@ -1979,6 +1980,33 @@ function trimvia_checkout_render_delivery_methods()
 	do_action('woocommerce_review_order_after_shipping');
 }
 add_action('woocommerce_checkout_before_order_review_heading', 'trimvia_checkout_render_delivery_methods', 10);
+
+/**
+ * Shipping method label as name + cost spans (matches basket delivery tabs).
+ *
+ * Replaces WooCommerce's "Label: £x.xx" text so checkout tabs can align the
+ * method name left and price right, same as the basket Order Summary.
+ *
+ * @param string           $label  Default full label.
+ * @param WC_Shipping_Rate $method Shipping rate.
+ * @return string
+ */
+function trimvia_shipping_method_full_label($label, $method)
+{
+	if (!function_exists('WC') || !WC()->cart) {
+		return $label;
+	}
+
+	$cost = (float) $method->cost;
+	if ($method->taxes && WC()->cart->display_prices_including_tax()) {
+		$cost += array_sum(array_map('floatval', (array) $method->taxes));
+	}
+
+	$cost_html = $cost > 0 ? wc_price($cost) : esc_html__('Free!', 'theme-woopm-child');
+
+	return '<span class="method-name">' . esc_html($method->get_label()) . '</span><span class="method-cost">' . wp_kses_post($cost_html) . '</span>';
+}
+add_filter('woocommerce_cart_shipping_method_full_label', 'trimvia_shipping_method_full_label', 20, 2);
 
 /**
  * Whether a shipping method ID is local pickup.
@@ -5861,3 +5889,13 @@ function trimvia_hide_admin_footer_area()
 	echo '<style id="trimvia-hide-admin-footer">#wpwrap #wpfooter{display:none!important;}</style>';
 }
 add_action('admin_head', 'trimvia_hide_admin_footer_area');
+
+/**
+ * Remove the "Safety" tab from all single product detail views.
+ */
+add_filter( 'woocommerce_product_tabs', 'trimvia_remove_safety_tab', 10000 );
+function trimvia_remove_safety_tab( $tabs ) {
+	unset( $tabs['safety'] );
+	unset( $tabs['trimvia_safety'] );
+	return $tabs;
+}

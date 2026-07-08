@@ -166,7 +166,10 @@ if (function_exists('get_field') && $page_id) {
     }
 
     $team_members_value = get_field('about_selected_team_members', $page_id);
-    if (is_array($team_members_value) && !empty($team_members_value)) {
+    if (!empty($team_members_value)) {
+        if (!is_array($team_members_value)) {
+            $team_members_value = array($team_members_value);
+        }
         $clean_team_members = array();
         foreach ($team_members_value as $member_id) {
             $member_id = is_object($member_id) ? (int) $member_id->ID : (int) $member_id;

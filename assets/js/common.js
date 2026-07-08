@@ -540,6 +540,20 @@
       { threshold: 0.08, rootMargin: "0px 0px -60px 0px" }
     );
     revealEls.forEach((el) => observer.observe(el));
+
+    // WooCommerce ajax (shipping method change, cart totals, checkout review,
+    // coupons) replaces markup after page load; the replacement .rv nodes were
+    // never observed, so they stay at opacity 0 and the panel looks removed.
+    if (window.jQuery) {
+      window.jQuery(document.body).on(
+        "updated_shipping_method updated_cart_totals updated_wc_div updated_checkout applied_coupon removed_coupon",
+        () => {
+          document
+            .querySelectorAll(".trimvia-cart-section .rv:not(.vis), .cart_totals .rv:not(.vis), form.checkout .rv:not(.vis)")
+            .forEach((el) => el.classList.add("vis"));
+        }
+      );
+    }
   };
 
   const initFaqAccordion = () => {
@@ -1068,7 +1082,9 @@
     }
 
     const $ = window.jQuery;
-    const sameAsBillingStorageKey = "trimvia_checkout_same_as_billing";
+    // Key renamed when checkbox semantics flipped (checked = different address),
+    // so states saved under the old meaning are not read back inverted.
+    const sameAsBillingStorageKey = "trimvia_checkout_ship_different";
 
     const getDeliveryRefs = () => ({
       panel: document.querySelector(".trimvia-checkout-panel--shipping"),
@@ -1130,7 +1146,9 @@
         sameAsBillingInput.checked = storedSameAsBilling === "1";
       }
 
-      const sameAsBilling = !!sameAsBillingInput?.checked;
+      // Checkbox semantics: checked = deliver to a DIFFERENT address (fields expand).
+      const shipDifferent = !!sameAsBillingInput?.checked;
+      const sameAsBilling = !shipDifferent;
       const hideShippingFields = localPickup || sameAsBilling;
 
       panel.classList.toggle("is-collapsed", localPickup);
@@ -1150,7 +1168,7 @@
       if (sameAsBillingInput) {
         sameAsBillingInput.disabled = localPickup;
         if (localPickup) {
-          sameAsBillingInput.checked = true;
+          sameAsBillingInput.checked = false;
         }
       }
 
@@ -1173,7 +1191,7 @@
       ".woocommerce-billing-fields input, .woocommerce-billing-fields select",
       () => {
         const { panel, sameAsBillingInput } = getDeliveryRefs();
-        if (panel && !panel.hidden && sameAsBillingInput?.checked) {
+        if (panel && !panel.hidden && sameAsBillingInput && !sameAsBillingInput.checked) {
           copyBillingToShipping(false);
         }
       }
@@ -1325,14 +1343,27 @@
           },
           processResults(data) {
             const result = [];
+            const rows = Array.isArray(data && data.value) ? data.value : [];
 
-            if (typeof data.value !== "undefined" && data.value.length > 0) {
-              data.value.forEach((value) => {
+            rows.forEach((value) => {
+              try {
                 let address = value.Address1 ? " - " + value.Address1 + ", " : "";
                 address += address && value.Postcode ? value.Postcode : value.Postcode ? " - " + value.Postcode : "";
                 const orgNameOnly = value.OrganisationName;
                 const orgName = value.OrganisationName + address;
-                const contactDetails = JSON.parse(value.Contacts);
+
+                // Contacts can be a JSON string, an array, null, or missing;
+                // one unparsable row must not blank the whole results list.
+                let contactDetails = [];
+                if (Array.isArray(value.Contacts)) {
+                  contactDetails = value.Contacts;
+                } else if (typeof value.Contacts === "string" && value.Contacts.trim()) {
+                  try {
+                    contactDetails = JSON.parse(value.Contacts) || [];
+                  } catch (parseError) {
+                    contactDetails = [];
+                  }
+                }
                 let telephone = null;
                 let email = null;
 
@@ -1364,8 +1395,10 @@
                   email,
                   org_name: orgNameOnly,
                 });
-              });
-            }
+              } catch (rowError) {
+                // Skip a malformed surgery row rather than losing every result.
+              }
+            });
 
             return { results: result };
           },
@@ -1694,6 +1727,256 @@
     }
   };
 
+  const enhanceTrimviaCustomSelect = (select, controlWrap) => {
+    if (!select || !controlWrap || select.multiple || select.options.length === 0) {
+      return;
+    }
+
+    if (select.dataset.trimviaSelectEnhanced === "1") {
+      if (typeof select._trimviaSelectRefresh === "function") {
+        select._trimviaSelectRefresh();
+      }
+      return;
+    }
+
+    select.dataset.trimviaSelectEnhanced = "1";
+    controlWrap.classList.add("trimvia-custom-select-wrap");
+
+    const customSelect = document.createElement("div");
+    customSelect.className = "trimvia-custom-select";
+
+    const trigger = document.createElement("button");
+    trigger.type = "button";
+    trigger.className = "trimvia-custom-select__trigger";
+    trigger.setAttribute("aria-haspopup", "listbox");
+    trigger.setAttribute("aria-expanded", "false");
+
+    const valueEl = document.createElement("span");
+    valueEl.className = "trimvia-custom-select__value";
+
+    const menu = document.createElement("ul");
+    menu.className = "trimvia-custom-select__menu";
+    menu.setAttribute("role", "listbox");
+    menu.hidden = true;
+
+    select.classList.add("trimvia-custom-select__native");
+    select.tabIndex = -1;
+
+    const optionItems = [];
+
+    trigger.appendChild(valueEl);
+    customSelect.appendChild(trigger);
+    customSelect.appendChild(menu);
+    customSelect.appendChild(select);
+    controlWrap.appendChild(customSelect);
+
+    const getSelectedOption = () => select.options[select.selectedIndex] || null;
+
+    const syncSelection = () => {
+      const selectedOption = getSelectedOption();
+      valueEl.textContent = selectedOption ? selectedOption.textContent.trim() : "";
+      customSelect.classList.toggle("is-placeholder", !select.value);
+
+      optionItems.forEach((item) => {
+        const option = Array.from(select.options).find(
+          (entry) => entry.value === item.dataset.value
+        );
+        const isDisabled = option ? option.disabled : false;
+        item.classList.toggle("is-disabled", isDisabled);
+        item.setAttribute("aria-disabled", isDisabled ? "true" : "false");
+
+        const isSelected = item.dataset.value === select.value;
+        item.classList.toggle("is-selected", isSelected);
+        item.setAttribute("aria-selected", isSelected ? "true" : "false");
+      });
+    };
+
+    const rebuildOptions = () => {
+      menu.innerHTML = "";
+      optionItems.length = 0;
+
+      Array.from(select.options).forEach((option) => {
+        const item = document.createElement("li");
+        item.className = "trimvia-custom-select__option";
+        item.setAttribute("role", "option");
+        item.dataset.value = option.value;
+        item.textContent = option.textContent.trim();
+        menu.appendChild(item);
+        optionItems.push(item);
+      });
+
+      syncSelection();
+    };
+
+    const closeMenu = () => {
+      customSelect.classList.remove("is-open");
+      trigger.setAttribute("aria-expanded", "false");
+      menu.hidden = true;
+    };
+
+    const openMenu = () => {
+      document.querySelectorAll(".trimvia-custom-select.is-open").forEach((openSelect) => {
+        if (openSelect !== customSelect) {
+          openSelect.classList.remove("is-open");
+          const openTrigger = openSelect.querySelector(".trimvia-custom-select__trigger");
+          const openMenuEl = openSelect.querySelector(".trimvia-custom-select__menu");
+          if (openTrigger) {
+            openTrigger.setAttribute("aria-expanded", "false");
+          }
+          if (openMenuEl) {
+            openMenuEl.hidden = true;
+          }
+        }
+      });
+
+      customSelect.classList.add("is-open");
+      trigger.setAttribute("aria-expanded", "true");
+      menu.hidden = false;
+    };
+
+    const chooseOption = (item) => {
+      if (!item || item.classList.contains("is-disabled")) {
+        return;
+      }
+
+      select.value = item.dataset.value;
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+      select.dispatchEvent(new Event("input", { bubbles: true }));
+      syncSelection();
+      closeMenu();
+      trigger.focus();
+    };
+
+    const getEnabledOptionItems = () =>
+      optionItems.filter((item) => !item.classList.contains("is-disabled"));
+
+    trigger.addEventListener("click", (event) => {
+      event.preventDefault();
+      if (customSelect.classList.contains("is-open")) {
+        closeMenu();
+      } else {
+        openMenu();
+      }
+    });
+
+    menu.addEventListener("click", (event) => {
+      const item = event.target.closest(".trimvia-custom-select__option");
+      if (!item) {
+        return;
+      }
+      event.preventDefault();
+      chooseOption(item);
+    });
+
+    trigger.addEventListener("keydown", (event) => {
+      const enabledItems = getEnabledOptionItems();
+      if (!enabledItems.length) {
+        return;
+      }
+
+      let currentIndex = enabledItems.findIndex(
+        (item) => item.dataset.value === select.value
+      );
+      if (currentIndex < 0) {
+        currentIndex = 0;
+      }
+
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        if (!customSelect.classList.contains("is-open")) {
+          openMenu();
+          return;
+        }
+        currentIndex = currentIndex < enabledItems.length - 1 ? currentIndex + 1 : 0;
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        if (!customSelect.classList.contains("is-open")) {
+          openMenu();
+          return;
+        }
+        currentIndex = currentIndex > 0 ? currentIndex - 1 : enabledItems.length - 1;
+      } else if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        if (!customSelect.classList.contains("is-open")) {
+          openMenu();
+          return;
+        }
+        chooseOption(enabledItems[currentIndex]);
+        return;
+      } else if (event.key === "Escape") {
+        closeMenu();
+        return;
+      } else {
+        return;
+      }
+
+      const nextItem = enabledItems[currentIndex];
+      if (nextItem) {
+        select.value = nextItem.dataset.value;
+        syncSelection();
+        nextItem.scrollIntoView({ block: "nearest" });
+      }
+    });
+
+    document.addEventListener("click", (event) => {
+      if (!customSelect.contains(event.target)) {
+        closeMenu();
+      }
+    });
+
+    select.addEventListener("change", syncSelection);
+
+    const observer = new MutationObserver(() => {
+      rebuildOptions();
+    });
+    observer.observe(select, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["disabled", "selected", "hidden"],
+    });
+
+    select._trimviaSelectRefresh = rebuildOptions;
+    rebuildOptions();
+  };
+
+  const initTrimviaCustomSelects = (root, selector, resolveWrap) => {
+    root.querySelectorAll(selector).forEach((select) => {
+      if (select.dataset.trimviaSelectEnhanced === "1") {
+        return;
+      }
+
+      const controlWrap = resolveWrap(select);
+      enhanceTrimviaCustomSelect(select, controlWrap);
+    });
+  };
+
+  const initContactFormSelects = (root = document) => {
+    initTrimviaCustomSelects(
+      root,
+      ".trimvia-contact-form-wrap select:not([data-trimvia-select-enhanced])",
+      (select) => select.closest(".wpcf7-form-control-wrap") || select.parentElement
+    );
+  };
+
+  const initProductVariationSelects = (root = document) => {
+    initTrimviaCustomSelects(
+      root,
+      ".trimvia-single-product-page form.variations_form table.variations select:not([data-trimvia-select-enhanced])",
+      (select) => select.closest(".variation-input-wrapper") || select.parentElement
+    );
+  };
+
+  const refreshProductVariationSelects = (root = document) => {
+    root.querySelectorAll(
+      ".trimvia-single-product-page form.variations_form table.variations select[data-trimvia-select-enhanced='1']"
+    ).forEach((select) => {
+      if (typeof select._trimviaSelectRefresh === "function") {
+        select._trimviaSelectRefresh();
+      }
+    });
+  };
+
   const initCommon = () => {
     ensureLegacyAdminAjaxGlobal();
     movePractitionerModalsToBody();
@@ -1775,7 +2058,34 @@
     initPrescriberApprovalPinModal();
     initPrescriberModalInteractionFix();
     initConsultationPatientModal();
+    initContactFormSelects();
+    initProductVariationSelects();
   };
+
+  document.addEventListener("wpcf7init", (event) => {
+    initContactFormSelects(event.target || document);
+  });
+
+  document.addEventListener("wpcf7submit", (event) => {
+    window.setTimeout(() => {
+      initContactFormSelects(event.target || document);
+    }, 0);
+  });
+
+  const jq = window.jQuery;
+  if (jq) {
+    jq(document.body).on("wc_variation_form", (_event, $form) => {
+      initProductVariationSelects($form && $form.length ? $form[0] : document);
+    });
+
+    jq(document.body).on(
+      "woocommerce_update_variation_values reset_data check_variations",
+      ".variations_form",
+      function handleVariationSelectRefresh() {
+        refreshProductVariationSelects(this);
+      }
+    );
+  }
 
   const enhancePrescriberPinApprovalForm = (root) => {
     if (!root) {

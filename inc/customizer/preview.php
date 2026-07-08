@@ -40,17 +40,4 @@ function trimvia_customize_preview_bootstrap()
 }
 add_action('customize_preview_init', 'trimvia_customize_preview_bootstrap', 0);
 
-/**
- * Skip heavy front-end assets inside the Customizer preview iframe.
- *
- * @return void
- */
-function trimvia_customize_preview_skip_heavy_front_assets()
-{
-	if (!trimvia_is_customizer_preview()) {
-		return;
-	}
 
-	trimvia_customize_preview_dequeue_disruptive_scripts();
-}
-add_action('wp_enqueue_scripts', 'trimvia_customize_preview_skip_heavy_front_assets', 999998);

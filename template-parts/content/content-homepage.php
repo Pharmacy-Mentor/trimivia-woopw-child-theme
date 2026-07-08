@@ -102,13 +102,13 @@ if (function_exists('get_field')) {
         }
 
         $hero_rating_score_value = get_field('hero_rating_score', $slide_id);
-        if (!empty($hero_rating_score_value)) {
-            $hero_rating_score = $hero_rating_score_value;
+        if ($hero_rating_score_value !== null && $hero_rating_score_value !== false) {
+            $hero_rating_score = trim((string) $hero_rating_score_value);
         }
 
         $hero_rating_label_value = get_field('hero_rating_label', $slide_id);
-        if (!empty($hero_rating_label_value)) {
-            $hero_rating_label = $hero_rating_label_value;
+        if ($hero_rating_label_value !== null && $hero_rating_label_value !== false) {
+            $hero_rating_label = trim((string) $hero_rating_label_value);
         }
 
         $pill_rows = get_field('hero_pills', $slide_id);
@@ -479,14 +479,20 @@ if (!empty($hero_img_style_parts)) {
       <a href="<?php echo esc_url($hero_secondary_cta['url']); ?>" class="btn-hero-o" <?php echo !empty($hero_secondary_cta['target']) ? 'target="' . esc_attr($hero_secondary_cta['target']) . '"' : ''; ?>><?php echo esc_html($hero_secondary_cta['title']); ?></a>
     </div>
     <div class="hero-proof">
-      <div style="display:flex;align-items:center;gap:8px">
-        <div class="hero-score"><?php echo esc_html($hero_rating_score); ?></div>
-        <div>
-          <div class="hero-stars"><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
-          <div class="hero-rating-lbl"><?php echo esc_html($hero_rating_label); ?></div>
+      <?php if (!empty($hero_rating_score) || !empty($hero_rating_label)) : ?>
+        <div style="display:flex;align-items:center;gap:8px">
+          <?php if (!empty($hero_rating_score)) : ?>
+            <div class="hero-score"><?php echo esc_html($hero_rating_score); ?></div>
+          <?php endif; ?>
+          <div>
+            <div class="hero-stars"><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+            <?php if (!empty($hero_rating_label)) : ?>
+              <div class="hero-rating-lbl"><?php echo esc_html($hero_rating_label); ?></div>
+            <?php endif; ?>
+          </div>
         </div>
-      </div>
-      <div class="hero-div"></div>
+        <div class="hero-div"></div>
+      <?php endif; ?>
       <div class="hero-pills">
         <?php foreach ($hero_pills as $hero_pill) : ?>
           <span class="hero-pill"><?php echo esc_html($hero_pill); ?></span>

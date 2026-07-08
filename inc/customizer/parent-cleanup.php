@@ -133,25 +133,3 @@ function trimvia_customize_normalize_transport($wp_customize)
 }
 add_action('customize_register', 'trimvia_customize_normalize_transport', 1000);
 
-/**
- * Disable automatic Customizer preview refreshes.
- *
- * The child theme Customizer writes settings on Publish, but live preview reloads are
- * expensive on this WooCommerce/WooPW site and can keep customize_save requests busy.
- * Use postMessage transport for all settings so field changes stay local until Save/Publish.
- *
- * @param WP_Customize_Manager $wp_customize Customizer manager instance.
- */
-function trimvia_customize_disable_live_preview_refresh($wp_customize)
-{
-	if (isset($wp_customize->selective_refresh)) {
-		foreach (array_keys($wp_customize->selective_refresh->partials()) as $partial_id) {
-			$wp_customize->selective_refresh->remove_partial($partial_id);
-		}
-	}
-
-	foreach ($wp_customize->settings() as $setting) {
-		$setting->transport = 'postMessage';
-	}
-}
-add_action('customize_register', 'trimvia_customize_disable_live_preview_refresh', 1001);

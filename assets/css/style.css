@@ -965,11 +965,47 @@ body.mobile-nav-open .mobile-nav-panel {
 .f-col .f-menu li a:hover { color: #fff; padding-left: 4px; }
 .footer-bottom { max-width: 1280px; margin: 0 auto; padding: 24px 40px; border-top: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: 300; flex-wrap: nowrap; gap: 12px; }
 .f-badges { display: flex; gap: 10px; margin-left: auto; justify-content: flex-end; flex-wrap: wrap; }
-.f-badge { padding: 5px 14px; border-radius: 6px; background: rgba(255,255,255,0.04); font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.25); text-transform: uppercase; letter-spacing: 1px; }
+.f-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.04);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: rgba(255,255,255,0.25);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.f-badge p {
+  margin: 0;
+  padding: 0;
+  line-height: 1.25;
+}
+.f-badge p:last-child {
+  margin-bottom: 0;
+}
 .f-badge a { color: inherit; text-transform: none; letter-spacing: 0; text-decoration: underline; }
 .f-badge a:hover { color: rgba(255,255,255,0.9); }
+.footer-copyright-copy p {
+  margin: 0;
+  padding: 0;
+  line-height: 1.45;
+}
+.footer-copyright-copy p:last-child {
+  margin-bottom: 0;
+}
+.footer-description-copy p {
+  margin: 0 0 0.85em;
+  padding: 0;
+}
+.footer-description-copy p:last-child {
+  margin-bottom: 0;
+}
 .f-legal { max-width: 1280px; margin: 0 auto; padding: 20px 40px 36px; }
-.f-legal p { font-size: 11px; color: rgba(255,255,255,0.18); line-height: 1.7; font-weight: 300; }
+.f-legal p { font-size: 11px; color: rgba(255,255,255,0.18); line-height: 1.7; font-weight: 300; margin: 0 0 0.85em; }
+.f-legal p:last-child { margin-bottom: 0; }
 
 /* REVEAL (progressive enhancement: keep visible when JS fails) */
 .rv { opacity: 1; transform: translateY(0); transition: opacity 0.8s var(--ease), transform 0.8s var(--ease); }
@@ -1221,6 +1257,9 @@ body.mobile-nav-open .mobile-nav-panel {
 }
 .page-hero--consultation h1 {
   font-weight: 800;
+  max-width: 920px;
+}
+.page-hero--consultation p {
   max-width: 920px;
 }
 .page-hero--consultation .consult-hero-meta {
@@ -1742,7 +1781,114 @@ body.mobile-nav-open .mobile-nav-panel {
   border-color: var(--blue) !important;
   box-shadow: 0 0 0 3px rgba(26,86,232,0.08) !important;
 }
-.trimvia-contact-form-wrap .wpcf7-form select { appearance: auto; }
+.trimvia-contact-form-wrap .wpcf7-form select:not(.trimvia-custom-select__native) {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: 44px !important;
+  background-image: url("../images/select-chevron.svg");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  cursor: pointer;
+}
+.trimvia-custom-select-wrap {
+  position: relative;
+  width: 100%;
+}
+.trimvia-custom-select {
+  position: relative;
+  width: 100%;
+}
+.trimvia-custom-select__trigger {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 44px 12px 16px;
+  border-radius: 12px;
+  border: 1.5px solid var(--g200);
+  background: var(--white) url("../images/select-chevron.svg") no-repeat right 16px center;
+  font-family: var(--fb);
+  font-size: 14px;
+  color: var(--g800);
+  line-height: 1.3;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+.trimvia-custom-select__value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.trimvia-custom-select.is-open .trimvia-custom-select__trigger,
+.trimvia-custom-select__trigger:focus-visible {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(26,86,232,0.08);
+  outline: none;
+}
+.trimvia-custom-select.is-placeholder .trimvia-custom-select__value {
+  color: var(--g500);
+  font-weight: 400;
+}
+.trimvia-contact-form-wrap .trimvia-custom-select:has(.trimvia-custom-select__native.wpcf7-not-valid) .trimvia-custom-select__trigger {
+  border-color: #dc3232 !important;
+  box-shadow: 0 0 0 3px rgba(220, 50, 50, 0.08) !important;
+}
+.trimvia-custom-select__menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 40;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  background: var(--white);
+  border: 1.5px solid var(--g200);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(28, 38, 52, 0.12);
+  max-height: 240px;
+  overflow-y: auto;
+}
+.trimvia-custom-select__menu[hidden] {
+  display: none;
+}
+.trimvia-custom-select__option {
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--g800);
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.trimvia-custom-select__option:hover,
+.trimvia-custom-select__option.is-selected,
+.trimvia-custom-select__option[aria-selected="true"] {
+  background: var(--blue-pale);
+  color: var(--blue);
+  font-weight: 600;
+}
+.trimvia-custom-select__option.is-disabled,
+.trimvia-custom-select__option[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+.trimvia-custom-select__native {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  pointer-events: none;
+  margin: 0 !important;
+  border: 0 !important;
+  padding: 0 !important;
+  min-height: 0;
+}
 .trimvia-contact-form-wrap .wpcf7-form textarea { min-height: 140px !important; resize: vertical; }
 .trimvia-contact-form-wrap .wpcf7-form input[type="submit"] {
   width: 100%;
@@ -2490,7 +2636,7 @@ body.admin-bar.consultation-page:not(:has(#wpadminbar)) .header {
   border: 1px solid var(--g200);
   border-radius: var(--r);
   padding: 18px 20px;
-  margin-bottom: 20px;
+  margin: 0 0 20px 20px;
   background: var(--white);
 }
 .trimvia-consult-condition-intro__title {
@@ -3000,11 +3146,11 @@ body.admin-bar.consultation-page:not(:has(#wpadminbar)) .header {
   color: var(--g900);
   background: var(--off-white);
 }
-.consultation-page .trimvia-consult-woo-form form.cflp-form .step-nav .btn-next,
-.consultation-page .trimvia-consult-woo-form form.cflp-form .step-nav .cflp-v2-next,
-.consultation-page .trimvia-consult-woo-form form.cflp-form .step-nav button[type="submit"],
-.consultation-page .trimvia-consult-woo-form form.cflp-form .step-nav .cflp-v2-submit,
-.consultation-page .trimvia-consult-woo-form form.cflp-form .step-nav #submitBtn {
+.consultation-page .trimvia-consult-woo-form form.cflp-form .step-nav .btn-next:not(:disabled),
+.consultation-page .trimvia-consult-woo-form form.cflp-form .step-nav .cflp-v2-next:not(:disabled),
+.consultation-page .trimvia-consult-woo-form form.cflp-form .step-nav button[type="submit"]:not(:disabled),
+.consultation-page .trimvia-consult-woo-form form.cflp-form .step-nav .cflp-v2-submit:not(:disabled),
+.consultation-page .trimvia-consult-woo-form form.cflp-form .step-nav #submitBtn:not(:disabled) {
   width: auto !important;
   flex: 0 0 auto;
   min-width: 260px;
@@ -3016,6 +3162,19 @@ body.admin-bar.consultation-page:not(:has(#wpadminbar)) .header {
   box-shadow: 0 4px 16px rgba(26, 86, 232, 0.3);
   opacity: 1 !important;
   transform: none !important;
+  text-transform: none !important;
+}
+.consultation-page .trimvia-consult-woo-form form.cflp-form .step-nav .btn-next,
+.consultation-page .trimvia-consult-woo-form form.cflp-form .step-nav .cflp-v2-next,
+.consultation-page .trimvia-consult-woo-form form.cflp-form .step-nav button[type="submit"],
+.consultation-page .trimvia-consult-woo-form form.cflp-form .step-nav .cflp-v2-submit,
+.consultation-page .trimvia-consult-woo-form form.cflp-form .step-nav #submitBtn {
+  width: auto !important;
+  flex: 0 0 auto;
+  min-width: 260px;
+  max-width: 100%;
+  padding: 14px 32px !important;
+  border: none !important;
   text-transform: none !important;
 }
 .consultation-page .trimvia-consult-woo-form form.cflp-form .step-nav .btn-next:hover:not(:disabled),
@@ -3032,9 +3191,13 @@ body.admin-bar.consultation-page:not(:has(#wpadminbar)) .header {
 .consultation-page .trimvia-consult-woo-form form.cflp-form .step-nav button[type="submit"]:disabled,
 .consultation-page .trimvia-consult-woo-form form.cflp-form .step-nav .cflp-v2-submit:disabled,
 .consultation-page .trimvia-consult-woo-form form.cflp-form .step-nav #submitBtn:disabled {
-  opacity: 0.55 !important;
+  background: var(--g200) !important;
+  color: var(--g500) !important;
+  box-shadow: none !important;
+  opacity: 1 !important;
   cursor: not-allowed;
   transform: none !important;
+  pointer-events: none;
 }
 /*
  * Consultation page only — CFLP field design override (parent template + plugin markup unchanged).
@@ -3064,7 +3227,21 @@ body.admin-bar.consultation-page:not(:has(#wpadminbar)) .header {
 }
 
 .consultation-page.cflp-multistep-v2 .trimvia-consult-woo-form form.cflp-form.cflp-form-v2 .form-group-wrapper,
-.consultation-page.cflp-multistep-v2 .trimvia-consult-woo-form form.cflp-form.cflp-form-v2 .form-group-wrapper.cflp-v2-step-active,
+.consultation-page.cflp-multistep-v2 .trimvia-consult-woo-form form.cflp-form.cflp-form-v2 .form-group-wrapper.cflp-v2-step-active {
+  display: block !important;
+  flex: none !important;
+  width: 100% !important;
+}
+.consultation-page.cflp-multistep-v2 .trimvia-consult-woo-form form.cflp-form.cflp-form-v2 .form-group-wrapper .fields-content,
+.consultation-page.cflp-multistep-v2 .trimvia-consult-woo-form form.cflp-form.cflp-form-v2 .form-group-wrapper .step-nav {
+  width: 100%;
+  max-width: 100%;
+}
+.consultation-page.cflp-multistep-v2 .trimvia-consult-woo-form form.cflp-form.cflp-form-v2 .check-radio-group .form-check.radio {
+  flex: none !important;
+  display: flex !important;
+  width: 100% !important;
+}
 .consultation-page.cflp-multistep-v2 .trimvia-consult-woo-form form.cflp-form.cflp-form-v2 .form-description-wrapper {
   border: none !important;
   box-shadow: none !important;
@@ -3072,9 +3249,17 @@ body.admin-bar.consultation-page:not(:has(#wpadminbar)) .header {
   padding: 0 !important;
   border-radius: 0 !important;
 }
+.consultation-page.cflp-multistep-v2 .trimvia-consult-woo-form form.cflp-form.cflp-form-v2 .form-description-wrapper {
+  display: none !important;
+}
 .consultation-page.cflp-multistep-v2 .trimvia-consult-woo-form form.cflp-form.cflp-form-v2 .cflp-v2-progress-head {
   padding: 0 !important;
+  margin-bottom: 24px !important;
   border-radius: 0 !important;
+}
+body.cflp-multistep-v2 .cflp-form-v2 .form-description-wrapper,
+body.cflp-multistep-v2 .cflp-form-v2 .form-group-wrapper {
+  box-shadow: none !important;
 }
 /* Locked fields — keep CFLP one-by-one progression (dimmed + overlay blocks interaction). */
 .consultation-page .trimvia-consult-woo-form form.cflp-form .form-group.form-input-group.dsl-field-wrapper {
@@ -3122,6 +3307,28 @@ body.admin-bar.consultation-page:not(:has(#wpadminbar)) .header {
   text-align: left !important;
 }
 .consultation-page .trimvia-consult-woo-form form.cflp-form .question-pointer {
+  display: none !important;
+}
+/* Conditional sub-questions (WooPW .conditional-field-form label > h4) — match main question labels. */
+.consultation-page .trimvia-consult-woo-form form.cflp-form .conditional-field-form > label,
+.consultation-page .trimvia-consult-woo-form form.cflp-form .conditional-form label {
+  display: block !important;
+  margin: 0 0 14px !important;
+  padding: 0 !important;
+}
+.consultation-page .trimvia-consult-woo-form form.cflp-form .conditional-field-form label h4,
+.consultation-page .trimvia-consult-woo-form form.cflp-form .conditional-form label h4 {
+  margin: 0 !important;
+  padding: 0 !important;
+  font-family: var(--fb) !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  color: var(--blue) !important;
+  line-height: 1.45 !important;
+  text-align: left !important;
+}
+.consultation-page .trimvia-consult-woo-form form.cflp-form .content-wrapper.section-title h4.mb-3 > span:empty,
+.consultation-page .trimvia-consult-woo-form form.cflp-form .content-wrapper.section-title label h4 > span:empty {
   display: none !important;
 }
 .consultation-page .trimvia-consult-woo-form form.cflp-form .fields-description,
@@ -3388,33 +3595,23 @@ body.admin-bar.consultation-page:not(:has(#wpadminbar)) .header {
 .consultation-page #consultationform .trimvia-consult-woo-form form.cflp-form .check-radio-group {
   float: none !important;
   margin-top: 0 !important;
-  display: flex !important;
-  flex-wrap: wrap;
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   width: 100%;
 }
-/* Desktop radio option grids (992px+) */
-@media (min-width: 992px) {
-  /* 2 options — side by side */
-  .consultation-page #consultationform .trimvia-consult-woo-form form.cflp-form .check-radio-group:has(> .form-check.radio:nth-child(2):last-child):not(.full-width) .form-check.radio {
-    flex: 1 1 calc(50% - 6px) !important;
-    min-width: calc(50% - 6px) !important;
-    max-width: calc(50% - 6px) !important;
-  }
-  /* Exactly 3 options — three columns */
-  .consultation-page #consultationform .trimvia-consult-woo-form form.cflp-form .check-radio-group:has(> .form-check.radio:nth-child(3):last-child):not(.full-width) .form-check.radio {
-    flex: 1 1 calc(33.333% - 8px) !important;
-    min-width: calc(33.333% - 8px) !important;
-    max-width: calc(33.333% - 8px) !important;
-  }
-  /* 4+ options — 2-column grid */
-  .consultation-page #consultationform .trimvia-consult-woo-form form.cflp-form .check-radio-group:has(> .form-check.radio:nth-child(4)):not(.full-width) .form-check.radio {
-    flex: 1 1 calc(50% - 6px) !important;
-    min-width: calc(50% - 6px) !important;
-    max-width: calc(50% - 6px) !important;
-  }
+/* Exactly 3 radio options — three equal columns */
+.consultation-page #consultationform .trimvia-consult-woo-form form.cflp-form .check-radio-group:not(.full-width):has(.form-check.radio + .form-check.radio + .form-check.radio):not(:has(.form-check.radio + .form-check.radio + .form-check.radio + .form-check.radio)) {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+/* 4+ radio options — two-column grid */
+.consultation-page #consultationform .trimvia-consult-woo-form form.cflp-form .check-radio-group:not(.full-width):has(.form-check.radio + .form-check.radio + .form-check.radio + .form-check.radio) {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 /* Long labels (WooPW full-width): stack full width */
+.consultation-page #consultationform .trimvia-consult-woo-form form.cflp-form .check-radio-group.full-width {
+  grid-template-columns: 1fr !important;
+}
 .consultation-page #consultationform .trimvia-consult-woo-form form.cflp-form .check-radio-group.full-width .form-check.radio {
   flex: 1 1 100% !important;
   min-width: 100% !important;
@@ -3431,8 +3628,10 @@ body.admin-bar.consultation-page:not(:has(#wpadminbar)) .header {
   margin: 0 !important;
   padding: 0 !important;
   min-height: 0 !important;
-  flex: 1 1 100%;
-  min-width: 0;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  flex: none !important;
   background: transparent !important;
   box-sizing: border-box;
 }
@@ -3775,9 +3974,9 @@ body.admin-bar.consultation-page:not(:has(#wpadminbar)) .header {
   .trimvia-shop-cta-inner { padding: 62px 28px; }
   body.page-template-page-shop-php .row.mb-4,
   body.page-template-page-shop .row.mb-4 { grid-template-columns: 1fr; }
-  .consult-grid { grid-template-columns: 1fr; }
+  .consult-grid:not(.trimvia-consult-woo-card__grid) { grid-template-columns: 1fr; }
   .consult-sidebar { position: static; }
-  .trimvia-consult-woo-card__grid {
+  .trimvia-consult-woo-card__grid:not(.consult-grid) {
     grid-template-columns: 1fr;
   }
   .trimvia-consult-woo-sidebar {
@@ -3789,8 +3988,44 @@ body.admin-bar.consultation-page:not(:has(#wpadminbar)) .header {
   }
 }
 
-/* Consultation mobile — WooPW v2 progress head + hide Trimvia sidebar */
+/* Consultation mobile — single column shell; sidebar stacks below form */
 @media (max-width: 991px) {
+  .consultation-page .trimvia-consult-woo-card__grid,
+  .consultation-page .trimvia-consult-woo-card__grid.consult-grid {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 0 !important;
+    max-width: 100%;
+    padding-left: 0;
+    padding-right: 0;
+  }
+  .consultation-page .trimvia-consult-woo-card:not(.trimvia-consult-woo-card--single) .trimvia-consult-woo-main {
+    grid-column: 1 / -1 !important;
+    grid-row: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0;
+  }
+  .consultation-page .trimvia-consult-woo-main,
+  .consultation-page .trimvia-consult-woo-form,
+  .consultation-page .trimvia-consult-questionnaire,
+  .consultation-page .trimvia-consult-woo-form form.cflp-form .cflp-form-container,
+  .consultation-page .trimvia-consult-woo-form form.cflp-form .form-content.col-md-8,
+  .consultation-page .trimvia-consult-woo-form form.cflp-form .row.consult-grid {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0;
+  }
+  .consultation-page .trimvia-consult-condition-intro {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  .consultation-page .trimvia-consult-condition-intro__text,
+  .consultation-page .trimvia-consult-condition-intro__text p {
+    word-break: normal;
+    overflow-wrap: break-word;
+  }
   .consultation-page.cflp-multistep-v2 .trimvia-consult-woo-card,
   .consultation-page.cflp-multistep-v2 .trimvia-consult-woo-main {
     overflow: visible;
@@ -3825,6 +4060,7 @@ body.admin-bar.consultation-page:not(:has(#wpadminbar)) .header {
     font-size: 14px;
     font-weight: 700;
     color: var(--g900);
+    white-space: nowrap;
   }
   .consultation-page.cflp-multistep-v2 .trimvia-consult-woo-form .cflp-v2-progress-head .cflp-v2-progress-pct {
     display: none !important;
@@ -3873,9 +4109,6 @@ body.admin-bar.consultation-page:not(:has(#wpadminbar)) .header {
     padding: 8px 0 18px !important;
     overflow: visible !important;
     flex-wrap: nowrap;
-  }
-  .consultation-page.cflp-multistep-v2 .trimvia-consult-woo-form form.cflp-form.cflp-form-v2 .cflp-v2-progress-head + .form-description-wrapper {
-    margin-top: 8px;
   }
   .consultation-page.cflp-multistep-v2 .trimvia-consult-woo-form .cflp-v2-progress-head .step-indicator::before {
     content: "";
@@ -3949,17 +4182,33 @@ body.admin-bar.consultation-page:not(:has(#wpadminbar)) .header {
     }
   }
   /* Mobile: stack all radio options full width */
+  .consultation-page #consultationform .trimvia-consult-woo-form form.cflp-form .check-radio-group:not(.full-width) {
+    grid-template-columns: 1fr !important;
+  }
   .consultation-page #consultationform .trimvia-consult-woo-form form.cflp-form .check-radio-group .form-check.radio {
-    flex: 1 1 100% !important;
+    width: 100% !important;
     min-width: 100% !important;
     max-width: 100% !important;
   }
-  .consultation-page .consult-sidebar,
-  .consultation-page .trimvia-consult-woo-sidebar {
+  .consultation-page .consult-sidebar:not(.trimvia-consult-woo-sidebar) {
     display: none !important;
   }
-  .consultation-page .trimvia-consult-condition-intro {
-    display: none;
+  .consultation-page .trimvia-consult-woo-sidebar {
+    display: flex !important;
+    flex-direction: column;
+    grid-column: 1 / -1 !important;
+    grid-row: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-top: 28px;
+    position: static;
+    top: auto;
+    order: 2;
+    gap: 16px;
+  }
+  .consultation-page .trimvia-consult-woo-sidebar .sidebar-card {
+    width: 100%;
+    box-sizing: border-box;
   }
   .consultation-page .trimvia-consult-woo-card {
     padding: 16px 14px 20px;
@@ -4116,7 +4365,7 @@ body.admin-bar.consultation-page:not(:has(#wpadminbar)) .header {
 }
 
 @media (max-width: 640px) and (orientation: landscape) {
-  .consult-sidebar { display: none; }
+  .consult-sidebar:not(.trimvia-consult-woo-sidebar) { display: none; }
   .consult-grid { padding-left: 18px; padding-right: 18px; }
 }
 
@@ -10053,7 +10302,6 @@ body.woocommerce-account .practitioner-order-section a.page-numbers:hover {
   padding: 10px 0;
   font-size: 14px;
   color: var(--g600);
-  border-bottom: 1px solid var(--g100);
 }
 
 .summary-line span:last-child {
@@ -10091,6 +10339,46 @@ body.woocommerce-account .practitioner-order-section a.page-numbers:hover {
   font-weight: var(--trimvia-price-weight);
   color: var(--trimvia-price-color);
   letter-spacing: var(--trimvia-price-ls);
+}
+.summary-total .amount .includes_tax {
+  display: block !important;
+  font-family: var(--fb) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  color: var(--g500) !important;
+  letter-spacing: normal !important;
+  margin-top: 4px !important;
+  text-align: right !important;
+}
+.summary-total .amount .includes_tax .woocommerce-Price-amount,
+.summary-total .amount .includes_tax bdi,
+.summary-total .amount .includes_tax span {
+  font-family: var(--fb) !important;
+  font-size: inherit !important;
+  font-weight: inherit !important;
+  color: inherit !important;
+  letter-spacing: inherit !important;
+}
+
+/* Checkout order review total: same small VAT note as the basket summary. */
+.summary-line.order-total .includes_tax {
+  display: block !important;
+  font-family: var(--fb) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  color: var(--g500) !important;
+  letter-spacing: normal !important;
+  margin-top: 4px !important;
+  text-align: right !important;
+}
+.summary-line.order-total .includes_tax .woocommerce-Price-amount,
+.summary-line.order-total .includes_tax bdi,
+.summary-line.order-total .includes_tax span {
+  font-family: var(--fb) !important;
+  font-size: inherit !important;
+  font-weight: inherit !important;
+  color: inherit !important;
+  letter-spacing: inherit !important;
 }
 
 .summary-note {
@@ -10965,6 +11253,14 @@ body.trimvia-checkout-page .woocommerce-checkout #account_password_field .show-p
 /* Checkout GP details (WooPW — rendered in Trimvia checkout panel via trimvia_checkout_get_gp_section_markup) */
 .trimvia-checkout-page .trimvia-checkout-gp-section {
   margin: 0;
+  /* Contain WooPW's floated form rows; otherwise the panel height collapses
+     and .checkout-form's overflow:hidden clips the card's bottom edge. */
+  display: flow-root;
+  padding-bottom: 4px;
+}
+
+.trimvia-checkout-page .trimvia-checkout-panel--notes {
+  display: flow-root;
 }
 
 .trimvia-checkout-page .trimvia-checkout-gp-section .woo-gp-form-wrapper,
@@ -11555,8 +11851,13 @@ body.trimvia-checkout-page .woocommerce-checkout #account_password_field .show-p
 }
 
 .trimvia-checkout-panel:last-child {
-  border-bottom: none;
   padding-bottom: 32px;
+  margin-bottom: 0;
+  margin-top: 20px !important;
+}
+
+.trimvia-checkout-page .trimvia-checkout-panel--shipping {
+  border-bottom: 1px solid var(--g100) !important;
 }
 
 .trimvia-checkout-page .trimvia-checkout-panel--notes .trimvia-checkout-gp-section {
@@ -12048,73 +12349,92 @@ body.trimvia-checkout-page .woocommerce-checkout #account_password_field .show-p
 
 /* Parent theme: shipping + local pickup side-by-side (50% columns). */
 .trimvia-checkout-page .trimvia-checkout-delivery-methods ul#shipping_method {
-  display: flex;
-  flex-flow: row wrap;
-  gap: 0;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+  display: flex !important;
+  flex-flow: row wrap !important;
+  gap: 12px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  list-style: none !important;
 }
 
 .trimvia-checkout-page .trimvia-checkout-delivery-methods ul#shipping_method li {
-  flex: 0 0 50%;
-  box-sizing: border-box;
-  margin: 0 0 15px;
-  padding: 14px 12px;
-  border: 1.5px solid var(--g200);
-  border-radius: 12px;
-  background: var(--off-white);
-  transition: border-color 0.25s var(--ease), background 0.25s var(--ease), box-shadow 0.25s var(--ease);
+  flex: 1 1 100% !important;
+  box-sizing: border-box !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 1.5px solid var(--g200) !important;
+  border-radius: 12px !important;
+  background: var(--off-white) !important;
+  transition: border-color 0.25s var(--ease), background 0.25s var(--ease), box-shadow 0.25s var(--ease) !important;
+  overflow: hidden !important;
 }
 
-.trimvia-checkout-page .trimvia-checkout-delivery-methods ul#shipping_method li:nth-child(odd) {
-  padding-right: 8px;
-}
-
+.trimvia-checkout-page .trimvia-checkout-delivery-methods ul#shipping_method li:nth-child(odd),
 .trimvia-checkout-page .trimvia-checkout-delivery-methods ul#shipping_method li:nth-child(even) {
-  padding-left: 8px;
+  padding: 0 !important;
 }
 
 .trimvia-checkout-page .trimvia-checkout-delivery-methods ul#shipping_method li:has(input:checked) {
-  border-color: var(--blue);
-  background: var(--blue-pale);
-  box-shadow: 0 0 0 3px rgba(26, 86, 232, 0.1);
+  border-color: var(--blue) !important;
+  background: var(--blue-pale) !important;
+  box-shadow: 0 0 0 3px rgba(26, 86, 232, 0.1) !important;
 }
 
 .trimvia-checkout-page .trimvia-checkout-delivery-methods ul#shipping_method label {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
-  margin: 0;
-  font-family: var(--fb);
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--g800);
-  cursor: pointer;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  margin: 0 !important;
+  padding: 14px 16px !important;
+  width: 100% !important;
+  font-family: var(--fb) !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  color: var(--g800) !important;
+  cursor: pointer !important;
+  box-sizing: border-box !important;
 }
 
 .trimvia-checkout-page .trimvia-checkout-delivery-methods ul#shipping_method .amount {
-  margin-left: 8px;
-  white-space: nowrap;
+  margin-left: 8px !important;
+  white-space: nowrap !important;
 }
 
 .trimvia-checkout-page .trimvia-checkout-delivery-methods ul#shipping_method input[type="radio"] {
-  margin: 2px 8px 0 0;
-  flex-shrink: 0;
+  display: none !important;
+}
+
+/* Match the basket tab design: remove the parent theme's fake radio dot. */
+.trimvia-checkout-page .trimvia-checkout-delivery-methods ul#shipping_method label::before,
+.woocommerce .trimvia-checkout-delivery-methods .woocommerce-shipping-methods li input[type="radio"] + label::before {
+  content: none !important;
+  display: none !important;
+}
+
+.trimvia-checkout-page .trimvia-checkout-delivery-methods ul#shipping_method li:hover {
+  border-color: var(--blue) !important;
+}
+
+.trimvia-checkout-page .trimvia-checkout-delivery-methods ul#shipping_method label .method-cost {
+  font-weight: 700 !important;
+  color: var(--g900) !important;
+  white-space: nowrap !important;
+}
+
+.trimvia-checkout-page .trimvia-checkout-delivery-methods ul#shipping_method li:has(input:checked) .method-name,
+.trimvia-checkout-page .trimvia-checkout-delivery-methods ul#shipping_method li:has(input:checked) .method-cost {
+  color: var(--blue) !important;
+}
+
+.trimvia-checkout-page .trimvia-checkout-delivery-methods ul#shipping_method li:has(input:focus-visible) {
+  outline: 2px solid var(--blue) !important;
+  outline-offset: 2px !important;
 }
 
 @media (max-width: 991px) {
-  .trimvia-checkout-page .trimvia-checkout-delivery-methods ul#shipping_method {
-    flex-direction: column;
-  }
-
-  .trimvia-checkout-page .trimvia-checkout-delivery-methods ul#shipping_method li,
-  .trimvia-checkout-page .trimvia-checkout-delivery-methods ul#shipping_method li:nth-child(odd),
-  .trimvia-checkout-page .trimvia-checkout-delivery-methods ul#shipping_method li:nth-child(even) {
-    flex: 0 0 100%;
-    padding-left: 16px;
-    padding-right: 16px;
+  .trimvia-checkout-page .trimvia-checkout-delivery-methods ul#shipping_method li {
+    flex: 1 1 100% !important;
   }
 }
 
@@ -12857,6 +13177,12 @@ body.single-product.trimvia-single-product-page .woo-single-product-wrapper h3 {
   margin: 0;
 }
 
+/* WooCommerce core adds margin-bottom: 2em on div.images; not wanted in this layout. */
+.trimvia-single-product-page.woocommerce div.product div.images,
+.woocommerce .trimvia-single-product-page div.product div.images {
+  margin-bottom: 0 !important;
+}
+
 .trimvia-single-product-page .single-product-main .woocommerce-product-gallery__wrapper {
   margin: 0 !important;
 }
@@ -12892,6 +13218,15 @@ body.single-product.trimvia-single-product-page .woo-single-product-wrapper h3 {
   margin: 0 auto;
   object-fit: contain;
   object-position: center center;
+}
+
+/* WooCommerce hover zoom overlays the full-size image at natural dimensions;
+   when that image is shorter than the gallery box, a white gap shows at the
+   bottom during hover. Stretch the zoom clone to always cover the box. */
+.trimvia-single-product-page .single-product-main .woocommerce-product-gallery__image .zoomImg {
+  min-width: 100% !important;
+  min-height: 100% !important;
+  object-fit: cover;
 }
 
 .trimvia-single-product-page .single-product-main .woocommerce-product-gallery__trigger {
@@ -13418,6 +13753,50 @@ body.single-product.trimvia-single-product-page.woocommerce div.product p.price 
   box-shadow: 0 0 0 4px rgba(26, 86, 232, 0.1);
 }
 
+.trimvia-single-product-page .trimvia-single-product-cart table.variations .trimvia-custom-select__trigger {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 48px;
+  padding: 13px 46px 13px 16px;
+  border-radius: 12px;
+  border: 1.5px solid var(--g200);
+  font-family: var(--fb);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--g800);
+  background-color: var(--white);
+  background-image: url("data:image/svg+xml,%3Csvg width='18' height='18' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M6 9L12 15L18 9' stroke='%231A56E8' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-position: right 16px center;
+  background-repeat: no-repeat;
+  background-size: 18px;
+  box-shadow: 0 8px 24px rgba(26, 86, 232, 0.04);
+}
+
+.trimvia-single-product-page .trimvia-single-product-cart table.variations .trimvia-custom-select__trigger:hover {
+  border-color: rgba(26, 86, 232, 0.35);
+}
+
+.trimvia-single-product-page .trimvia-single-product-cart table.variations .trimvia-custom-select.is-open .trimvia-custom-select__trigger,
+.trimvia-single-product-page .trimvia-single-product-cart table.variations .trimvia-custom-select__trigger:focus-visible {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 4px rgba(26, 86, 232, 0.1);
+}
+
+.trimvia-single-product-page .trimvia-single-product-cart table.variations select.trimvia-custom-select__native {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  pointer-events: none;
+  margin: 0 !important;
+  border: 0 !important;
+  padding: 0 !important;
+  min-height: 0;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
 .trimvia-single-product-page .trimvia-single-product-cart table.variations td.value {
   margin-bottom: 8px;
   width: 100%;
@@ -13610,6 +13989,75 @@ body.single-product.trimvia-single-product-page .trimvia-single-product-cart tab
   margin-bottom: 0;
 }
 
+/* Single product — tighter section rhythm (reduce stacked page-section gaps) */
+.trimvia-single-product-page .page-section {
+  padding-top: 44px;
+  padding-bottom: 44px;
+}
+
+.trimvia-single-product-page .page-section + .page-section {
+  padding-top: 24px;
+}
+
+body.single-product.trimvia-single-product-page .page-hero.page-hero--single {
+  padding-bottom: 56px;
+}
+
+.trimvia-single-product-page .single-product-layout {
+  gap: 36px;
+}
+
+.trimvia-single-product-page .single-product-tagline {
+  margin-bottom: 18px;
+}
+
+.trimvia-single-product-page .single-product-meta {
+  margin-bottom: 18px;
+}
+
+.trimvia-single-product-page .single-product-trust-inline {
+  margin-top: 18px;
+}
+
+.trimvia-single-product-page .single-product-details-head {
+  margin-bottom: 20px;
+}
+
+.trimvia-single-product-page .woocommerce-tabs ul.tabs.wc-tabs {
+  margin-bottom: 20px;
+}
+
+.trimvia-single-product-page .woocommerce .woocommerce-tabs .panel,
+.trimvia-single-product-page .woocommerce-tabs .woocommerce-Tabs-panel.panel {
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  overflow: visible !important;
+}
+
+.trimvia-single-product-page .woocommerce-tabs .woocommerce-Tabs-panel.panel p {
+  margin-bottom: 12px;
+}
+
+.trimvia-single-product-page .woocommerce-tabs .woocommerce-Tabs-panel.panel p:last-child,
+.trimvia-single-product-page .woocommerce-tabs .woocommerce-Tabs-panel.panel > *:last-child {
+  margin-bottom: 0;
+}
+
+.trimvia-single-product-page .woocommerce-tabs .woocommerce-Tabs-panel.panel h2:not(.woocommerce-loop-product__title),
+.trimvia-single-product-page .woocommerce-tabs .woocommerce-Tabs-panel.panel h3,
+.trimvia-single-product-page .woocommerce-tabs .woocommerce-Tabs-panel.panel h4 {
+  margin-top: 20px;
+  margin-bottom: 12px;
+}
+
+.trimvia-single-product-page .woocommerce-tabs .woocommerce-Tabs-panel.panel h2:first-child,
+.trimvia-single-product-page .woocommerce-tabs .woocommerce-Tabs-panel.panel h3:first-child,
+.trimvia-single-product-page .woocommerce-tabs .woocommerce-Tabs-panel.panel h4:first-child {
+  margin-top: 0;
+}
+
 /* Tabs — parent theme WC tabs markup, Trimvia pill styling */
 .trimvia-single-product-page .woocommerce-tabs.wc-tabs-wrapper {
   margin-top: 0;
@@ -13776,7 +14224,7 @@ body.single-product.trimvia-single-product-page .trimvia-single-product-cart tab
   font-family: var(--fd);
   font-size: clamp(24px, 2.5vw, 32px);
   color: var(--g900);
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 /* Summary: SKU, categories, tags (restored from parent hook removal) */
@@ -13953,11 +14401,13 @@ body.single-product.trimvia-single-product-page .trimvia-single-product-cart tab
 
 /* Related & upsells — product grid */
 .trimvia-single-product-page .trimvia-single-product-related {
-  padding-bottom: 32px;
+  padding-top: 24px;
+  padding-bottom: 24px;
 }
 
 .trimvia-single-product-page .trimvia-single-product-related + .page-section {
-  padding-top: 32px;
+  padding-top: 24px;
+  padding-bottom: 32px;
 }
 
 .trimvia-single-product-page .trimvia-single-product-related .related.products,
@@ -13966,7 +14416,7 @@ body.single-product.trimvia-single-product-page .trimvia-single-product-cart tab
 }
 
 .trimvia-single-product-page .trimvia-single-product-cta-wrap {
-  padding: 8px 24px 42px;
+  padding: 0 24px 32px;
 }
 
 .trimvia-single-product-page .trimvia-single-product-cta {
@@ -13992,7 +14442,7 @@ body.single-product.trimvia-single-product-page .trimvia-single-product-cart tab
 .trimvia-single-product-page .trimvia-single-product-cta-inner {
   max-width: 700px;
   margin: 0 auto;
-  padding: 78px 40px;
+  padding: 48px 32px;
   text-align: center;
   position: relative;
   z-index: 1;
@@ -14015,8 +14465,12 @@ body.single-product.trimvia-single-product-page .trimvia-single-product-cart tab
   background: #fff;
 }
 
+.trimvia-single-product-page .trimvia-single-product-details {
+  padding-bottom: 28px;
+}
+
 .trimvia-single-product-page .trimvia-single-product-related .stitle {
-  margin-bottom: 28px;
+  margin-bottom: 20px;
 }
 
 .trimvia-single-product-page .trimvia-single-product-related ul.products {
@@ -14158,7 +14612,16 @@ body.single-product.trimvia-single-product-page .trimvia-single-product-cart tab
   }
 
   .trimvia-single-product-page .trimvia-single-product-cta-inner {
-    padding: 54px 22px;
+    padding: 40px 22px;
+  }
+
+  .trimvia-single-product-page .page-section {
+    padding-top: 32px;
+    padding-bottom: 32px;
+  }
+
+  .trimvia-single-product-page .page-section + .page-section {
+    padding-top: 20px;
   }
 }
 
@@ -15953,4 +16416,96 @@ body.trimvia-cart-page .footer {
     width: 38px;
     height: 38px;
   }
+}
+
+/* Custom styled radio buttons for shipping methods */
+.trimvia-checkout-page .trimvia-checkout-delivery-methods ul#shipping_method input[type="radio"],
+.trimvia-shipping-methods input[type="radio"] {
+  display: none !important;
+}
+
+/* Basket shipping method selector styles */
+.summary-shipping-selection {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1.5px solid var(--g100);
+}
+
+.shipping-selection-title {
+  display: block;
+  font-family: var(--fb);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--g800);
+  margin-bottom: 10px;
+}
+
+ul.trimvia-shipping-methods {
+  list-style: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+ul.trimvia-shipping-methods li {
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 1.5px solid var(--g200) !important;
+  border-radius: 12px !important;
+  background: var(--off-white) !important;
+  display: flex !important;
+  align-items: center !important;
+  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease !important;
+  overflow: hidden !important;
+}
+
+ul.trimvia-shipping-methods li:has(input:checked) {
+  border-color: var(--blue) !important;
+  background: var(--blue-pale) !important;
+  box-shadow: 0 0 0 3px rgba(26, 86, 232, 0.1) !important;
+}
+
+ul.trimvia-shipping-methods li label {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  flex: 1 !important;
+  margin: 0 !important;
+  padding: 12px 14px !important;
+  font-family: var(--fb) !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  color: var(--g800) !important;
+  cursor: pointer !important;
+  box-sizing: border-box !important;
+}
+
+ul.trimvia-shipping-methods li label .method-cost {
+  font-weight: 700 !important;
+  color: var(--g900) !important;
+}
+
+/* Tab-style delivery options: remove the parent theme's fake radio dot
+   (pharmacymentor draws a circle via `input[type=radio] + label:before`). */
+.woocommerce ul.trimvia-shipping-methods li input[type="radio"] + label::before,
+ul.trimvia-shipping-methods li label::before {
+  content: none !important;
+  display: none !important;
+}
+
+ul.trimvia-shipping-methods li:hover {
+  border-color: var(--blue) !important;
+}
+
+ul.trimvia-shipping-methods li:has(input:checked) label .method-name,
+ul.trimvia-shipping-methods li:has(input:checked) label .method-cost {
+  color: var(--blue) !important;
+}
+
+/* The real radio is visually hidden; keep a focus ring for keyboard users. */
+ul.trimvia-shipping-methods li:has(input:focus-visible) {
+  outline: 2px solid var(--blue) !important;
+  outline-offset: 2px !important;
 }

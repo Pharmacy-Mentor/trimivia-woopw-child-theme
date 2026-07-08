@@ -12,6 +12,7 @@ if (!defined('ABSPATH')) {
 $context                    = is_array($args['context'] ?? null) ? $args['context'] : array();
 $show_questionnaire_sidebar = !empty($context['show_questionnaire_sidebar']);
 $term                       = $context['term'] ?? null;
+$consult_form_description_html = (string) ($context['consult_form_description_html'] ?? '');
 $questionnaire_html         = trimvia_render_consultation_questionnaire($context);
 ?>
 <section id="consultationform" class="consult-layout trimvia-consult-form-shell">
@@ -24,9 +25,8 @@ $questionnaire_html         = trimvia_render_consultation_questionnaire($context
 							<h2 class="trimvia-consult-condition-intro__title"><?php echo esc_html($term->name); ?></h2>
 							<div class="trimvia-consult-condition-intro__text">
 								<?php
-								$t_desc = term_description($term->term_id, 'condition');
-								if ($t_desc) {
-									echo apply_filters('the_content', $t_desc); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+								if ($consult_form_description_html !== '') {
+									echo $consult_form_description_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- the_content filter
 								} else {
 									echo '<p>' . esc_html__(
 										'Please fill out the form below so that our clinicians can determine if the treatment will be suitable for you to take.',

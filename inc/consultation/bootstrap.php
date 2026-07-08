@@ -93,7 +93,7 @@ function trimvia_get_consultation_context()
 	if ($term instanceof WP_Term) {
 		$t_desc_raw = term_description($term->term_id, 'condition');
 		if ($t_desc_raw) {
-			$consult_hero_sub = wp_trim_words(wp_strip_all_tags($t_desc_raw), 40, '…');
+			$consult_hero_sub = wp_strip_all_tags($t_desc_raw);
 		}
 	}
 	if ($consult_hero_sub === '') {
@@ -125,6 +125,14 @@ function trimvia_get_consultation_context()
 		}
 	}
 
+	$consult_form_description_html = '';
+	if (!empty($questionnaire_id)) {
+		$cflp_form_id = trimvia_resolve_cflp_form_id((string) $questionnaire_id);
+		if ($cflp_form_id > 0) {
+			$consult_form_description_html = trimvia_get_cflp_form_description_html($cflp_form_id);
+		}
+	}
+
 	return compact(
 		'is_under_process',
 		'recommend_enabled',
@@ -142,7 +150,196 @@ function trimvia_get_consultation_context()
 		'consult_approx_minutes',
 		'trimvia_contact_url',
 		'trimvia_contact_phone',
-		'trimvia_condition_cancel_url'
+		'trimvia_condition_cancel_url',
+		'consult_form_description_html'
+	);
+}
+
+/**
+ * Resolve CFLP form ID from a questionnaire value (numeric ID or shortcode).
+ *
+ * @param string $questionnaire Questionnaire ACF value or shortcode string.
+ * @return int
+ */
+function trimvia_resolve_cflp_form_id(string $questionnaire): int
+{
+	$questionnaire = trim($questionnaire);
+	if ($questionnaire === '') {
+		return 0;
+	}
+
+	if (ctype_digit($questionnaire)) {
+		return absint($questionnaire);
+	}
+
+	if (preg_match('/\[cflp_form[^\]]*\bid=[\'"]?(\d+)/i', $questionnaire, $matches)) {
+		return absint($matches[1]);
+	}
+
+	if (preg_match('/\bid=[\'"]?(\d+)/i', $questionnaire, $matches)) {
+		return absint($matches[1]);
+	}
+
+	return 0;
+}
+
+/**
+ * Parse CFLP form ID from a questionnaire shortcode string.
+ *
+ * @param string $shortcode Questionnaire shortcode, e.g. [cflp_form id="12"].
+ * @return int
+ */
+function trimvia_parse_cflp_form_id_from_shortcode(string $shortcode): int
+{
+	return trimvia_resolve_cflp_form_id($shortcode);
+}
+
+/**
+ * Fetch rendered CFLP form description HTML (same filter chain as WooPW frontend).
+ *
+ * @param int $form_id CFLP form ID.
+ * @return string
+ */
+function trimvia_get_cflp_form_description_html(int $form_id): string
+{
+	if ($form_id < 1) {
+		return '';
+	}
+
+	global $wpdb;
+
+	$table_name = $wpdb->prefix . 'cflp_forms';
+	$form       = $wpdb->get_row(
+		$wpdb->prepare(
+			"SELECT form_description FROM {$table_name} WHERE id = %d",
+			$form_id
+		)
+	);
+
+	if (!$form || empty(trim((string) $form->form_description))) {
+		return '';
+	}
+
+	return apply_filters('the_content', stripslashes($form->form_description));
+}
+
+/**
+ * Find the byte offset immediately after a matched div opening tag's closing `>`.
+ *
+ * @param string $html HTML string.
+ * @param int    $start Offset of `<div`.
+ * @return int|null
+ */
+function trimvia_find_matching_div_end(string $html, int $start): ?int
+{
+	$depth  = 0;
+	$length = strlen($html);
+	$index  = $start;
+
+	while ($index < $length) {
+		if (!preg_match('/<\/?div\b/i', $html, $match, PREG_OFFSET_CAPTURE, $index)) {
+			break;
+		}
+
+		$tag   = $match[0][0];
+		$index = (int) $match[0][1] + strlen($tag);
+
+		if (stripos($tag, '</div') === 0) {
+			$depth--;
+			if ($depth === 0) {
+				return $index;
+			}
+		} else {
+			$depth++;
+		}
+	}
+
+	return null;
+}
+
+/**
+ * Remove the in-form description block (shown under the condition title instead).
+ *
+ * @param string $html Questionnaire shortcode HTML.
+ * @return string
+ */
+function trimvia_remove_cflp_form_description_block(string $html): string
+{
+	if (strpos($html, 'form-description-wrapper') === false) {
+		return $html;
+	}
+
+	$marker_pos = strpos($html, 'form-description-wrapper');
+	$start      = strrpos(substr($html, 0, $marker_pos), '<div');
+	if ($start === false) {
+		return $html;
+	}
+
+	$end = trimvia_find_matching_div_end($html, $start);
+	if ($end === null) {
+		return $html;
+	}
+
+	return substr($html, 0, $start) . substr($html, $end);
+}
+
+/**
+ * Remove stray markup artifacts from consultation form HTML.
+ *
+ * @param string $html Questionnaire shortcode HTML.
+ * @return string
+ */
+function trimvia_cleanup_consultation_form_html(string $html): string
+{
+	$html = preg_replace('/<span class="question-pointer"><\/span>/i', '', $html) ?? $html;
+	$html = preg_replace('/(<\/div>)\s*>\s*(?=<)/', '$1', $html) ?? $html;
+
+	return $html;
+}
+
+/**
+ * Render questionnaire once — form description for intro + stripped form HTML.
+ *
+ * @param array<string, mixed> $context Consultation context.
+ * @return array{html: string, description_html: string}
+ */
+function trimvia_prepare_consultation_questionnaire(array $context): array
+{
+	if (!empty($context['is_under_process'])) {
+		$msg = function_exists('get_field') ? get_field('consultation_under_process', get_the_ID()) : '';
+		return array(
+			'html'             => $msg ? (string) $msg : '',
+			'description_html' => '',
+		);
+	}
+
+	if (!($context['term'] instanceof WP_Term)) {
+		return array(
+			'html'             => '<p class="trimvia-consult-missing-condition">' . esc_html__(
+				'No treatment condition was specified. Please start from the treatments or conditions page.',
+				'woocommerce'
+			) . '</p>',
+			'description_html' => '',
+		);
+	}
+
+	if (empty($context['questionnaire_id'])) {
+		return array(
+			'html'             => '',
+			'description_html' => '',
+		);
+	}
+
+	$html = do_shortcode($context['questionnaire_id']);
+
+	$description_html = (string) ($context['consult_form_description_html'] ?? '');
+	if ($description_html === '') {
+		$description_html = trimvia_extract_cflp_form_description_html($html);
+	}
+
+	return array(
+		'html'             => trimvia_cleanup_consultation_form_html(trimvia_remove_cflp_form_description_block($html)),
+		'description_html' => $description_html,
 	);
 }
 
@@ -154,21 +351,36 @@ function trimvia_get_consultation_context()
  */
 function trimvia_render_consultation_questionnaire(array $context)
 {
-	if (!empty($context['is_under_process'])) {
-		$msg = function_exists('get_field') ? get_field('consultation_under_process', get_the_ID()) : '';
-		return $msg ? (string) $msg : '';
-	}
+	return trimvia_prepare_consultation_questionnaire($context)['html'];
+}
 
-	if (!($context['term'] instanceof WP_Term)) {
-		return '<p class="trimvia-consult-missing-condition">' . esc_html__(
-			'No treatment condition was specified. Please start from the treatments or conditions page.',
-			'woocommerce'
-		) . '</p>';
-	}
-
-	if (empty($context['questionnaire_id'])) {
+/**
+ * Extract inner HTML from WooPW form-description-wrapper block.
+ *
+ * @param string $html Questionnaire shortcode HTML.
+ * @return string
+ */
+function trimvia_extract_cflp_form_description_html(string $html): string
+{
+	if (strpos($html, 'form-description-wrapper') === false) {
 		return '';
 	}
 
-	return do_shortcode($context['questionnaire_id']);
+	$marker_pos = strpos($html, 'form-description-wrapper');
+	$start      = strrpos(substr($html, 0, $marker_pos), '<div');
+	if ($start === false) {
+		return '';
+	}
+
+	$end = trimvia_find_matching_div_end($html, $start);
+	if ($end === null) {
+		return '';
+	}
+
+	$block = substr($html, $start, $end - $start);
+	if (!preg_match('/<div[^>]*class="[^"]*form-description-wrapper[^"]*"[^>]*>(.*)<\/div>\s*$/is', $block, $inner)) {
+		return '';
+	}
+
+	return trim($inner[1]);
 }
