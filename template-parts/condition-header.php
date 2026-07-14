@@ -134,7 +134,7 @@ $treatment_count = function_exists('trimvia_get_condition_visible_product_count'
 						<?php
 						echo wp_get_attachment_image(
 							$hero_image_id,
-							'large',
+							'full',
 							false,
 							array(
 								'class'   => 'trimvia-conditions-hero__image',

@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
 
 get_header();
 ?>
-<section class="page-hero page-hero--service" style="background-image:url(<?php echo esc_url(get_the_post_thumbnail_url() ?: get_placeholder_image()); ?>);background-size:cover;background-position:center;">
+<section class="page-hero page-hero--service" style="background-image:url(<?php echo esc_url(get_the_post_thumbnail_url(null, 'full') ?: get_placeholder_image()); ?>);background-size:cover;background-position:center;">
 	<div class="hero-noise"></div>
 	<div class="container">
 		<div class="breadcrumb breadcrumb--service">

@@ -246,10 +246,10 @@ if (function_exists('get_field') && $home_page_id) {
 
     $results_chart_image_field = get_field('results_chart_image', $home_page_id);
     if (function_exists('trimvia_acf_image_url')) {
-        $results_chart_image = trimvia_acf_image_url($results_chart_image_field, 'large');
+        $results_chart_image = trimvia_acf_image_url($results_chart_image_field, 'full');
     }
     if (!$results_chart_image && is_numeric($results_chart_image_field)) {
-        $results_chart_image = wp_get_attachment_image_url((int) $results_chart_image_field, 'large');
+        $results_chart_image = wp_get_attachment_image_url((int) $results_chart_image_field, 'full');
     }
 
     $team_visible_setting = get_field('team_section_visibility', $home_page_id);
@@ -430,10 +430,10 @@ if (function_exists('get_field') && $home_page_id) {
 
     $cta_media_image_field = get_field('cta_section_media_image', $home_page_id);
     if (function_exists('trimvia_acf_image_url')) {
-        $cta_media_image = trimvia_acf_image_url($cta_media_image_field, 'large');
+        $cta_media_image = trimvia_acf_image_url($cta_media_image_field, 'full');
     }
     if (!$cta_media_image && is_numeric($cta_media_image_field)) {
-        $cta_media_image = wp_get_attachment_image_url((int) $cta_media_image_field, 'large');
+        $cta_media_image = wp_get_attachment_image_url((int) $cta_media_image_field, 'full');
     }
 }
 
@@ -695,9 +695,9 @@ if ($team_query->have_posts()) {
     $member_id = get_the_ID();
 
     $member_image = function_exists('get_field') ? get_field('team_member_image', $member_id) : '';
-    $member_image_url = function_exists('trimvia_acf_image_url') ? trimvia_acf_image_url($member_image, 'large') : '';
+    $member_image_url = function_exists('trimvia_acf_image_url') ? trimvia_acf_image_url($member_image, 'full') : '';
     if (!$member_image_url) {
-      $member_image_url = get_the_post_thumbnail_url($member_id, 'large');
+      $member_image_url = get_the_post_thumbnail_url($member_id, 'full');
     }
 
     $department = function_exists('get_field') ? trim((string) get_field('team_member_department', $member_id)) : '';
@@ -1044,8 +1044,6 @@ if (function_exists('get_field')) {
     </div>
     <div class="cta-media rv rv-d2">
       <div class="cta-media-frame">
-        <div class="cta-media-overlay cta-media-overlay--tint" aria-hidden="true"></div>
-        <div class="cta-media-overlay cta-media-overlay--fade" aria-hidden="true"></div>
         <?php if (!empty($cta_media_image)) : ?>
           <img src="<?php echo esc_url($cta_media_image); ?>" alt="<?php echo esc_attr($cta_heading); ?>" class="cta-media-image">
         <?php else : ?>

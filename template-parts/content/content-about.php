@@ -110,7 +110,7 @@ if (function_exists('get_field') && $page_id) {
 
     $mission_image_value = get_field('about_mission_image', $page_id);
     if (function_exists('trimvia_acf_image_url')) {
-        $mission_image_url = trimvia_acf_image_url($mission_image_value, 'large');
+        $mission_image_url = trimvia_acf_image_url($mission_image_value, 'full');
     }
 
     $values_visibility_value = get_field('about_values_visibility', $page_id);
@@ -185,10 +185,10 @@ if (function_exists('get_field') && $page_id) {
             $description = function_exists('get_field') ? trim((string) get_field('team_member_description', $member_id)) : '';
             $image_url = '';
             if (function_exists('trimvia_acf_image_url')) {
-                $image_url = trimvia_acf_image_url(function_exists('get_field') ? get_field('team_member_image', $member_id) : '', 'large');
+                $image_url = trimvia_acf_image_url(function_exists('get_field') ? get_field('team_member_image', $member_id) : '', 'full');
             }
             if ('' === $image_url) {
-                $thumb_url = get_the_post_thumbnail_url($member_id, 'large');
+                $thumb_url = get_the_post_thumbnail_url($member_id, 'full');
                 if (is_string($thumb_url) && '' !== $thumb_url) {
                     $image_url = $thumb_url;
                 }
@@ -269,10 +269,10 @@ if (empty($team_members)) {
             $description = function_exists('get_field') ? trim((string) get_field('team_member_description', $member_id)) : '';
             $image_url = '';
             if (function_exists('trimvia_acf_image_url')) {
-                $image_url = trimvia_acf_image_url(function_exists('get_field') ? get_field('team_member_image', $member_id) : '', 'large');
+                $image_url = trimvia_acf_image_url(function_exists('get_field') ? get_field('team_member_image', $member_id) : '', 'full');
             }
             if ('' === $image_url) {
-                $thumb_url = get_the_post_thumbnail_url($member_id, 'large');
+                $thumb_url = get_the_post_thumbnail_url($member_id, 'full');
                 if (is_string($thumb_url) && '' !== $thumb_url) {
                     $image_url = $thumb_url;
                 }

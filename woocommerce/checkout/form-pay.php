@@ -26,8 +26,17 @@ $item_count  = $order->get_item_count();
 	</div>
 </section>
 
-<section class="trimvia-checkout-section">
-	<form id="order_review" method="post" class="trimvia-order-pay-form checkout-layout trimvia-order-pay-layout" action="<?php echo esc_url($order->get_checkout_payment_url()); ?>">
+<section class="page-section trimvia-checkout-section">
+	<div class="container">
+		<div class="trimvia-wc-notices trimvia-order-pay-notices">
+			<?php
+			if (function_exists('woocommerce_output_all_notices')) {
+				woocommerce_output_all_notices();
+			}
+			?>
+		</div>
+
+		<form id="order_review" method="post" class="trimvia-order-pay-form checkout-layout trimvia-order-pay-layout" action="<?php echo esc_url($order->get_checkout_payment_url()); ?>">
 		<div class="checkout-form">
 			<div class="form-section active trimvia-checkout-panel trimvia-checkout-panel--payment">
 				<div class="form-section-header">
@@ -155,5 +164,6 @@ $item_count  = $order->get_item_count();
 				<div class="security-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22 6 12 13 2 6"/></svg><?php esc_html_e('Discreet updates by email', 'theme-woopm-child'); ?></div>
 			</div>
 		</aside>
-	</form>
+		</form>
+	</div>
 </section>

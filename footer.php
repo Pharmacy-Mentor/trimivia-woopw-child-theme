@@ -33,7 +33,7 @@ $support_menu_id = absint(get_theme_mod('trimvia_footer_support_menu', 0));
 $copyright_text   = get_theme_mod('trimvia_footer_copyright', __('© 2026 Trimvia. All rights reserved.', 'theme-woopm-child'));
 $right_label_one  = get_theme_mod('trimvia_footer_right_label_one', __('GPhC Registered', 'theme-woopm-child'));
 $right_label_two  = get_theme_mod('trimvia_footer_right_label_two', __('ICO Registered', 'theme-woopm-child'));
-$bottom_note_text = get_theme_mod('trimvia_footer_bottom_description', __('Trimvia is a private online weight management service that provides safe access to prescription weight loss treatments through UK-registered healthcare professionals. All prescriptions issued through Trimvia are dispensed by our partner, Mayberry Pharmacy, a fully regulated NHS-registered pharmacy. Always read the patient leaflet and speak to a healthcare professional before starting new treatments.', 'theme-woopm-child'));
+$bottom_note_text = get_theme_mod('trimvia_footer_bottom_description', __('Trimvia is operated by Mayberry Pharmacy Limited. Trimvia is a private online weight management service that provides safe access to prescription weight loss treatments through UK-registered healthcare professionals. All prescriptions issued through Trimvia are dispensed by Mayberry Pharmacy Ltd, a fully regulated NHS-registered pharmacy. Always read the patient leaflet and speak to a healthcare professional before starting new treatments.', 'theme-woopm-child'));
 ?>
 <footer class="footer">
 	<div class="footer-grid">
@@ -148,11 +148,31 @@ $bottom_note_text = get_theme_mod('trimvia_footer_bottom_description', __('Trimv
 		<div class="f-legal"><?php echo wp_kses_post(wpautop((string) $bottom_note_text)); ?></div>
 	<?php endif; ?>
 </footer>
+<?php
+if (is_front_page()) {
+	$home_sticky_cta = trimvia_get_header_primary_cta();
+	if (!empty($home_sticky_cta['text']) && !empty($home_sticky_cta['url'])) {
+		?>
+<div class="trimvia-home-sticky-cta" id="trimviaHomeStickyCta" hidden>
+	<a href="<?php echo esc_url($home_sticky_cta['url']); ?>" class="btn-accent btn-pulse"><?php echo esc_html($home_sticky_cta['text']); ?></a>
+</div>
+		<?php
+	}
+}
+?>
 <button type="button" class="trimvia-scroll-top" id="trimviaScrollTop" aria-label="<?php esc_attr_e('Scroll to top', 'theme-woopm-child'); ?>" hidden>
 	<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
 		<polyline points="18 15 12 9 6 15"/>
 	</svg>
 </button>
+<?php
+/*
+ * Parent pharmacymentor/assets/js/script.js expects #scrollToTop and #mainNavbar.
+ * Child UI uses #trimviaScrollTop instead — provide hidden stubs so parent JS does not throw.
+ */
+?>
+<a href="#" id="scrollToTop" class="scroll-to-top trimvia-parent-script-stub" tabindex="-1" aria-hidden="true"></a>
+<div id="mainNavbar" class="trimvia-parent-script-stub" aria-hidden="true"></div>
 <?php wp_footer(); ?>
 </body>
 </html>

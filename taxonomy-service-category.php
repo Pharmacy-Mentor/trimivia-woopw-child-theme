@@ -53,7 +53,7 @@ $bg_image = site_url() . '/wp-content/uploads/2024/08/3cdb29b25f8cd62fc1b6b2bac1
             while ($service_query->have_posts()) : $service_query->the_post();
 
                 if (has_post_thumbnail()) {
-                    $image_url = get_the_post_thumbnail_url(get_the_ID(), 'medium_large');
+                    $image_url = get_the_post_thumbnail_url(get_the_ID(), 'full');
                 } else {
                     $image_url = site_url() . '/wp-content/uploads/2024/08/3cdb29b25f8cd62fc1b6b2bac1f81210-1024x683.png';
                 }

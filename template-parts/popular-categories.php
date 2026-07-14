@@ -81,7 +81,7 @@ $description = function_exists('get_field') ? (string) get_field('cat_short_desc
 					<a class="product-img" href="<?php echo esc_url($term_link); ?>">
 						<?php if ($term_featured_image_id > 0) : ?>
 							<div class="product-img-media">
-								<?php echo wp_get_attachment_image($term_featured_image_id, 'large', false, array('loading' => 'lazy')); ?>
+								<?php echo wp_get_attachment_image($term_featured_image_id, 'full', false, array('loading' => 'lazy')); ?>
 							</div>
 						<?php else : ?>
 							<div class="product-img-icon">

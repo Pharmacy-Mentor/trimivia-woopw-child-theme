@@ -248,6 +248,24 @@
             "button_label": "Add item",
             "sub_fields": [
                 {
+                    "key": "field_trimvia_service_highlight_product",
+                    "label": "Product",
+                    "name": "highlight_product",
+                    "type": "post_object",
+                    "instructions": "Optional. Select a product to auto-fill the title, price subtitle, link, and icon. Leave those fields empty to use product data, or fill them to override.",
+                    "post_type": [
+                        "product"
+                    ],
+                    "post_status": [
+                        "publish"
+                    ],
+                    "taxonomy": "",
+                    "return_format": "id",
+                    "multiple": 0,
+                    "allow_null": 1,
+                    "ui": 1
+                },
+                {
                     "key": "field_trimvia_service_highlight_title",
                     "label": "Title",
                     "name": "highlight_title",
@@ -257,7 +275,8 @@
                     "key": "field_trimvia_service_highlight_subtitle",
                     "label": "Subtitle",
                     "name": "highlight_subtitle",
-                    "type": "text"
+                    "type": "text",
+                    "instructions": "Leave empty when a product is selected to auto-fill the price, e.g. From £199.99 - £299.99."
                 },
                 {
                     "key": "field_trimvia_service_highlight_url",
@@ -365,8 +384,9 @@
             "label": "Help card text",
             "name": "service_sidebar_help_text",
             "type": "textarea",
+            "instructions": "Use [pharmacy_email] to pull the email from Theme Options → Footer Email (or Pharmacy Mentor Options → Email Address).",
             "new_lines": "br",
-            "default_value": "Email info@trimvia.co.uk or call us during opening hours."
+            "default_value": "Email [pharmacy_email] or call us during opening hours."
         },
         {
             "key": "field_trimvia_service_tab_treatment_products",
@@ -421,5 +441,5 @@
     "active": true,
     "description": "Trimvia service singular layout (hero, features bar, content + sidebar) with section visibility toggles.",
     "show_in_rest": 0,
-    "modified": 1751366400
+    "modified": 1751414400
 }

@@ -23,11 +23,11 @@ $order_status = $order->get_status();
 $status_name  = wc_get_order_status_name($order_status);
 $status_class = 'order-status--default';
 
-if (in_array($order_status, array('processing', 'pre-screen', 'on-hold', 'pending'), true)) {
+if (in_array($order_status, array('processing', 'pre-screen', 'on-hold', 'pending', 'await-approval'), true)) {
 	$status_class = 'order-status--review';
-} elseif (in_array($order_status, array('completed', 'dispatched'), true)) {
+} elseif (in_array($order_status, array('completed', 'dispatched', 'prescribe-approve'), true)) {
 	$status_class = 'order-status--dispatched';
-} elseif (in_array($order_status, array('cancelled', 'failed', 'refunded'), true)) {
+} elseif (in_array($order_status, array('cancelled', 'failed', 'refunded', 'prescribe-decline'), true)) {
 	$status_class = 'order-status--cancelled';
 }
 

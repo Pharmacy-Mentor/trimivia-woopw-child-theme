@@ -15,6 +15,17 @@ require_once get_stylesheet_directory() . '/inc/class-trimvia-nav-walker.php';
 require_once get_stylesheet_directory() . '/inc/blog-content-images.php';
 require_once get_stylesheet_directory() . '/inc/prescriber-modal-enrichment.php';
 require_once get_stylesheet_directory() . '/inc/trimvia-service-icons.php';
+
+$trimvia_woopw_gp_letter = get_stylesheet_directory() . '/inc/woopw-gp-letter.php';
+if (file_exists($trimvia_woopw_gp_letter)) {
+	require_once $trimvia_woopw_gp_letter;
+}
+
+$trimvia_service_highlight_products = get_stylesheet_directory() . '/inc/trimvia-service-highlight-products.php';
+if (file_exists($trimvia_service_highlight_products)) {
+	require_once $trimvia_service_highlight_products;
+}
+
 require_once get_stylesheet_directory() . '/inc/customizer/bootstrap.php';
 require_once get_stylesheet_directory() . '/inc/theme-options.php';
 
@@ -48,6 +59,32 @@ function trimvia_disable_admin_bar_bump()
 }
 add_action('get_header', 'trimvia_disable_admin_bar_bump', 0);
 add_action('admin_init', 'trimvia_disable_admin_bar_bump', 0);
+
+/**
+ * Send baseline HTTP security headers on front-end and admin responses.
+ *
+ * Complements server-level hardening when the host does not set these already.
+ * Avoids Content-Security-Policy here so booking iframes, WooCommerce checkout,
+ * Stripe, GTM, and CDNs keep working.
+ */
+function trimvia_send_security_headers()
+{
+	if (headers_sent() || (function_exists('is_customize_preview') && is_customize_preview())) {
+		return;
+	}
+
+	header('X-Frame-Options: SAMEORIGIN', true);
+	header('X-Content-Type-Options: nosniff', true);
+	header('Referrer-Policy: strict-origin-when-cross-origin', true);
+	header('Permissions-Policy: camera=(), microphone=(), geolocation=()', true);
+	header('X-XSS-Protection: 0', true);
+
+	if (is_ssl()) {
+		header('Strict-Transport-Security: max-age=31536000; includeSubDomains', true);
+	}
+}
+add_action('send_headers', 'trimvia_send_security_headers', 0);
+add_action('admin_init', 'trimvia_send_security_headers', 0);
 
 /**
  * Match parent theme WooCommerce gallery support (zoom, lightbox, slider).
@@ -215,6 +252,160 @@ function trimvia_is_order_tracking_page()
 
 	return has_shortcode($page->post_content, 'woocommerce_order_tracking');
 }
+
+/**
+ * Map a WooCommerce order status slug to a Trimvia track-order badge variant.
+ *
+ * @param string $status Order status slug.
+ * @return string
+ */
+function trimvia_get_order_status_badge_class($status)
+{
+	$status = sanitize_key((string) $status);
+
+	if (in_array($status, array('processing', 'pre-screen', 'on-hold', 'pending', 'await-approval'), true)) {
+		return 'trimvia-track-status--processing';
+	}
+
+	if (in_array($status, array('prescribe-approve', 'completed', 'dispatched'), true)) {
+		return 'trimvia-track-status--approved';
+	}
+
+	if (in_array($status, array('cancelled', 'failed', 'refunded', 'prescribe-decline'), true)) {
+		return 'trimvia-track-status--cancelled';
+	}
+
+	return 'trimvia-track-status--default';
+}
+
+/**
+ * Status pill class for My Account order cards.
+ *
+ * @param string $status Order status slug.
+ * @return string
+ */
+function trimvia_get_account_order_status_class($status)
+{
+	$status = sanitize_key((string) $status);
+
+	if (in_array($status, array('processing', 'pre-screen', 'on-hold', 'pending', 'await-approval'), true)) {
+		return 'order-status--dispatched';
+	}
+
+	if (in_array($status, array('completed', 'prescribe-approve', 'dispatched'), true)) {
+		return 'order-status--dispatched';
+	}
+
+	if (in_array($status, array('cancelled', 'failed', 'refunded', 'prescribe-decline'), true)) {
+		return 'order-status--cancelled';
+	}
+
+	return 'order-status--review';
+}
+
+/**
+ * Contextual status copy for My Account recent order cards.
+ *
+ * @param WC_Order $order Order object.
+ * @return array{title:string,text:string,tone:string}
+ */
+function trimvia_get_account_order_status_notice(WC_Order $order)
+{
+	$status = sanitize_key((string) $order->get_status());
+
+	$notices = array(
+		'processing'       => array(
+			'title' => __('Your order is being processed', 'theme-woopm-child'),
+			'text'  => __("We'll notify you when it's on its way.", 'theme-woopm-child'),
+			'tone'  => 'processing',
+		),
+		'pre-screen'       => array(
+			'title' => __('Your order is being reviewed', 'theme-woopm-child'),
+			'text'  => __('Our care team is checking your consultation details.', 'theme-woopm-child'),
+			'tone'  => 'processing',
+		),
+		'await-approval'   => array(
+			'title' => __('Your order is awaiting approval', 'theme-woopm-child'),
+			'text'  => __('A prescriber will review your order shortly.', 'theme-woopm-child'),
+			'tone'  => 'processing',
+		),
+		'on-hold'          => array(
+			'title' => __('Your order is on hold', 'theme-woopm-child'),
+			'text'  => __('We will contact you if we need anything else.', 'theme-woopm-child'),
+			'tone'  => 'review',
+		),
+		'pending'          => array(
+			'title' => __('Your order is awaiting payment', 'theme-woopm-child'),
+			'text'  => __('Complete payment to continue processing your order.', 'theme-woopm-child'),
+			'tone'  => 'review',
+		),
+		'completed'        => array(
+			'title' => __('Your order has been completed', 'theme-woopm-child'),
+			'text'  => __('Thank you for ordering with Trimvia.', 'theme-woopm-child'),
+			'tone'  => 'success',
+		),
+		'prescribe-approve' => array(
+			'title' => __('Your prescription has been approved', 'theme-woopm-child'),
+			'text'  => __('Your order is moving to dispatch.', 'theme-woopm-child'),
+			'tone'  => 'success',
+		),
+		'dispatched'       => array(
+			'title' => __('Your order has been dispatched', 'theme-woopm-child'),
+			'text'  => __('Track your delivery from the order details page.', 'theme-woopm-child'),
+			'tone'  => 'success',
+		),
+		'cancelled'        => array(
+			'title' => __('This order was cancelled', 'theme-woopm-child'),
+			'text'  => __('Contact our care team if you need help placing a new order.', 'theme-woopm-child'),
+			'tone'  => 'cancelled',
+		),
+		'failed'           => array(
+			'title' => __('This order could not be completed', 'theme-woopm-child'),
+			'text'  => __('Please try again or contact our care team for support.', 'theme-woopm-child'),
+			'tone'  => 'cancelled',
+		),
+		'refunded'         => array(
+			'title' => __('This order was refunded', 'theme-woopm-child'),
+			'text'  => __('Any refund should appear on your original payment method.', 'theme-woopm-child'),
+			'tone'  => 'cancelled',
+		),
+		'prescribe-decline' => array(
+			'title' => __('This order was not approved', 'theme-woopm-child'),
+			'text'  => __('Our care team can help you understand the next steps.', 'theme-woopm-child'),
+			'tone'  => 'cancelled',
+		),
+	);
+
+	if (isset($notices[ $status ])) {
+		return $notices[ $status ];
+	}
+
+	return array(
+		'title' => __('We are reviewing your order', 'theme-woopm-child'),
+		'text'  => __('We will update you as soon as there is news.', 'theme-woopm-child'),
+		'tone'  => 'review',
+	);
+}
+
+/**
+ * Remove WooCommerce mobile app promo from merchant/admin order emails.
+ *
+ * @param WC_Emails $mailer WooCommerce mailer instance.
+ * @return void
+ */
+function trimvia_disable_woocommerce_email_mobile_messaging($mailer)
+{
+	if (!is_object($mailer) || empty($mailer->emails) || !is_array($mailer->emails)) {
+		return;
+	}
+
+	foreach ($mailer->emails as $email) {
+		if (is_object($email) && method_exists($email, 'mobile_messaging')) {
+			remove_action('woocommerce_email_footer', array($email, 'mobile_messaging'), 9);
+		}
+	}
+}
+add_action('woocommerce_email', 'trimvia_disable_woocommerce_email_mobile_messaging');
 
 /**
  * Enqueue parent Bootstrap 4 assets used by WooPW consultation/prescriber modals.
@@ -433,40 +624,45 @@ function trimvia_child_enqueue_assets()
 add_action('wp_enqueue_scripts', 'trimvia_child_enqueue_assets', 110);
 
 /**
- * WooCommerce admin order screen — constrain prescription modal logo size.
+ * WooCommerce admin order screen — prescription modal logo + order note colors.
  */
 function trimvia_enqueue_admin_prescription_modal_styles($hook)
 {
-	if (!in_array($hook, array('post.php', 'post-new.php'), true)) {
-		return;
-	}
-
 	$screen = function_exists('get_current_screen') ? get_current_screen() : null;
 	if (!$screen) {
 		return;
 	}
 
 	$is_order_screen = ('shop_order' === $screen->post_type)
-		|| (false !== strpos($screen->id, 'wc-orders'))
-		|| (false !== strpos($screen->id, 'shop_order'));
+		|| (false !== strpos((string) $screen->id, 'wc-orders'))
+		|| (false !== strpos((string) $screen->id, 'shop_order'))
+		|| (false !== strpos((string) $hook, 'wc-orders'));
 
 	if (!$is_order_screen) {
 		return;
 	}
 
-	$css_path = get_stylesheet_directory() . '/assets/css/admin-prescription-modal.css';
-	if (!file_exists($css_path)) {
-		return;
+	$modal_css = get_stylesheet_directory() . '/assets/css/admin-prescription-modal.css';
+	if (file_exists($modal_css)) {
+		wp_enqueue_style(
+			'trimvia-admin-prescription-modal',
+			get_stylesheet_directory_uri() . '/assets/css/admin-prescription-modal.css',
+			array(),
+			filemtime($modal_css)
+		);
 	}
 
-	wp_enqueue_style(
-		'trimvia-admin-prescription-modal',
-		get_stylesheet_directory_uri() . '/assets/css/admin-prescription-modal.css',
-		array(),
-		filemtime($css_path)
-	);
+	$notes_css = get_stylesheet_directory() . '/assets/css/admin-order-notes.css';
+	if (file_exists($notes_css)) {
+		wp_enqueue_style(
+			'trimvia-admin-order-notes',
+			get_stylesheet_directory_uri() . '/assets/css/admin-order-notes.css',
+			array(),
+			filemtime($notes_css)
+		);
+	}
 }
-add_action('admin_enqueue_scripts', 'trimvia_enqueue_admin_prescription_modal_styles');
+add_action('admin_enqueue_scripts', 'trimvia_enqueue_admin_prescription_modal_styles', 30);
 
 /**
  * Cart and checkout use Trimvia full-width layout — parent Bootstrap/responsive CSS causes mobile overflow.
@@ -587,6 +783,39 @@ function trimvia_header_cart_count_fragment($fragments)
 	return $fragments;
 }
 add_filter('woocommerce_add_to_cart_fragments', 'trimvia_header_cart_count_fragment');
+
+/**
+ * Primary header CTA text and URL (Start Consultation, etc.).
+ *
+ * @return array{text: string, url: string}
+ */
+function trimvia_get_header_primary_cta()
+{
+	$default_shop_link = function_exists('wc_get_page_id') ? get_permalink(wc_get_page_id('shop')) : home_url('/shop/');
+	$default_shop_link = $default_shop_link ? $default_shop_link : home_url('/shop/');
+
+	if (function_exists('is_order_received_page') && is_order_received_page()) {
+		return array(
+			'text' => __('Continue shopping', 'theme-woopm-child'),
+			'url'  => $default_shop_link,
+		);
+	}
+
+	$primary_text = trim((string) get_theme_mod('trimvia_header_primary_button_text', __('Start Consultation', 'theme-woopm-child')));
+	if ($primary_text === '' || stripos($primary_text, 'consultation') !== false) {
+		$primary_text = __('Start Consultation', 'theme-woopm-child');
+	}
+
+	$primary_link = trim((string) get_theme_mod('trimvia_header_primary_button_link', $default_shop_link));
+	if ($primary_link === '' || stripos($primary_link, 'consultation') !== false) {
+		$primary_link = $default_shop_link;
+	}
+
+	return array(
+		'text' => $primary_text,
+		'url'  => $primary_link,
+	);
+}
 
 /**
  * Add nav-item class to top-level menu items that have dropdowns (mega menu CSS).
@@ -914,6 +1143,131 @@ function trimvia_enqueue_condition_treatments_search()
 add_action('wp_enqueue_scripts', 'trimvia_enqueue_condition_treatments_search', 110);
 
 /**
+ * Best-effort condition slug for a service post (products, slug, Customizer mapping).
+ *
+ * @param int $post_id Service post ID.
+ * @return string
+ */
+function trimvia_get_service_condition_slug($post_id)
+{
+	$post_id = (int) $post_id;
+	if ($post_id < 1) {
+		return '';
+	}
+
+	$product_ids = array();
+	if (function_exists('get_field')) {
+		$raw_products = get_field('service_treatment_products', $post_id);
+		if (is_array($raw_products)) {
+			foreach ($raw_products as $item) {
+				$rid = 0;
+				if (is_numeric($item)) {
+					$rid = (int) $item;
+				} elseif (is_object($item) && isset($item->ID)) {
+					$rid = (int) $item->ID;
+				} elseif (is_array($item) && isset($item['ID'])) {
+					$rid = (int) $item['ID'];
+				}
+				if ($rid > 0) {
+					$product_ids[] = $rid;
+				}
+			}
+		}
+	}
+
+	if (empty($product_ids)) {
+		$raw_meta = get_post_meta($post_id, 'service_treatment_products', true);
+		if (is_array($raw_meta)) {
+			foreach ($raw_meta as $item) {
+				$rid = is_numeric($item) ? (int) $item : 0;
+				if ($rid > 0) {
+					$product_ids[] = $rid;
+				}
+			}
+		}
+	}
+
+	$product_ids = array_values(array_unique(array_filter($product_ids)));
+	foreach ($product_ids as $product_id) {
+		if (!function_exists('trimvia_get_product_primary_condition_slug')) {
+			break;
+		}
+		$slug = trimvia_get_product_primary_condition_slug($product_id);
+		if ('' !== $slug) {
+			return $slug;
+		}
+	}
+
+	$post = get_post($post_id);
+	if ($post instanceof WP_Post) {
+		$post_slug = sanitize_title((string) $post->post_name);
+		if ('' !== $post_slug) {
+			$term = get_term_by('slug', $post_slug, 'condition');
+			if ($term && !is_wp_error($term)) {
+				return $post_slug;
+			}
+
+			if (preg_match('/^(.+)-service$/', $post_slug, $matches)) {
+				$base_slug = sanitize_title((string) $matches[1]);
+				$term      = get_term_by('slug', $base_slug, 'condition');
+				if ($term && !is_wp_error($term)) {
+					return $base_slug;
+				}
+			}
+		}
+	}
+
+	$weight_loss_service_id = (int) get_theme_mod('trimvia_weight_loss_service_id', 0);
+	if ($weight_loss_service_id > 0 && $weight_loss_service_id === $post_id) {
+		$setting_slug = trim((string) get_theme_mod('trimvia_treatments_page_condition_slug', 'weight-loss'));
+		if ('' !== $setting_slug) {
+			return sanitize_title($setting_slug);
+		}
+	}
+
+	return '';
+}
+
+/**
+ * Resolve the sidebar CTA URL for a service singular page.
+ *
+ * Uses the ACF "CTA button URL" when set; otherwise builds a consultation URL
+ * from the service's linked condition context.
+ *
+ * @param int    $post_id        Service post ID.
+ * @param string $preloaded_url  Optional URL already read in the template.
+ * @return string
+ */
+function trimvia_get_service_sidebar_cta_url($post_id, $preloaded_url = '')
+{
+	$post_id = (int) $post_id;
+	$url     = trim((string) $preloaded_url);
+
+	if ('' === $url && $post_id > 0 && function_exists('get_field')) {
+		$url = trim((string) get_field('service_sidebar_cta_button_url', $post_id));
+	}
+
+	if ('' === $url && $post_id > 0) {
+		$url = trim((string) get_post_meta($post_id, 'service_sidebar_cta_button_url', true));
+	}
+
+	if ('' !== $url) {
+		return $url;
+	}
+
+	$condition_slug = trimvia_get_service_condition_slug($post_id);
+	if (function_exists('trimvia_get_consultation_url')) {
+		return trimvia_get_consultation_url($condition_slug);
+	}
+
+	if ('' !== $condition_slug) {
+		return add_query_arg('condition-slug', $condition_slug, home_url('/consultation/'));
+	}
+
+	return home_url('/consultation/');
+}
+
+/**
  * Resolve permalink for the Weight Loss `service` post (Customizer ID/slug, then fallbacks).
  *
  * @return string Empty string if no published service matches.
@@ -959,6 +1313,9 @@ function trimvia_get_weight_loss_service_permalink()
 /**
  * Convert ACF image field value into a URL.
  *
+ * Prefers the requested size when an attachment ID is available so callers
+ * can request `full` for large display areas (avoids soft upscaled `large`).
+ *
  * @param mixed  $value ACF image value (ID, URL, or array).
  * @param string $size  Image size.
  * @return string
@@ -975,18 +1332,53 @@ function trimvia_acf_image_url($value, $size = 'full')
 	}
 
 	if (is_array($value)) {
-		if (!empty($value['url'])) {
-			return esc_url_raw($value['url']);
+		$attachment_id = 0;
+		if (!empty($value['ID'])) {
+			$attachment_id = (int) $value['ID'];
+		} elseif (!empty($value['id'])) {
+			$attachment_id = (int) $value['id'];
 		}
 
-		if (!empty($value['ID'])) {
-			$url = wp_get_attachment_image_url((int) $value['ID'], $size);
-			return $url ?: '';
+		if ($attachment_id > 0) {
+			$url = wp_get_attachment_image_url($attachment_id, $size);
+			if ($url) {
+				return $url;
+			}
+		}
+
+		if ('full' !== $size && !empty($value['sizes'][$size]) && is_string($value['sizes'][$size])) {
+			return esc_url_raw($value['sizes'][$size]);
+		}
+
+		if (!empty($value['url'])) {
+			return esc_url_raw($value['url']);
 		}
 	}
 
 	return is_string($value) ? esc_url_raw($value) : '';
 }
+
+/**
+ * Keep generated JPEG / WebP derivatives sharper (affects new regenerations).
+ *
+ * @param int $quality Default quality.
+ * @return int
+ */
+function trimvia_image_output_quality($quality)
+{
+	return 90;
+}
+add_filter('jpeg_quality', 'trimvia_image_output_quality');
+add_filter('wp_editor_set_quality', 'trimvia_image_output_quality');
+
+/**
+ * Register a wide display size for heroes / section media (soft crop, max width).
+ */
+function trimvia_register_display_image_size()
+{
+	add_image_size('trimvia-display', 1920, 0, false);
+}
+add_action('after_setup_theme', 'trimvia_register_display_image_size', 20);
 
 /**
  * Register Trimvia hero fields for slide post type.
@@ -1874,6 +2266,29 @@ function trimvia_output_cart_notices()
 add_action('wp', 'trimvia_prepare_cart_notices', 20);
 
 /**
+ * Keep checkout login/registration notices inside the form notices area.
+ *
+ * WooCommerce prints notices on `woocommerce_before_checkout_form_cart_notices`
+ * before form-checkout.php loads. That sits under the fixed header (above the
+ * hero). Validation errors from AJAX still land in the form NoticeGroup.
+ * Removing the early print leaves `woocommerce_before_checkout_form` (inside
+ * `.trimvia-checkout-before-form`) as the notice output location.
+ */
+function trimvia_relocate_checkout_notices()
+{
+	if (!function_exists('is_checkout') || !is_checkout()) {
+		return;
+	}
+
+	if (function_exists('is_order_received_page') && is_order_received_page()) {
+		return;
+	}
+
+	remove_action('woocommerce_before_checkout_form_cart_notices', 'woocommerce_output_all_notices', 10);
+}
+add_action('wp', 'trimvia_relocate_checkout_notices', 20);
+
+/**
  * Remove specific callbacks from a WooCommerce hook priority bucket.
  *
  * @param string   $hook_name     Hook name.
@@ -1953,6 +2368,70 @@ function trimvia_dequeue_checkout_script_on_order_pay()
 	}
 }
 add_action('wp_enqueue_scripts', 'trimvia_dequeue_checkout_script_on_order_pay', 999999);
+
+/**
+ * Print order-pay notices inside form-pay (below the hero), not above it.
+ *
+ * @return void
+ */
+function trimvia_relocate_order_pay_notices()
+{
+	if (!function_exists('is_wc_endpoint_url') || !is_wc_endpoint_url('order-pay')) {
+		return;
+	}
+
+	remove_action('before_woocommerce_pay', 'woocommerce_output_all_notices', 10);
+}
+add_action('wp', 'trimvia_relocate_order_pay_notices', 20);
+
+/**
+ * Clarify WooCommerce's failed order-pay notice so it cannot be misread as "successful".
+ *
+ * @param string $message Error notice HTML/text.
+ * @return string
+ */
+function trimvia_clarify_failed_payment_notice($message)
+{
+	if (!is_string($message) || $message === '') {
+		return $message;
+	}
+
+	$plain = strtolower(wp_strip_all_tags($message));
+	if (
+		strpos($plain, 'payment was unsuccessful') !== false
+		|| (
+			strpos($plain, 'your payment was') !== false
+			&& strpos($plain, 'different payment method') !== false
+		)
+	) {
+		return __('Payment failed. Please try again with a different payment method.', 'theme-woopm-child');
+	}
+
+	return $message;
+}
+add_filter('woocommerce_add_error', 'trimvia_clarify_failed_payment_notice');
+
+/**
+ * Translate the core failed-payment string when notices are rendered from session.
+ *
+ * @param string $translation Translated text.
+ * @param string $text        Original text.
+ * @param string $domain      Text domain.
+ * @return string
+ */
+function trimvia_gettext_failed_payment_notice($translation, $text, $domain)
+{
+	if ($domain !== 'woocommerce') {
+		return $translation;
+	}
+
+	if ($text === 'Your payment was unsuccessful. Please complete your order with a different payment method.') {
+		return __('Payment failed. Please try again with a different payment method.', 'theme-woopm-child');
+	}
+
+	return $translation;
+}
+add_filter('gettext', 'trimvia_gettext_failed_payment_notice', 20, 3);
 
 /**
  * Output delivery/shipping method options in checkout (parent inc/woocommerce.php flow).
@@ -2040,6 +2519,29 @@ function trimvia_checkout_chosen_method_is_local_pickup()
 
 	return trimvia_checkout_is_local_pickup_method($chosen_methods[0]);
 }
+
+/**
+ * Force child-theme GP checkout template over WooPW plugin default.
+ *
+ * @param string $template      Located template path.
+ * @param string $template_name Template name.
+ * @param string $template_path Template path.
+ * @return string
+ */
+function trimvia_locate_gp_checkout_template($template, $template_name, $template_path)
+{
+	if ('checkout/inform-your-gp.php' !== $template_name) {
+		return $template;
+	}
+
+	$child_template = get_stylesheet_directory() . '/woocommerce/checkout/inform-your-gp.php';
+	if (is_readable($child_template)) {
+		return $child_template;
+	}
+
+	return $template;
+}
+add_filter('woocommerce_locate_template', 'trimvia_locate_gp_checkout_template', 20, 3);
 
 /**
  * Render WooPW GP checkout markup only in the Trimvia checkout panel.
@@ -2571,6 +3073,29 @@ function trimvia_prescriber_account_menu_items($items)
 	return $ordered + $items;
 }
 add_filter('woocommerce_account_menu_items', 'trimvia_prescriber_account_menu_items', 25);
+
+/**
+ * Customer My Account sidebar: restore dashboard link as "My Account".
+ *
+ * WooPW removes the default dashboard item; customers need a way back to
+ * /my-account/ from Orders, Addresses, and other account endpoints.
+ *
+ * @param array<string,mixed> $items Account menu items.
+ * @return array<string,mixed>
+ */
+function trimvia_customer_account_menu_items($items)
+{
+	if (!is_user_logged_in() || trimvia_user_has_prescriber_access()) {
+		return $items;
+	}
+
+	unset($items['dashboard']);
+
+	return array(
+		'dashboard' => __('My Account', 'theme-woopm-child'),
+	) + $items;
+}
+add_filter('woocommerce_account_menu_items', 'trimvia_customer_account_menu_items', 25);
 
 /**
  * Shared card section opener for edit-account clinical fields.
@@ -3339,6 +3864,19 @@ function trimvia_disable_parent_variation_desc_script()
 add_action('wp', 'trimvia_disable_parent_variation_desc_script', 25);
 
 /**
+ * Parent password tooltip auto-opens on input focus (and stays open while focused),
+ * which also fires when tapping the field or the show/hide eye control.
+ * Child theme owns the tooltip behaviour in assets/js/common.js instead.
+ */
+function trimvia_disable_parent_password_tooltip()
+{
+	if (function_exists('add_password_field_tooltip')) {
+		remove_action('wp_footer', 'add_password_field_tooltip');
+	}
+}
+add_action('wp', 'trimvia_disable_parent_password_tooltip', 25);
+
+/**
  * Core wp_die() markup includes a global `body { max-width:700px; â€¦ }` rule. If that stylesheet is ever
  * printed on a normal front-end request (plugin conflict, buffering bug), WooCommerce single product
  * pages look like the grey admin â€œerrorâ€ box. Neutralise those rules only on single product views.
@@ -3770,7 +4308,71 @@ function trimvia_single_product_upsells_heading($heading)
 add_filter('woocommerce_product_upsells_products_heading', 'trimvia_single_product_upsells_heading');
 
 /**
+ * Effective WooPW max_qty_allowed for a product (variation falls back to parent).
+ * Mirrors Plugins/woopw class-frontend-cart::get_effective_max_per_prescription().
+ *
+ * @param WC_Product|false $product Product object.
+ * @return int 0 when unset; otherwise the configured max.
+ */
+function trimvia_get_product_max_qty_allowed($product)
+{
+	if (!$product instanceof WC_Product) {
+		return 0;
+	}
+
+	$product_id = (int) $product->get_id();
+	$parent_id  = $product->is_type('variation') ? (int) $product->get_parent_id() : 0;
+	$max        = 0;
+
+	if (function_exists('limit_max_per_prescription')) {
+		$max = (int) limit_max_per_prescription($product_id);
+		if ($max <= 0 && $parent_id > 0) {
+			$max = (int) limit_max_per_prescription($parent_id);
+		}
+		return max(0, $max);
+	}
+
+	if (function_exists('get_field')) {
+		$max = (int) get_field('max_qty_allowed', $product_id);
+		if ($max <= 0 && $parent_id > 0) {
+			$max = (int) get_field('max_qty_allowed', $parent_id);
+		}
+	}
+
+	return max(0, $max);
+}
+
+/**
+ * Max value for the single-product quantity input.
+ * Prefers WooPW max_qty_allowed (like the plugin), then WooCommerce stock/purchase max.
+ *
+ * @param WC_Product|false $product Product object.
+ * @return int -1 = unlimited; otherwise a positive max.
+ */
+function trimvia_get_single_product_quantity_max($product)
+{
+	if (!$product instanceof WC_Product) {
+		return -1;
+	}
+
+	$woopw_max = trimvia_get_product_max_qty_allowed($product);
+	$woo_max   = (int) $product->get_max_purchase_quantity();
+
+	// Match WooPW: when max_qty_allowed is set, prefer that over sold-individually lock.
+	if ($woopw_max > 0) {
+		if ($woo_max > 0) {
+			return (int) min($woopw_max, $woo_max);
+		}
+		return $woopw_max;
+	}
+
+	return $woo_max;
+}
+
+/**
  * Whether the quantity field should appear on single product add-to-cart forms.
+ * Aligns with WooPW: do not hide Qty for sold-individually when max_qty_allowed is set;
+ * only hide when the effective max is exactly 1 (or assessment CTA handles hide in templates).
  *
  * @param WC_Product|false $product Product object.
  * @return bool
@@ -3781,6 +4383,14 @@ function trimvia_should_show_single_product_quantity($product)
 		return true;
 	}
 
+	$woopw_max = trimvia_get_product_max_qty_allowed($product);
+
+	// WooPW custom limit: show Qty when more than 1 is allowed; hide when capped at 1.
+	if ($woopw_max > 0) {
+		return $woopw_max > 1;
+	}
+
+	// No WooPW limit — use WooCommerce purchase limits (sold individually / stock of 1).
 	$max = (int) $product->get_max_purchase_quantity();
 	$min = (int) $product->get_min_purchase_quantity();
 
@@ -3809,6 +4419,33 @@ function trimvia_get_single_product_quantity_value($product)
 
 	return max(1, (int) $product->get_min_purchase_quantity());
 }
+
+/**
+ * Apply WooPW max_qty_allowed to WooCommerce quantity input max (single product / cart forms).
+ *
+ * @param int|float        $max     Current max.
+ * @param WC_Product|false $product Product.
+ * @return int|float
+ */
+function trimvia_filter_quantity_input_max_from_woopw($max, $product)
+{
+	if (!$product instanceof WC_Product) {
+		return $max;
+	}
+
+	$woopw_max = trimvia_get_product_max_qty_allowed($product);
+	if ($woopw_max <= 0) {
+		return $max;
+	}
+
+	$max = (int) $max;
+	if ($max > 0) {
+		return min($max, $woopw_max);
+	}
+
+	return $woopw_max;
+}
+add_filter('woocommerce_quantity_input_max', 'trimvia_filter_quantity_input_max_from_woopw', 20, 2);
 
 /**
  * Whether consultation session bootstrapping should run on this request.

@@ -171,10 +171,12 @@ $cart_count = WC()->cart ? WC()->cart->get_cart_contents_count() : 0;
 
 							<div class="cart-coupon">
 								<?php if (wc_coupons_enabled()) : ?>
-									<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-									<label for="coupon_code" class="screen-reader-text"><?php esc_html_e('Coupon:', 'woocommerce'); ?></label>
-									<input type="text" name="coupon_code" class="cart-coupon-input input-text" id="coupon_code" value="" placeholder="<?php esc_attr_e('Have a coupon code?', 'theme-woopm-child'); ?>" />
-									<button type="submit" class="cart-coupon-btn button" name="apply_coupon" value="<?php esc_attr_e('Apply coupon', 'woocommerce'); ?>"><?php esc_html_e('Apply', 'theme-woopm-child'); ?></button>
+									<div class="cart-coupon-apply-group">
+										<svg class="cart-coupon__icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+										<label for="coupon_code" class="screen-reader-text"><?php esc_html_e('Coupon:', 'woocommerce'); ?></label>
+										<input type="text" name="coupon_code" class="cart-coupon-input input-text" id="coupon_code" value="" placeholder="<?php esc_attr_e('Have a coupon code?', 'theme-woopm-child'); ?>" data-trimvia-placeholder-mobile="<?php esc_attr_e('Enter coupon code', 'theme-woopm-child'); ?>" />
+										<button type="submit" class="cart-coupon-btn button" name="apply_coupon" value="<?php esc_attr_e('Apply coupon', 'woocommerce'); ?>"><?php esc_html_e('Apply', 'theme-woopm-child'); ?></button>
+									</div>
 									<?php do_action('woocommerce_cart_coupon'); ?>
 								<?php endif; ?>
 								<button type="submit" class="cart-update-btn button" name="update_cart" value="<?php esc_attr_e('Update cart', 'woocommerce'); ?>"><?php esc_html_e('Update basket', 'theme-woopm-child'); ?></button>

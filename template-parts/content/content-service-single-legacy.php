@@ -153,52 +153,60 @@ if (!$post_id || 'service' !== get_post_type($post_id)) {
 <?php endif; ?>
 
 <?php if (get_field('faqs_visibility')) : ?>
-<section class="faqs-section section-padding section-background-2">
+<?php
+$service_faq_small_heading = trim((string) get_field('faqs_small_heading'));
+$service_faq_heading       = trim((string) get_field('faqs_heading'));
+$service_faq_content       = trim((string) get_field('faqs_content'));
+$condition_faqs            = get_field('condition_faqs');
+$service_faq_items         = array();
+
+if (!empty($condition_faqs) && is_array($condition_faqs)) {
+	foreach ($condition_faqs as $faq_post) {
+		if (!$faq_post instanceof WP_Post) {
+			$faq_post = get_post((int) $faq_post);
+		}
+		if (!$faq_post instanceof WP_Post || 'publish' !== $faq_post->post_status) {
+			continue;
+		}
+		$service_faq_items[] = array(
+			'question' => get_the_title($faq_post),
+			'answer'   => apply_filters('the_content', (string) $faq_post->post_content),
+		);
+	}
+}
+?>
+<?php if (!empty($service_faq_items)) : ?>
+<section class="section-pad trimvia-service-faqs" id="service-faqs" style="background:var(--white)">
 	<div class="container">
-		<div class="row">
-			<div class="col-lg-12 col-md-12 section-header-wrapper text-center mb-5">
-				<div class="content-block">
-					<?php if (get_field('faqs_small_heading')) : ?>
-						<h5><?php echo esc_html(get_field('faqs_small_heading')); ?></h5>
-					<?php endif; ?>
-					<?php if (get_field('faqs_heading')) : ?>
-						<h2 class="section-title"><?php echo esc_html(get_field('faqs_heading')); ?></h2>
-					<?php endif; ?>
-					<?php if (get_field('faqs_content')) : ?>
-						<?php echo wp_kses_post(wpautop(get_field('faqs_content'))); ?>
-					<?php endif; ?>
-				</div>
-			</div>
-			<div class="col-lg-12 col-md-12">
-				<div class="faq-accordion" id="faqAccordion">
-					<?php
-					$condition_faqs = get_field('condition_faqs');
-					if (!empty($condition_faqs) && is_array($condition_faqs)) {
-						$f_ind = 0;
-						foreach ($condition_faqs as $faq_post) {
-							setup_postdata($faq_post);
-							?>
-					<div class="card <?php echo 0 === $f_ind ? '' : 'collapsed'; ?>" data-toggle="collapse" data-target="#collapse<?php echo esc_attr((string) $f_ind); ?>" aria-expanded="true" aria-controls="collapse<?php echo esc_attr((string) $f_ind); ?>">
-						<div class="card-header" id="heading<?php echo esc_attr((string) $f_ind); ?>">
-							<h4 class="mb-0">
-								<?php the_title(); ?> <i class="fa fa-angle-down"></i>
-							</h4>
-						</div>
-						<div id="collapse<?php echo esc_attr((string) $f_ind); ?>" class="collapse <?php echo 0 === $f_ind ? 'show' : ''; ?>" aria-labelledby="heading<?php echo esc_attr((string) $f_ind); ?>" data-parent="#faqAccordion">
-							<div class="card-body">
-								<?php the_content(); ?>
-							</div>
-						</div>
+		<div class="faq-center rv">
+			<?php if ('' !== $service_faq_small_heading) : ?>
+				<div class="stag" style="justify-content:center"><?php echo esc_html($service_faq_small_heading); ?></div>
+			<?php endif; ?>
+			<?php if ('' !== $service_faq_heading) : ?>
+				<h2 class="stitle"><?php echo esc_html($service_faq_heading); ?></h2>
+			<?php endif; ?>
+			<?php if ('' !== $service_faq_content) : ?>
+				<p class="sdesc"><?php echo esc_html(wp_strip_all_tags($service_faq_content)); ?></p>
+			<?php endif; ?>
+		</div>
+		<div class="faq-list">
+			<?php foreach ($service_faq_items as $faq_index => $faq_item) : ?>
+			<div class="fq <?php echo 0 === (int) $faq_index ? 'active' : ''; ?> rv">
+				<button class="fq-btn" type="button">
+					<?php echo esc_html($faq_item['question']); ?>
+					<div class="fq-chev">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+							<path d="M6 9l6 6 6-6"></path>
+						</svg>
 					</div>
-							<?php
-							++$f_ind;
-						}
-						wp_reset_postdata();
-					}
-					?>
+				</button>
+				<div class="fq-a">
+					<div class="fq-a-in"><?php echo wp_kses_post($faq_item['answer']); ?></div>
 				</div>
 			</div>
+			<?php endforeach; ?>
 		</div>
 	</div>
 </section>
+<?php endif; ?>
 <?php endif; ?>

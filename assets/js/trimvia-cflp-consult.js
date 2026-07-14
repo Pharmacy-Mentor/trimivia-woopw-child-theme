@@ -108,6 +108,54 @@
 		}
 	}
 
+	/**
+	 * Parent theme adds .active-button when #submitBtn enables; child footer overrides that script.
+	 * Mirror it here so "Proceed to treatment" pulses once the form is complete.
+	 */
+	function initSubmitPulseWatcher(form) {
+		var submitSelectors =
+			'#submitBtn, .cflp-v2-submit, .cflp-v2-injected-submit, .sidebar-button.cflp_submit_form';
+
+		function syncSubmitPulse(btn) {
+			if (!btn) {
+				return;
+			}
+			btn.classList.toggle('active-button', !btn.disabled);
+		}
+
+		function watchSubmitButton(btn) {
+			if (!btn || btn.dataset.trimviaPulseWatch === '1') {
+				return;
+			}
+			btn.dataset.trimviaPulseWatch = '1';
+			syncSubmitPulse(btn);
+			var observer = new MutationObserver(function () {
+				syncSubmitPulse(btn);
+			});
+			observer.observe(btn, {
+				attributes: true,
+				attributeFilter: ['disabled'],
+			});
+		}
+
+		qsa(submitSelectors, form).forEach(watchSubmitButton);
+
+		if (form.dataset.trimviaPulseNavWatch === '1') {
+			return;
+		}
+		form.dataset.trimviaPulseNavWatch = '1';
+
+		var navObserver = new MutationObserver(function () {
+			qsa(submitSelectors, form).forEach(watchSubmitButton);
+		});
+		qsa('.step-nav', form).forEach(function (nav) {
+			navObserver.observe(nav, {
+				childList: true,
+				subtree: true,
+			});
+		});
+	}
+
 	function syncRadioPills(form) {
 		qsa('.form-check.radio', form).forEach(function (wrap) {
 			var input = wrap.querySelector('input[type="radio"]');
@@ -167,6 +215,36 @@
 		nextBtn.disabled = pendingRadio;
 	}
 
+	function wrapCheckboxLabelText(form) {
+		qsa('.checkbox-group label.form-check-label', form).forEach(function (label) {
+			if (label.querySelector('.trimvia-checkbox-label-text')) {
+				return;
+			}
+
+			var input = label.querySelector('input[type="checkbox"]');
+			if (!input) {
+				return;
+			}
+
+			var textParts = [];
+			Array.prototype.slice.call(label.childNodes).forEach(function (node) {
+				if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
+					textParts.push(node.textContent.trim());
+					label.removeChild(node);
+				}
+			});
+
+			if (!textParts.length) {
+				return;
+			}
+
+			var span = document.createElement('span');
+			span.className = 'trimvia-checkbox-label-text';
+			span.textContent = textParts.join(' ');
+			label.appendChild(span);
+		});
+	}
+
 	function resetProgressStepScroll(form) {
 		var indicator = form.querySelector('.cflp-v2-progress-head .step-indicator');
 		if (!indicator || !indicator.classList.contains('step-indicator--few')) {
@@ -194,6 +272,7 @@
 			syncActiveStepNavigation(form);
 		}
 		syncRadioPills(form);
+		wrapCheckboxLabelText(form);
 	}
 
 	function boot() {
@@ -203,6 +282,7 @@
 		}
 
 		syncAll(form);
+		initSubmitPulseWatcher(form);
 
 		form.addEventListener('change', function (event) {
 			if (event.target && event.target.matches('input[type="radio"]')) {
@@ -286,6 +366,7 @@
 		// WooPW v2 init runs after DOMContentLoaded — resync once it has applied state.
 		window.setTimeout(function () {
 			syncAll(form);
+			initSubmitPulseWatcher(form);
 			resetProgressStepScroll(form);
 		}, 350);
 		window.setTimeout(function () {

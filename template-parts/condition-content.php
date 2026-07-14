@@ -47,10 +47,12 @@ if (!is_array($condition_group) || empty($condition_group)) {
 					<div class="trimvia-condition-about__media">
 						<?php
 						if ($content_group_featured_img) {
-							if (is_array($content_group_featured_img) && !empty($content_group_featured_img['sizes']['large'])) {
-								echo '<img src="' . esc_url($content_group_featured_img['sizes']['large']) . '" class="trimvia-condition-about__image" alt="" loading="lazy" />';
+							if (is_array($content_group_featured_img) && !empty($content_group_featured_img['ID'])) {
+								echo wp_get_attachment_image((int) $content_group_featured_img['ID'], 'full', false, array('class' => 'trimvia-condition-about__image', 'loading' => 'lazy'));
+							} elseif (is_array($content_group_featured_img) && !empty($content_group_featured_img['url'])) {
+								echo '<img src="' . esc_url($content_group_featured_img['url']) . '" class="trimvia-condition-about__image" alt="" loading="lazy" />';
 							} elseif (is_numeric($content_group_featured_img)) {
-								echo wp_get_attachment_image((int) $content_group_featured_img, 'large', false, array('class' => 'trimvia-condition-about__image', 'loading' => 'lazy'));
+								echo wp_get_attachment_image((int) $content_group_featured_img, 'full', false, array('class' => 'trimvia-condition-about__image', 'loading' => 'lazy'));
 							}
 						} else {
 							$ph = function_exists('get_placeholder_image') ? get_placeholder_image() : '';

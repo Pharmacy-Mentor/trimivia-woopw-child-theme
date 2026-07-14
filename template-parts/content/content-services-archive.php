@@ -135,7 +135,7 @@ $chevron_svg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strok
 					$i++;
 					$thumb_url = '';
 					if (has_post_thumbnail()) {
-						$thumb_url = get_the_post_thumbnail_url(get_the_ID(), 'large');
+						$thumb_url = get_the_post_thumbnail_url(get_the_ID(), 'full');
 					} elseif ($placeholder) {
 						$thumb_url = $placeholder;
 					}

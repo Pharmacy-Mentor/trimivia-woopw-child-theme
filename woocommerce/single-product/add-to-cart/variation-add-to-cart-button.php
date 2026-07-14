@@ -20,6 +20,9 @@ $show_quantity       = !$show_assessment_cta && function_exists('trimvia_should_
 $quantity_value      = function_exists('trimvia_get_single_product_quantity_value')
 	? trimvia_get_single_product_quantity_value($product)
 	: 1;
+$quantity_max        = function_exists('trimvia_get_single_product_quantity_max')
+	? trimvia_get_single_product_quantity_max($product)
+	: $product->get_max_purchase_quantity();
 $cart_actions_class  = 'woocommerce-variation-add-to-cart variations_button trimvia-product-cart-actions';
 if ($show_quantity) {
 	$cart_actions_class .= ' trimvia-product-cart-actions--has-qty';
@@ -39,7 +42,7 @@ if ($show_assessment_cta) {
 				woocommerce_quantity_input(
 					array(
 						'min_value'   => apply_filters('woocommerce_quantity_input_min', $product->get_min_purchase_quantity(), $product),
-						'max_value'   => apply_filters('woocommerce_quantity_input_max', $product->get_max_purchase_quantity(), $product),
+						'max_value'   => apply_filters('woocommerce_quantity_input_max', $quantity_max, $product),
 						'input_value' => $quantity_value,
 					)
 				);

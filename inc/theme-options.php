@@ -239,7 +239,7 @@ function trimvia_theme_options_fields()
 				'trimvia_footer_bottom_description' => array(
 					'label'       => __('Bottom Footer Description', 'theme-woopm-child'),
 					'type'        => 'richtext',
-					'default'     => __('Trimvia is a private online weight management service that provides safe access to prescription weight loss treatments through UK-registered healthcare professionals. All prescriptions issued through Trimvia are dispensed by our partner, Mayberry Pharmacy, a fully regulated NHS-registered pharmacy. Always read the patient leaflet and speak to a healthcare professional before starting new treatments.', 'theme-woopm-child'),
+					'default'     => __('Trimvia is operated by Mayberry Pharmacy Limited. Trimvia is a private online weight management service that provides safe access to prescription weight loss treatments through UK-registered healthcare professionals. All prescriptions issued through Trimvia are dispensed by Mayberry Pharmacy Ltd, a fully regulated NHS-registered pharmacy. Always read the patient leaflet and speak to a healthcare professional before starting new treatments.', 'theme-woopm-child'),
 					'description' => __('Best for the long compliance paragraph shown at the very bottom of the footer.', 'theme-woopm-child'),
 				),
 			),

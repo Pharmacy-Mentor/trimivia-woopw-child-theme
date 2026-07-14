@@ -51,24 +51,9 @@ if (is_user_logged_in()) {
 	$secondary_link = $account_page_link;
 }
 
-$is_order_received_page = function_exists('is_order_received_page') && is_order_received_page();
-$default_shop_link      = function_exists('wc_get_page_id') ? get_permalink(wc_get_page_id('shop')) : home_url('/shop/');
-$default_shop_link      = $default_shop_link ? $default_shop_link : home_url('/shop/');
-
-if ($is_order_received_page) {
-	$primary_text = __('Continue shopping', 'theme-woopm-child');
-	$primary_link = $default_shop_link;
-} else {
-	$primary_text = trim((string) get_theme_mod('trimvia_header_primary_button_text', __('Start Consultation', 'theme-woopm-child')));
-	if ($primary_text === '' || stripos($primary_text, 'consultation') !== false) {
-		$primary_text = __('Start Consultation', 'theme-woopm-child');
-	}
-
-	$primary_link = trim((string) get_theme_mod('trimvia_header_primary_button_link', $default_shop_link));
-	if ($primary_link === '' || stripos($primary_link, 'consultation') !== false) {
-		$primary_link = $default_shop_link;
-	}
-}
+$header_primary_cta = trimvia_get_header_primary_cta();
+$primary_text       = $header_primary_cta['text'];
+$primary_link       = $header_primary_cta['url'];
 
 $header_classes = 'header';
 if (!empty($sticky_header_logo_url)) {

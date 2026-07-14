@@ -522,6 +522,36 @@
     window.addEventListener("scroll", updateVisibility, { passive: true });
   };
 
+  const initHomeStickyConsultCta = () => {
+    const bar = document.getElementById("trimviaHomeStickyCta");
+    if (!bar) return;
+
+    const showThreshold = 280;
+    const mobileQuery = window.matchMedia("(max-width: 1024px)");
+
+    const updateVisibility = () => {
+      if (!mobileQuery.matches) {
+        bar.hidden = true;
+        bar.classList.remove("is-visible");
+        document.body.classList.remove("trimvia-home-sticky-cta-visible");
+        return;
+      }
+
+      const visible = window.scrollY > showThreshold;
+      bar.hidden = !visible;
+      bar.classList.toggle("is-visible", visible);
+      document.body.classList.toggle("trimvia-home-sticky-cta-visible", visible);
+    };
+
+    updateVisibility();
+    window.addEventListener("scroll", updateVisibility, { passive: true });
+    if (typeof mobileQuery.addEventListener === "function") {
+      mobileQuery.addEventListener("change", updateVisibility);
+    } else if (typeof mobileQuery.addListener === "function") {
+      mobileQuery.addListener(updateVisibility);
+    }
+  };
+
   const initRevealOnScroll = () => {
     const revealEls = document.querySelectorAll(".rv");
     if (!revealEls.length) return;
@@ -560,13 +590,126 @@
     const buttons = document.querySelectorAll(".fq-btn");
     if (!buttons.length) return;
     buttons.forEach((button) => {
+      if (button.dataset.trimviaFaqBound === "1") {
+        return;
+      }
+      button.dataset.trimviaFaqBound = "1";
       button.addEventListener("click", () => {
         const item = button.parentElement;
         if (!item) return;
         const wasActive = item.classList.contains("active");
-        document.querySelectorAll(".fq").forEach((faq) => faq.classList.remove("active"));
+        const scope = item.closest(".faq-list, .trimvia-service-content-faq-list") || document;
+        scope.querySelectorAll(".fq").forEach((faq) => faq.classList.remove("active"));
         if (!wasActive) item.classList.add("active");
       });
+    });
+  };
+
+  const initServiceContentFaqs = () => {
+    const articles = document.querySelectorAll(".service-singular-section .article-content");
+    articles.forEach((article) => {
+      if (article.dataset.trimviaFaqConverted === "1") {
+        return;
+      }
+
+      const faqTables = [...article.querySelectorAll("table")].filter((table) => table.querySelector("details"));
+      if (!faqTables.length) {
+        return;
+      }
+
+      faqTables.forEach((faqTable) => {
+        const details = [...faqTable.querySelectorAll("details")];
+        if (!details.length) {
+          return;
+        }
+
+        const faqList = document.createElement("div");
+        faqList.className = "faq-list trimvia-service-content-faq-list";
+
+        details.forEach((detail, index) => {
+          const summary = detail.querySelector("summary");
+          const content = [...detail.children].find((child) => child.tagName !== "SUMMARY");
+          const item = document.createElement("div");
+          item.className = index === 0 ? "fq active" : "fq";
+
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "fq-btn";
+          button.appendChild(document.createTextNode(summary ? summary.textContent.trim() : ""));
+
+          const chevron = document.createElement("div");
+          chevron.className = "fq-chev";
+          chevron.innerHTML =
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>';
+          button.appendChild(chevron);
+
+          const answerWrap = document.createElement("div");
+          answerWrap.className = "fq-a";
+          const answerInner = document.createElement("div");
+          answerInner.className = "fq-a-in";
+          if (content) {
+            answerInner.innerHTML = content.innerHTML;
+          }
+          answerWrap.appendChild(answerInner);
+
+          item.appendChild(button);
+          item.appendChild(answerWrap);
+          faqList.appendChild(item);
+        });
+
+        const wrapper = document.createElement("div");
+        wrapper.className = "trimvia-service-content-faq";
+
+        const headerNodes = [];
+        let previous = faqTable.previousElementSibling;
+        while (previous) {
+          const tagName = previous.tagName;
+          if (tagName === "H2") {
+            headerNodes.unshift(previous);
+            break;
+          }
+          if (tagName === "P") {
+            const text = previous.textContent.replace(/\s+/g, " ").trim();
+            if (text) {
+              headerNodes.unshift(previous);
+            }
+            previous = previous.previousElementSibling;
+            continue;
+          }
+          break;
+        }
+
+        if (headerNodes.length) {
+          const faqCenter = document.createElement("div");
+          faqCenter.className = "faq-center";
+
+          headerNodes.forEach((node) => {
+            if (node.tagName === "P") {
+              const label = document.createElement("div");
+              label.className = "stag trimvia-service-content-faq-label";
+              label.textContent = node.textContent.replace(/\s+/g, " ").trim();
+              faqCenter.appendChild(label);
+              node.remove();
+              return;
+            }
+
+            if (node.tagName === "H2") {
+              const title = document.createElement("h2");
+              title.className = "stitle";
+              title.textContent = node.textContent.replace(/\s+/g, " ").trim();
+              faqCenter.appendChild(title);
+              node.remove();
+            }
+          });
+
+          wrapper.appendChild(faqCenter);
+        }
+
+        wrapper.appendChild(faqList);
+        faqTable.replaceWith(wrapper);
+      });
+
+      article.dataset.trimviaFaqConverted = "1";
     });
   };
 
@@ -613,9 +756,16 @@
     const panelTop = document.createElement("div");
     panelTop.className = "mobile-nav-top";
 
-    const panelTitle = document.createElement("h3");
-    panelTitle.className = "mobile-nav-title";
-    panelTitle.textContent = "Menu";
+    const headerLogo = document.querySelector(".header .logo");
+    const panelBrand = headerLogo ? headerLogo.cloneNode(true) : null;
+    if (panelBrand) {
+      panelBrand.classList.add("mobile-nav-logo");
+    } else {
+      const panelTitle = document.createElement("h3");
+      panelTitle.className = "mobile-nav-title";
+      panelTitle.textContent = "Menu";
+      panelTop.append(panelTitle);
+    }
 
     const panelClose = document.createElement("button");
     panelClose.className = "mobile-nav-close";
@@ -624,7 +774,11 @@
     panelClose.innerHTML =
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
 
-    panelTop.append(panelTitle, panelClose);
+    if (panelBrand) {
+      panelTop.append(panelBrand, panelClose);
+    } else {
+      panelTop.append(panelClose);
+    }
 
     const navClone = nav.cloneNode(true);
     navClone.className = "mobile-nav-links";
@@ -664,6 +818,9 @@
 
     backdrop.addEventListener("click", close);
     panelClose.addEventListener("click", close);
+    if (panelBrand) {
+      panelBrand.addEventListener("click", close);
+    }
 
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape") close();
@@ -673,20 +830,54 @@
       if (window.innerWidth > 1024) close();
     });
 
-    /** Namespaced: parent theme script.js removes `.open` on document clicks outside `.navigation-holder`; panel is on body. */
-    panel.querySelectorAll(".menu-item-has-children > a").forEach((toggle) => {
-      toggle.addEventListener("click", (event) => {
-        const parent = toggle.parentElement;
-        if (!parent || !parent.classList.contains("menu-item-has-children")) return;
-        const submenu = parent.querySelector(":scope > .sub-menu, :scope > .mega-menu");
-        if (!submenu) return;
-        event.preventDefault();
-        event.stopPropagation();
+    /** Parent link navigates; chevron toggles submenu (desktop-like behaviour). */
+    panel.querySelectorAll(".menu-item-has-children > a").forEach((link) => {
+      const parent = link.parentElement;
+      if (!parent || !parent.classList.contains("menu-item-has-children")) return;
+      const submenu = parent.querySelector(":scope > .sub-menu, :scope > .mega-menu");
+      if (!submenu) return;
+
+      const chevron = link.querySelector(".chevron");
+      if (chevron) {
+        chevron.setAttribute("role", "button");
+        chevron.setAttribute("aria-label", "Toggle submenu");
+        chevron.setAttribute("tabindex", "0");
+      }
+
+      const toggleSubmenu = (event) => {
+        if (event) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
         const willOpen = !parent.classList.contains(subOpenClass);
         panel.querySelectorAll(`.menu-item-has-children.${subOpenClass}`).forEach((li) => {
           if (li !== parent) li.classList.remove(subOpenClass);
         });
         parent.classList.toggle(subOpenClass, willOpen);
+        if (chevron) {
+          chevron.setAttribute("aria-expanded", willOpen ? "true" : "false");
+        }
+      };
+
+      if (chevron) {
+        chevron.setAttribute("aria-expanded", "false");
+        chevron.addEventListener("click", toggleSubmenu);
+        chevron.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            toggleSubmenu(event);
+          }
+        });
+      }
+
+      link.addEventListener("click", (event) => {
+        // Tap on chevron only expands/collapses — handled above.
+        if (event.target.closest(".chevron")) {
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
+        // Tap on label navigates to the parent page.
+        close();
       });
     });
 
@@ -732,6 +923,71 @@
         syncPanels();
       });
     });
+  };
+
+  const initCartNoticeAlignment = () => {
+    const sync = () => {
+      document
+        .querySelectorAll(
+          ".trimvia-cart-notices .woocommerce-message, .trimvia-cart-page .woocommerce-notices-wrapper .woocommerce-message"
+        )
+        .forEach((notice) => {
+          notice.querySelectorAll(":scope > li").forEach((item) => {
+            item.style.display = "flex";
+            item.style.alignItems = "center";
+            item.style.minHeight = "36px";
+          });
+
+          if (notice.querySelector(":scope > li")) {
+            return;
+          }
+
+          notice.querySelectorAll("a.restore-item").forEach((link) => {
+            if (link.nextSibling && link.nextSibling.nodeType === Node.TEXT_NODE) {
+              const trailing = link.nextSibling.textContent || "";
+              if (trailing.trim() === "?") {
+                link.append("?");
+                link.nextSibling.remove();
+              }
+            }
+          });
+        });
+    };
+
+    if (!document.querySelector(".trimvia-cart-notices, .trimvia-cart-page .woocommerce-notices-wrapper")) {
+      return;
+    }
+
+    sync();
+
+    const jq = window.jQuery;
+    if (jq) {
+      jq(document.body).on(
+        "updated_wc_div removed_from_cart added_to_cart applied_coupon removed_coupon",
+        () => window.setTimeout(sync, 0)
+      );
+    }
+  };
+
+  const initCartCouponMobilePlaceholder = () => {
+    const input = document.querySelector("#coupon_code.cart-coupon-input");
+    if (!input) return;
+
+    const desktopPlaceholder =
+      input.getAttribute("placeholder") || input.dataset.trimviaPlaceholderDesktop || "";
+    const mobilePlaceholder = input.dataset.trimviaPlaceholderMobile || desktopPlaceholder;
+    const mq = window.matchMedia("(max-width: 640px)");
+
+    const syncPlaceholder = () => {
+      input.setAttribute("placeholder", mq.matches ? mobilePlaceholder : desktopPlaceholder);
+    };
+
+    if (!input.dataset.trimviaPlaceholderDesktop && desktopPlaceholder) {
+      input.dataset.trimviaPlaceholderDesktop = desktopPlaceholder;
+    }
+
+    mq.addEventListener("change", syncPlaceholder);
+    syncPlaceholder();
   };
 
   const initCartQuantityUpdates = () => {
@@ -996,31 +1252,8 @@
         return;
       }
 
-      const activeSlide =
-        gallery.querySelector(".woocommerce-product-gallery__image.flex-active-slide") ||
-        gallery.querySelector(".woocommerce-product-gallery__image");
-
-      const img = activeSlide ? activeSlide.querySelector("img") : null;
-      if (!img) {
-        return;
-      }
-
-      const applyHeight = () => {
-        const measured = Math.ceil(
-          Math.max(img.getBoundingClientRect().height, img.offsetHeight)
-        );
-        if (measured > 0) {
-          viewport.style.height = `${measured}px`;
-        }
-      };
-
-      if (img.complete && img.naturalHeight > 0) {
-        applyHeight();
-        return;
-      }
-
-      img.loading = "eager";
-      img.addEventListener("load", applyHeight, { once: true });
+      // CSS aspect-ratio owns the frame height so the image can stay full-bleed.
+      viewport.style.height = "";
     };
 
     const syncGalleryLayout = () => {
@@ -1070,6 +1303,104 @@
     window.setTimeout(refreshGalleryViewport, 160);
     window.setTimeout(syncGalleryLayout, 600);
     window.setTimeout(refreshGalleryViewport, 640);
+  };
+
+  const initCheckoutStickySummary = () => {
+    if (!document.body.classList.contains("trimvia-checkout-page")) {
+      return;
+    }
+
+    const mq = window.matchMedia("(min-width: 1025px)");
+    const layout = document.querySelector("form.checkout.checkout-layout");
+    const column = layout?.querySelector(".trimvia-checkout-summary-col");
+    const sidebar = column?.querySelector(".trimvia-checkout-summary");
+    if (!layout || !column || !sidebar) {
+      return;
+    }
+
+    const sidebarWidth = 380;
+    let raf = 0;
+
+    const getTopOffset = () => {
+      const header = document.getElementById("header");
+      const adminBar = document.getElementById("wpadminbar");
+      let top = header ? Math.round(header.getBoundingClientRect().height) + 16 : 88;
+      if (adminBar) {
+        top += Math.round(adminBar.getBoundingClientRect().height);
+      }
+      return top;
+    };
+
+    const getPinnedLeft = () => {
+      const layoutRect = layout.getBoundingClientRect();
+      return Math.round(layoutRect.right - sidebarWidth);
+    };
+
+    const clearPinnedStyles = () => {
+      sidebar.classList.remove("is-checkout-summary-fixed", "is-checkout-summary-anchored");
+      sidebar.style.position = "";
+      sidebar.style.top = "";
+      sidebar.style.left = "";
+      sidebar.style.right = "";
+      sidebar.style.width = "";
+      sidebar.style.zIndex = "";
+      column.style.minHeight = "";
+    };
+
+    const update = () => {
+      if (!mq.matches) {
+        clearPinnedStyles();
+        return;
+      }
+
+      const top = getTopOffset();
+      const layoutRect = layout.getBoundingClientRect();
+      const sidebarHeight = sidebar.offsetHeight;
+
+      if (layoutRect.top > top) {
+        clearPinnedStyles();
+        return;
+      }
+
+      column.style.minHeight = `${sidebarHeight}px`;
+      const pinnedLeft = getPinnedLeft();
+
+      if (layoutRect.bottom <= top + sidebarHeight) {
+        column.style.minHeight = `${layout.offsetHeight}px`;
+        sidebar.classList.remove("is-checkout-summary-fixed");
+        sidebar.classList.add("is-checkout-summary-anchored");
+        sidebar.style.position = "absolute";
+        sidebar.style.top = `${Math.max(layout.offsetHeight - sidebarHeight, 0)}px`;
+        sidebar.style.right = "0";
+        sidebar.style.left = "auto";
+        sidebar.style.width = `${sidebarWidth}px`;
+        sidebar.style.zIndex = "5";
+        return;
+      }
+
+      sidebar.classList.remove("is-checkout-summary-anchored");
+      sidebar.classList.add("is-checkout-summary-fixed");
+      sidebar.style.position = "fixed";
+      sidebar.style.top = `${top}px`;
+      sidebar.style.left = `${pinnedLeft}px`;
+      sidebar.style.width = `${sidebarWidth}px`;
+      sidebar.style.zIndex = "5";
+    };
+
+    const schedule = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(update);
+    };
+
+    mq.addEventListener("change", schedule);
+    window.addEventListener("resize", schedule);
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("load", schedule);
+    if (window.jQuery) {
+      window.jQuery(document.body).on("updated_checkout", schedule);
+    }
+
+    schedule();
   };
 
   const initCheckoutDeliveryPanel = () => {
@@ -1315,7 +1646,7 @@
 
     if ($searchSelect.length && typeof $searchSelect.select2 === "function" && !$searchSelect.data("select2")) {
       $searchSelect.select2({
-        placeholder: "Enter GP Surgery Here ...",
+        placeholder: "Start typing to find your GP surgery",
         width: "100%",
         minimumInputLength: 4,
         dropdownParent: $(document.body),
@@ -1420,6 +1751,7 @@
     $checkoutForm.on("checkout_place_order checkout_place_order_pm submit", prepareGpFormForSubmit);
     $(document.body).on("updated_checkout", removeSidebarGpDuplicates);
     syncGpPanels(false);
+    requestAnimationFrame(() => syncGpPanels(false));
   };
 
   const initCheckoutValidationGuard = () => {
@@ -1441,6 +1773,7 @@
     $form.data("trimviaCheckoutValidation", 1);
 
     const mollieErrorPattern = /not all required components are mounted|mollie\.com\/guides\/mollie-components/i;
+    const genericInvalidPattern = /^(error:\s*)?one or more fields are invalid\.?$/i;
 
     const getNoticeTarget = () => {
       let $target = $(".trimvia-checkout-form-notices").first();
@@ -1449,37 +1782,262 @@
         $target = $(
           '<div class="trimvia-checkout-form-notices woocommerce-notices-wrapper" aria-live="polite"></div>'
         );
-        $(".checkout-form").first().prepend($target);
+        const $before = $(".trimvia-checkout-before-form").first();
+        if ($before.length) {
+          $before.prepend($target);
+        } else {
+          $(".checkout-form").first().prepend($target);
+        }
       }
 
       return $target;
+    };
+
+    const collectMollieFieldErrors = () => {
+      const messages = [];
+      const seen = {};
+
+      const push = (raw) => {
+        const message = String(raw || "")
+          .replace(/\s+/g, " ")
+          .trim();
+        if (!message || genericInvalidPattern.test(message) || seen[message]) {
+          return;
+        }
+        seen[message] = true;
+        messages.push(message);
+      };
+
+      $(
+        [
+          "#payment .mollie-component-error",
+          "#payment [class*='mollie'][class*='error']",
+          "#payment .mollie-components .error",
+          "#payment .wc-block-components-validation-error",
+          ".payment_box .mollie-component-error",
+          ".payment_box [data-testid='component-error']",
+          ".payment_method_mollie_wc_gateway_creditcard .error",
+        ].join(", ")
+      ).each(function readMollieError() {
+        push($(this).text());
+      });
+
+      // Fallback: visible red helper text under Mollie card fields
+      $("#payment .payment_box, #payment .mollie-components, #payment")
+        .find("p, span, div, small, label")
+        .filter(":visible")
+        .each(function readVisibleHint() {
+          const text = String($(this).text() || "").trim();
+          if (
+            /verification code|cvc|cvv|expiry|card number|card holder|invalid|should be \d+ digits/i.test(
+              text
+            ) &&
+            text.length < 120
+          ) {
+            push(text);
+          }
+        });
+
+      return messages;
+    };
+
+    const scrollToPaymentFields = () => {
+      const $payment =
+        $("#payment").first().length
+          ? $("#payment").first()
+          : $(".payment_box, .mollie-components, .trimvia-checkout-summary").first();
+
+      if (!$payment.length) {
+        return;
+      }
+
+      const top = Math.max(0, ($payment.offset()?.top || 0) - 120);
+      $("html, body").animate({ scrollTop: top }, 300);
     };
 
     const moveCheckoutNoticesToForm = () => {
       const $target = getNoticeTarget();
 
       $(
-        ".trimvia-checkout-before-form .woocommerce-NoticeGroup, .trimvia-checkout-before-form > .woocommerce-notices-wrapper, .trimvia-checkout-before-form > .woocommerce-error"
+        [
+          // Early WC print (before hero / under fixed header)
+          ".woocommerce > .woocommerce-notices-wrapper",
+          ".woocommerce > .woocommerce-error",
+          ".woocommerce > .woocommerce-info",
+          ".woocommerce > .woocommerce-message",
+          ".woocommerce > .woocommerce-NoticeGroup",
+          ".entry-content > .woocommerce > .woocommerce-error",
+          ".entry-content > .woocommerce > .woocommerce-info",
+          ".entry-content > .woocommerce > .woocommerce-message",
+          ".trimvia-checkout-hero ~ .woocommerce-error",
+          ".trimvia-checkout-hero ~ .woocommerce-notices-wrapper",
+          // In-form / before-form notices
+          ".trimvia-checkout-before-form .woocommerce-NoticeGroup",
+          ".trimvia-checkout-before-form > .woocommerce-notices-wrapper:not(.trimvia-checkout-form-notices)",
+          ".trimvia-checkout-before-form > .woocommerce-error",
+          ".trimvia-checkout-before-form > .woocommerce-info",
+          ".trimvia-checkout-before-form > .woocommerce-message",
+          "form.checkout > .woocommerce-NoticeGroup",
+          "form.checkout > .woocommerce-error",
+          "form.checkout > .woocommerce-info",
+          "form.checkout > .woocommerce-message",
+          ".checkout-form > .woocommerce-NoticeGroup",
+          ".checkout-form > .woocommerce-error",
+        ].join(", ")
       ).each(function moveNotice() {
         const $group = $(this);
 
-        if ($group.is($target) || $group.find($target).length) {
+        if ($group.is($target) || $group.find($target).length || $group.closest($target).length) {
           return;
         }
 
         if ($group.children().length) {
           $target.append($group.contents());
+        } else if ($group.is(".woocommerce-error, .woocommerce-info, .woocommerce-message")) {
+          $target.append($group);
+          return;
         }
 
         $group.remove();
       });
+
+      // Replace opaque gateway/browser copy with actionable field messages when we can.
+      $target.find(".woocommerce-error li").each(function replaceGenericError() {
+        const $li = $(this);
+        const text = String($li.text() || "").trim();
+        if (genericInvalidPattern.test(text)) {
+          $li.remove();
+        }
+      });
+
+      // Drop empty error lists left behind after stripping generic Mollie copy.
+      $target.find(".woocommerce-error").each(function removeEmptyErrorList() {
+        if (!$(this).children("li").length && !String($(this).text() || "").trim()) {
+          $(this).remove();
+        }
+      });
+
+      revealCheckoutLoginOnAuthError($target);
     };
 
-    const showValidationNotice = (message) => {
+    const revealCheckoutLoginOnAuthError = ($target) => {
+      const noticeText = String(($target && $target.length ? $target : getNoticeTarget()).text() || "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toLowerCase();
+
+      if (
+        !noticeText ||
+        !/(unknown email|incorrect (username|password|email)|invalid username|password you entered|please log in|already registered|username or email)/i.test(
+          noticeText
+        )
+      ) {
+        return;
+      }
+
+      const $group = $(".trimvia-checkout-login-group").first();
+      const $loginForm = $group.find("form.woocommerce-form-login, form.login").first();
+
+      if ($loginForm.length && !$loginForm.is(":visible")) {
+        $loginForm.stop(true, true).slideDown(200);
+        $group.addClass("is-open");
+      }
+
+      const top = Math.max(0, ($target.offset()?.top || $group.offset()?.top || 0) - 110);
+      $("html, body").animate({ scrollTop: top }, 280);
+    };
+
+    const escapeHtml = (value) =>
+      String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+
+    const getFieldLabel = ($row, $input) => {
+      const cleanLabel = (raw) =>
+        String(raw || "")
+          .replace(/\*/g, " ")
+          .replace(/\brequired\b/gi, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+
+      const fieldNameMap = {
+        billing_first_name: "First name",
+        billing_last_name: "Last name",
+        billing_company: "Company name",
+        billing_country: "Country / Region",
+        billing_address_1: "Street address",
+        billing_address_2: "Apartment, suite, unit, etc.",
+        billing_city: "Town / City",
+        billing_state: "County",
+        billing_postcode: "Postcode",
+        billing_phone: "Phone",
+        billing_email: "Email address",
+        shipping_first_name: "Shipping first name",
+        shipping_last_name: "Shipping last name",
+        shipping_company: "Shipping company name",
+        shipping_country: "Shipping country / region",
+        shipping_address_1: "Shipping street address",
+        shipping_address_2: "Shipping apartment, suite, unit, etc.",
+        shipping_city: "Shipping town / city",
+        shipping_state: "Shipping county",
+        shipping_postcode: "Shipping postcode",
+        account_password: "Account password",
+        order_comments: "Order notes",
+      };
+
+      let label = "";
+
+      if ($input && $input.length) {
+        const id = $input.attr("id");
+        if (id) {
+          label = cleanLabel($(`label[for="${id}"]`).first().text());
+        }
+
+        const name = String($input.attr("name") || "").replace(/\[\]$/, "");
+        if (!label && fieldNameMap[name]) {
+          label = fieldNameMap[name];
+        }
+
+        if (!label && name) {
+          label = cleanLabel(
+            name
+              .replace(/^(billing|shipping)_/, "")
+              .replace(/[\[\]]/g, " ")
+              .replace(/_/g, " ")
+          );
+          if (label) {
+            label = label.charAt(0).toUpperCase() + label.slice(1);
+          }
+        }
+
+        if (!label) {
+          label = cleanLabel($input.attr("aria-label") || $input.attr("placeholder"));
+        }
+      }
+
+      if (!label && $row && $row.length) {
+        label = cleanLabel($row.find("label").first().text());
+      }
+
+      if (!label && $row && $row.length) {
+        const rowId = String($row.attr("id") || "").replace(/_field$/, "");
+        if (fieldNameMap[rowId]) {
+          label = fieldNameMap[rowId];
+        }
+      }
+
+      return label || "This field";
+    };
+
+    const showValidationNotice = (messages) => {
       const $target = getNoticeTarget();
+      const list = (Array.isArray(messages) ? messages : [messages]).filter(Boolean);
+      const items = list.map((message) => `<li>${escapeHtml(message)}</li>`).join("");
 
       $target.html(
-        `<ul class="woocommerce-error trimvia-checkout-validation-error" role="alert"><li>${message}</li></ul>`
+        `<ul class="woocommerce-error trimvia-checkout-validation-error" role="alert">${items}</ul>`
       );
       moveCheckoutNoticesToForm();
 
@@ -1491,9 +2049,92 @@
       $(".trimvia-checkout-validation-error").remove();
     };
 
+    const replaceGenericPaymentErrors = () => {
+      let replacedMollie = false;
+      let hadGenericInvalid = false;
+      let hadGenericRequired = false;
+      const genericRequiredPattern = /^(error:\s*)?this field is required\.?$/i;
+
+      $(".woocommerce-error li, .woocommerce-error").each(function stripMollieError() {
+        const $node = $(this);
+        const text = String($node.text() || "").trim();
+
+        if ($node.is("ul") && $node.children("li").length) {
+          return;
+        }
+
+        if (mollieErrorPattern.test(text)) {
+          $node.closest(".woocommerce-error, .woocommerce-NoticeGroup").remove();
+          replacedMollie = true;
+          return;
+        }
+
+        if (genericRequiredPattern.test(text)) {
+          hadGenericRequired = true;
+          if ($node.is("li")) {
+            $node.remove();
+          } else {
+            $node.closest(".woocommerce-error, .woocommerce-NoticeGroup").remove();
+          }
+          return;
+        }
+
+        if (genericInvalidPattern.test(text)) {
+          hadGenericInvalid = true;
+          if ($node.is("li")) {
+            $node.remove();
+          } else {
+            $node.closest(".woocommerce-error, .woocommerce-NoticeGroup").remove();
+          }
+        }
+      });
+
+      moveCheckoutNoticesToForm();
+
+      if (!(replacedMollie || hadGenericInvalid || hadGenericRequired)) {
+        return false;
+      }
+
+      if (hadGenericRequired) {
+        const formOk = validateCheckoutForm();
+        if (!formOk) {
+          return true;
+        }
+      }
+
+      const mollieMessages = collectMollieFieldErrors();
+      if (mollieMessages.length) {
+        showValidationNotice(mollieMessages);
+        scrollToPaymentFields();
+        return true;
+      }
+
+      // Billing/shipping may also be invalid — surface those if present.
+      const formOk = validateCheckoutForm();
+      if (!formOk) {
+        return true;
+      }
+
+      showValidationNotice([
+        "Please check your card details below. Fix any highlighted payment fields (for American Express the CVC must be 4 digits), then try again.",
+      ]);
+      scrollToPaymentFields();
+      return true;
+    };
+
     const validateCheckoutForm = () => {
       let valid = true;
       let $firstInvalid = null;
+      const errorMessages = [];
+      const seenMessages = {};
+
+      const pushError = (message) => {
+        if (!message || seenMessages[message]) {
+          return;
+        }
+        seenMessages[message] = true;
+        errorMessages.push(message);
+      };
 
       $form
         .find(".woocommerce-invalid-required-field")
@@ -1513,6 +2154,7 @@
           if (!$row.find("input:checkbox:checked").length) {
             valid = false;
             $row.addClass("woocommerce-invalid woocommerce-invalid-required-field");
+            pushError(`${getFieldLabel($row)} is a required field.`);
             if (!$firstInvalid) {
               $firstInvalid = $row;
             }
@@ -1531,26 +2173,60 @@
             return;
           }
 
-          if (!String($input.val() || "").trim()) {
+          const value = String($input.val() || "").trim();
+          if (!value) {
             valid = false;
             $row.addClass("woocommerce-invalid woocommerce-invalid-required-field");
+            pushError(`${getFieldLabel($row, $input)} is a required field.`);
             if (!$firstInvalid) {
               $firstInvalid = $row;
+            }
+            return;
+          }
+
+          if ($input.is('[type="email"]') || $input.attr("name") === "billing_email") {
+            const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+            if (!emailOk) {
+              valid = false;
+              $row.addClass("woocommerce-invalid woocommerce-invalid-required-field");
+              pushError(`${getFieldLabel($row, $input)} must be a valid email address.`);
+              if (!$firstInvalid) {
+                $firstInvalid = $row;
+              }
             }
           }
         });
       });
 
-      if (!valid) {
-        const invalidCount =
-          $form.find(".woocommerce-invalid-required-field").length +
-          $(".trimvia-checkout-gp-section .woocommerce-invalid-required-field").length;
-        const message =
-          invalidCount > 1
-            ? "Please complete all required fields below before placing your order."
-            : "Please complete the required field below before placing your order.";
+      // Required file uploads (e.g. ID) are skipped above — check them separately.
+      $form.find('input[type="file"]').filter(":visible").each(function validateFile() {
+        const $input = $(this);
+        const $row = $input.closest(".form-row, .validate-required, .form-group");
+        const isRequired =
+          $input.prop("required") ||
+          $row.hasClass("validate-required") ||
+          $row.find(".required").length > 0;
 
-        showValidationNotice(message);
+        if (!isRequired) {
+          return;
+        }
+
+        if (!$input[0].files || !$input[0].files.length) {
+          valid = false;
+          $row.addClass("woocommerce-invalid woocommerce-invalid-required-field");
+          pushError(`${getFieldLabel($row, $input)} is a required field.`);
+          if (!$firstInvalid) {
+            $firstInvalid = $row;
+          }
+        }
+      });
+
+      if (!valid) {
+        if (!errorMessages.length) {
+          errorMessages.push("Please complete the required fields below before placing your order.");
+        }
+
+        showValidationNotice(errorMessages);
 
         if ($firstInvalid && $firstInvalid.length) {
           const scrollTop = Math.max(0, ($firstInvalid.offset()?.top || 0) - 120);
@@ -1603,23 +2279,17 @@
     });
 
     $(document.body).on("checkout_error", () => {
+      // Mollie often injects the notice slightly after checkout_error fires.
       window.setTimeout(() => {
-        let replacedMollie = false;
-
-        $(".woocommerce-error li").each(function stripMollieError() {
-          if (mollieErrorPattern.test($(this).text())) {
-            $(this).closest(".woocommerce-error, .woocommerce-NoticeGroup").remove();
-            replacedMollie = true;
-          }
-        });
-
-        if (replacedMollie) {
-          validateCheckoutForm();
-        }
-
-        moveCheckoutNoticesToForm();
+        replaceGenericPaymentErrors();
       }, 0);
+      window.setTimeout(() => {
+        replaceGenericPaymentErrors();
+      }, 150);
     });
+
+    moveCheckoutNoticesToForm();
+    $(document.body).on("updated_checkout", moveCheckoutNoticesToForm);
 
     $(document.body).on(
       "input change",
@@ -1675,11 +2345,16 @@
 
     button.addEventListener("click", (event) => {
       event.preventDefault();
+      event.stopPropagation();
       const isHidden = input.type === "password";
       input.type = isHidden ? "text" : "password";
       button.classList.toggle("display-password", isHidden);
       button.setAttribute("aria-label", isHidden ? "Hide password" : "Show password");
       button.setAttribute("aria-pressed", String(isHidden));
+    });
+    button.addEventListener("mousedown", (event) => {
+      // Keep focus on the password field without triggering label/tooltip side-effects.
+      event.preventDefault();
     });
 
     wrapper.appendChild(button);
@@ -1687,6 +2362,329 @@
   };
 
   let checkoutAccountPasswordBound = false;
+
+  const initPasswordRequirementsTooltip = () => {
+    const isTouchDevice = window.matchMedia("(hover: none), (pointer: coarse)").matches;
+    const passwordFields = [
+      { inputId: "reg_password", required: true },
+      { inputId: "password_1", required: false },
+      { inputId: "account_password", required: true },
+    ];
+    const reqList = [
+      { key: "length", text: "At least 8 characters long" },
+      { key: "uppercase", text: "At least one uppercase letter" },
+      { key: "lowercase", text: "At least one lowercase letter" },
+      { key: "number", text: "At least one number" },
+      { key: "special", text: "At least one special character" },
+    ];
+
+    const checkReqs = (value) => ({
+      length: value.length >= 8,
+      uppercase: /[A-Z]/.test(value),
+      lowercase: /[a-z]/.test(value),
+      number: /[0-9]/.test(value),
+      special: /[^A-Za-z0-9]/.test(value),
+    });
+
+    const fitTooltipInViewport = (tooltip, forceOpen = false) => {
+      if (!tooltip) {
+        return;
+      }
+
+      const shouldStayOpen =
+        forceOpen ||
+        tooltip.classList.contains("trimvia-pwd-tooltip-open") ||
+        tooltip.style.display === "block";
+      const isMobile = window.innerWidth <= 767;
+      const pad = 16;
+
+      tooltip.style.visibility = "hidden";
+      tooltip.style.display = "block";
+      tooltip.style.transform = "";
+      tooltip.style.left = "";
+      tooltip.style.right = "";
+
+      if (isMobile) {
+        tooltip.style.left = "50%";
+        tooltip.style.right = "auto";
+        tooltip.style.transform = "translateX(-50%)";
+      } else {
+        tooltip.style.left = "0";
+        tooltip.style.right = "auto";
+        tooltip.style.transform = "none";
+      }
+
+      const rect = tooltip.getBoundingClientRect();
+      let shiftX = 0;
+
+      if (rect.left < pad) {
+        shiftX = pad - rect.left;
+      } else if (rect.right > window.innerWidth - pad) {
+        shiftX = -(rect.right - (window.innerWidth - pad));
+      }
+
+      if (isMobile) {
+        tooltip.style.transform = `translateX(calc(-50% + ${shiftX}px))`;
+        const arrowOffset = 50 - (shiftX / Math.max(rect.width, 1)) * 100;
+        tooltip.style.setProperty(
+          "--pwd-tooltip-arrow-left",
+          `${Math.min(88, Math.max(12, arrowOffset))}%`
+        );
+      } else {
+        tooltip.style.left = `${shiftX}px`;
+        tooltip.style.transform = "none";
+      }
+
+      tooltip.style.visibility = "";
+      if (!shouldStayOpen) {
+        tooltip.style.display = "none";
+      }
+    };
+
+    const openTooltip = (tooltip) => {
+      fitTooltipInViewport(tooltip, true);
+      tooltip.classList.add("trimvia-pwd-tooltip-open");
+    };
+
+    const closeTooltip = (tooltip) => {
+      if (!tooltip) {
+        return;
+      }
+      tooltip.style.display = "none";
+      tooltip.classList.remove("trimvia-pwd-tooltip-open");
+    };
+
+    const updateTooltip = (value, tooltip) => {
+      if (!tooltip) {
+        return true;
+      }
+
+      const checks = checkReqs(value || "");
+      let allPass = true;
+
+      tooltip.querySelectorAll(".pm-pwd-req").forEach((row) => {
+        const req = row.getAttribute("data-req");
+        const text = row.getAttribute("data-text") || "";
+        const pass = Boolean(checks[req]);
+        if (!pass) {
+          allPass = false;
+        }
+        row.style.color = pass ? "#51cf66" : "#ff6b6b";
+        row.innerHTML = `${pass ? "&#10003; " : "&#10007; "}${text}`;
+      });
+
+      return allPass;
+    };
+
+    const buildTooltipWrapper = () => {
+      const items = reqList
+        .map(
+          (req) =>
+            `<span class="pm-pwd-req" data-req="${req.key}" data-text="${req.text}">&#10007; ${req.text}</span>`
+        )
+        .join("");
+
+      const wrapper = document.createElement("span");
+      wrapper.className = "pm-pwd-tooltip-wrapper";
+      wrapper.innerHTML =
+        '<span class="pm-pwd-tooltip-icon" role="button" tabindex="0" aria-label="Password requirements">' +
+        '<i class="fas fa-info-circle" aria-hidden="true"></i></span>' +
+        '<div class="pm-pwd-tooltip" role="tooltip">' +
+        '<strong style="display: block; margin-bottom: 8px;">Password Requirements:</strong>' +
+        items +
+        "</div>";
+      return wrapper;
+    };
+
+    const ensureTooltipsExist = () => {
+      passwordFields.forEach((field) => {
+        const input = document.getElementById(field.inputId);
+        const label = document.querySelector(`label[for="${field.inputId}"]`);
+        if (!input || !label || label.querySelector(".pm-pwd-tooltip-icon")) {
+          return;
+        }
+        label.appendChild(buildTooltipWrapper());
+      });
+    };
+
+    const bindTooltips = () => {
+      ensureTooltipsExist();
+
+      document.querySelectorAll(".pm-pwd-tooltip-wrapper").forEach((wrapper) => {
+        if (wrapper.dataset.trimviaPwdBound === "1") {
+          return;
+        }
+
+        const icon = wrapper.querySelector(".pm-pwd-tooltip-icon");
+        const tooltip = wrapper.querySelector(".pm-pwd-tooltip");
+        if (!icon || !tooltip) {
+          return;
+        }
+
+        wrapper.dataset.trimviaPwdBound = "1";
+
+        // Prevent label[for] from focusing the password input when using the info icon.
+        icon.addEventListener("mousedown", (event) => {
+          event.preventDefault();
+        });
+
+        const toggleFromIcon = (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          const isOpen =
+            tooltip.classList.contains("trimvia-pwd-tooltip-open") ||
+            tooltip.style.display === "block";
+          if (isOpen) {
+            closeTooltip(tooltip);
+            return;
+          }
+          openTooltip(tooltip);
+        };
+
+        if (isTouchDevice) {
+          icon.addEventListener("click", toggleFromIcon);
+        } else {
+          icon.addEventListener("mouseenter", () => openTooltip(tooltip));
+          icon.addEventListener("mouseleave", () => closeTooltip(tooltip));
+          icon.addEventListener("focus", () => openTooltip(tooltip));
+          icon.addEventListener("blur", () => closeTooltip(tooltip));
+          // Desktop uses hover/keyboard focus only — click would fight mouseenter.
+          icon.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+          });
+        }
+
+        const label = wrapper.closest("label");
+        const inputId = label?.getAttribute("for");
+        const input = inputId ? document.getElementById(inputId) : null;
+        if (input && input.dataset.trimviaPwdInputBound !== "1") {
+          input.dataset.trimviaPwdInputBound = "1";
+          // Update requirement colours while typing — never auto-open the tooltip.
+          input.addEventListener("input", () => {
+            updateTooltip(input.value, tooltip);
+          });
+        }
+      });
+    };
+
+    bindTooltips();
+    window.setTimeout(bindTooltips, 300);
+
+    if (!document.body.dataset.trimviaPwdTooltipDismissBound) {
+      document.body.dataset.trimviaPwdTooltipDismissBound = "1";
+      document.addEventListener("click", (event) => {
+        if (event.target.closest(".pm-pwd-tooltip-wrapper")) {
+          return;
+        }
+        // Eye / password field clicks must dismiss, not open, the tooltip.
+        document.querySelectorAll(".pm-pwd-tooltip.trimvia-pwd-tooltip-open").forEach(closeTooltip);
+      });
+    }
+
+    if (!document.body.dataset.trimviaPwdSubmitBound) {
+      document.body.dataset.trimviaPwdSubmitBound = "1";
+      document.addEventListener(
+        "submit",
+        (event) => {
+          const form = event.target;
+          if (
+            !(form instanceof HTMLFormElement) ||
+            (!form.classList.contains("woocommerce-form-register") &&
+              !form.classList.contains("woocommerce-checkout") &&
+              !form.classList.contains("woocommerce-EditAccountForm"))
+          ) {
+            return;
+          }
+
+          let isValid = true;
+          let firstInvalid = null;
+
+          passwordFields.forEach((field) => {
+            const input = form.querySelector(`#${field.inputId}`);
+            if (!input) {
+              return;
+            }
+
+            const value = String(input.value || "");
+            if (!value && !field.required) {
+              return;
+            }
+
+            const tooltip = document.querySelector(
+              `label[for="${field.inputId}"] .pm-pwd-tooltip`
+            );
+            const allPass = updateTooltip(value, tooltip);
+            if (!allPass) {
+              isValid = false;
+              if (tooltip) {
+                openTooltip(tooltip);
+              }
+              if (!firstInvalid) {
+                firstInvalid = input;
+              }
+            }
+          });
+
+          if (!isValid) {
+            event.preventDefault();
+            event.stopPropagation();
+            firstInvalid?.focus();
+          }
+        },
+        true
+      );
+    }
+  };
+
+  const initCheckoutTogglePanels = () => {
+    if (!document.body.classList.contains("trimvia-checkout-page")) {
+      return;
+    }
+
+    const jq = window.jQuery;
+    if (!jq) {
+      return;
+    }
+
+    const syncGroupState = ($group, formSelector) => {
+      if (!$group || !$group.length) {
+        return;
+      }
+
+      $group.toggleClass("is-open", $group.find(formSelector).is(":visible"));
+    };
+
+    jq(".trimvia-checkout-login-group").each(function initLoginGroupState() {
+      syncGroupState(jq(this), "form.login");
+    });
+
+    jq(".trimvia-checkout-coupon-group").each(function initCouponGroupState() {
+      syncGroupState(jq(this), "form.checkout_coupon");
+    });
+
+    jq(document.body).on("click", ".showlogin", function handleCheckoutLoginToggle() {
+      const $group = jq(this).closest(".trimvia-checkout-login-group");
+      if (!$group.length) {
+        return;
+      }
+
+      window.setTimeout(() => {
+        syncGroupState($group, "form.login");
+      }, 450);
+    });
+
+    jq(document.body).on("click", ".showcoupon", function handleCheckoutCouponToggle() {
+      const $group = jq(this).closest(".trimvia-checkout-coupon-group");
+      if (!$group.length) {
+        return;
+      }
+
+      window.setTimeout(() => {
+        syncGroupState($group, "form.checkout_coupon");
+      }, 450);
+    });
+  };
 
   const initCheckoutAccountPasswordVisibility = () => {
     if (!document.body.classList.contains("trimvia-checkout-page")) {
@@ -2041,15 +3039,22 @@
     initCommerceViewportLock();
     initHeaderScroll();
     initScrollToTop();
+    initHomeStickyConsultCta();
     syncHeaderAuthButtons();
     initMobileMenu();
     syncHeaderAuthButtons();
+    initServiceContentFaqs();
+    initPasswordRequirementsTooltip();
     initRevealOnScroll();
     initFaqAccordion();
     initTestimonialCarousel();
     initSingleProductTabs();
     initSingleProductGallery();
+    initCartNoticeAlignment();
+    initCartCouponMobilePlaceholder();
     initCartQuantityUpdates();
+    initCheckoutTogglePanels();
+    initCheckoutStickySummary();
     initCheckoutDeliveryPanel();
     initCheckoutAccountPasswordVisibility();
     initCheckoutGpForm();

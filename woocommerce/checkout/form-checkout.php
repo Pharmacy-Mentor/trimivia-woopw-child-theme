@@ -35,12 +35,21 @@ $cart_count = WC()->cart ? WC()->cart->get_cart_contents_count() : 0;
 <section class="page-section trimvia-checkout-section">
 	<div class="container">
 		<div class="trimvia-checkout-before-form">
+			<div class="trimvia-checkout-form-notices woocommerce-notices-wrapper" aria-live="polite">
+				<?php
+				// Prefer notices inside this wrapper (login/registration + other session notices).
+				// Early WC cart_notices hook is removed in trimvia_relocate_checkout_notices().
+				if (function_exists('woocommerce_output_all_notices')) {
+					remove_action('woocommerce_before_checkout_form', 'woocommerce_output_all_notices', 10);
+					woocommerce_output_all_notices();
+				}
+				?>
+			</div>
 			<?php do_action('woocommerce_before_checkout_form', $checkout); ?>
 		</div>
 
-		<form name="checkout" method="post" class="checkout woocommerce-checkout checkout-layout" action="<?php echo esc_url(wc_get_checkout_url()); ?>" enctype="multipart/form-data" aria-label="<?php echo esc_attr__('Checkout', 'woocommerce'); ?>">
+		<form name="checkout" method="post" class="checkout woocommerce-checkout checkout-layout" action="<?php echo esc_url(wc_get_checkout_url()); ?>" enctype="multipart/form-data" aria-label="<?php echo esc_attr__('Checkout', 'woocommerce'); ?>" novalidate>
 		<div class="checkout-form">
-			<div class="trimvia-checkout-form-notices woocommerce-notices-wrapper" aria-live="polite"></div>
 			<?php if ($checkout->get_checkout_fields()) : ?>
 				<?php do_action('woocommerce_checkout_before_customer_details'); ?>
 
@@ -83,10 +92,6 @@ $cart_count = WC()->cart ? WC()->cart->get_cart_contents_count() : 0;
 			<?php endif; ?>
 
 			<div class="form-section active trimvia-checkout-panel trimvia-checkout-panel--notes">
-				<div class="form-alert">
-					<strong><?php esc_html_e('Prescription review required:', 'theme-woopm-child'); ?></strong>
-					<?php esc_html_e('Your order starts a pharmacist prescriber review. If extra information is needed, our team will contact you before dispatch.', 'theme-woopm-child'); ?>
-				</div>
 				<?php
 				$trimvia_gp_checkout_markup = function_exists('trimvia_checkout_get_gp_section_markup')
 					? trimvia_checkout_get_gp_section_markup()
@@ -96,10 +101,16 @@ $cart_count = WC()->cart ? WC()->cart->get_cart_contents_count() : 0;
 					<div class="trimvia-checkout-gp-section">
 						<?php echo $trimvia_gp_checkout_markup; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- WooPW GP template markup. ?>
 					</div>
+				<?php else : ?>
+					<div class="form-alert trimvia-gp-review-alert">
+						<strong><?php esc_html_e('Prescription review required:', 'theme-woopm-child'); ?></strong>
+						<span><?php esc_html_e('Your order starts a pharmacist prescriber review. If extra information is needed, our team will contact you before dispatch.', 'theme-woopm-child'); ?></span>
+					</div>
 				<?php endif; ?>
 			</div>
 		</div>
 
+		<div class="trimvia-checkout-summary-col">
 		<aside class="order-summary trimvia-checkout-summary">
 			<div class="order-summary-head">
 				<h3><?php esc_html_e('Order Summary', 'theme-woopm-child'); ?></h3>
@@ -117,6 +128,7 @@ $cart_count = WC()->cart ? WC()->cart->get_cart_contents_count() : 0;
 				<div class="security-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22 6 12 13 2 6"/></svg><?php esc_html_e('Discreet updates by email', 'theme-woopm-child'); ?></div>
 			</div>
 		</aside>
+		</div>
 		</form>
 
 		<?php do_action('woocommerce_after_checkout_form', $checkout); ?>

@@ -104,9 +104,21 @@ $contact_url = home_url('/contact/');
 				$item_names[] = $item->get_name();
 			}
 			$order_title = !empty($item_names) ? implode(', ', array_slice($item_names, 0, 2)) : __('Order items', 'theme-woopm-child');
-			$status_class = $order->has_status(array('completed', 'processing')) ? 'order-status--dispatched' : 'order-status--review';
+			$status_class = function_exists('trimvia_get_account_order_status_class')
+				? trimvia_get_account_order_status_class($order->get_status())
+				: ($order->has_status(array('completed', 'processing')) ? 'order-status--dispatched' : 'order-status--review');
+			$status_notice = function_exists('trimvia_get_account_order_status_notice')
+				? trimvia_get_account_order_status_notice($order)
+				: array(
+					'title' => __('Your order is being processed', 'theme-woopm-child'),
+					'text'  => __("We'll notify you when it's on its way.", 'theme-woopm-child'),
+					'tone'  => 'processing',
+				);
+			$placed_date = $order->get_date_created()
+				? wc_format_datetime($order->get_date_created(), 'F j, Y')
+				: '';
 			?>
-			<article class="account-order-card rv rv-d<?php echo esc_attr((string) min($index + 1, 3)); ?>">
+			<article class="account-order-card account-order-card--desktop rv rv-d<?php echo esc_attr((string) min($index + 1, 3)); ?>">
 				<a class="account-order-thumb" href="<?php echo esc_url($order->get_view_order_url()); ?>" aria-hidden="true" tabindex="-1">
 					<?php echo wp_kses_post(trimvia_get_order_primary_product_thumbnail($order)); ?>
 				</a>
@@ -141,6 +153,94 @@ $contact_url = home_url('/contact/');
 					<div class="account-order-price"><?php echo wp_kses_post($order->get_formatted_order_total()); ?></div>
 					<a href="<?php echo esc_url($order->get_view_order_url()); ?>" class="btn-sm"><?php esc_html_e('View order', 'theme-woopm-child'); ?></a>
 				</div>
+			</article>
+
+			<article class="account-order-card account-order-card--v2 account-order-card--mobile rv rv-d<?php echo esc_attr((string) min($index + 1, 3)); ?>">
+				<div class="account-order-card__head">
+					<div class="account-order-card__head-icon" aria-hidden="true">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+							<path d="M6 7h15l-1.5 11H7.5L6 7z"></path>
+							<path d="M9 7V5a3 3 0 0 1 3-3h0a3 3 0 0 1 3 3v2"></path>
+						</svg>
+					</div>
+					<div class="account-order-card__head-copy">
+						<div class="account-order-card__number">
+							<?php
+							echo esc_html(
+								sprintf(
+									/* translators: %s: order number */
+									__('Order #%s', 'theme-woopm-child'),
+									$order->get_order_number()
+								)
+							);
+							?>
+						</div>
+						<?php if ('' !== $placed_date) : ?>
+						<div class="account-order-card__placed">
+							<?php
+							echo esc_html(
+								sprintf(
+									/* translators: %s: order date */
+									__('Placed %s', 'theme-woopm-child'),
+									$placed_date
+								)
+							);
+							?>
+						</div>
+						<?php endif; ?>
+					</div>
+					<span class="order-status <?php echo esc_attr($status_class); ?>"><?php echo esc_html(wc_get_order_status_name($order->get_status())); ?></span>
+				</div>
+
+				<div class="account-order-card__divider" aria-hidden="true"></div>
+
+				<div class="account-order-card__product">
+					<a class="account-order-thumb" href="<?php echo esc_url($order->get_view_order_url()); ?>" aria-hidden="true" tabindex="-1">
+						<?php echo wp_kses_post(trimvia_get_order_primary_product_thumbnail($order)); ?>
+					</a>
+					<div class="account-order-card__product-copy">
+						<div class="account-order-title"><?php echo esc_html($order_title); ?></div>
+						<div class="account-order-sub">
+							<?php
+							echo esc_html(
+								sprintf(
+									/* translators: %s: item count */
+									_n('%s item', '%s items', $order->get_item_count(), 'theme-woopm-child'),
+									number_format_i18n($order->get_item_count())
+								)
+							);
+							?>
+						</div>
+					</div>
+				</div>
+
+				<div class="account-order-card__divider" aria-hidden="true"></div>
+
+				<div class="account-order-card__total">
+					<span class="account-order-card__total-label"><?php esc_html_e('Total', 'theme-woopm-child'); ?></span>
+					<div class="account-order-price"><?php echo wp_kses_post($order->get_formatted_order_total()); ?></div>
+				</div>
+
+				<div class="account-order-card__notice account-order-card__notice--<?php echo esc_attr($status_notice['tone']); ?>">
+					<div class="account-order-card__notice-icon" aria-hidden="true">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+							<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+							<polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+							<line x1="12" y1="22.08" x2="12" y2="12"></line>
+						</svg>
+					</div>
+					<div class="account-order-card__notice-copy">
+						<strong><?php echo esc_html($status_notice['title']); ?></strong>
+						<p><?php echo esc_html($status_notice['text']); ?></p>
+					</div>
+				</div>
+
+				<a href="<?php echo esc_url($order->get_view_order_url()); ?>" class="account-order-card__cta">
+					<span><?php esc_html_e('View order', 'theme-woopm-child'); ?></span>
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+						<path d="M5 12h14M12 5l7 7-7 7"></path>
+					</svg>
+				</a>
 			</article>
 		<?php endforeach; ?>
 	</div>

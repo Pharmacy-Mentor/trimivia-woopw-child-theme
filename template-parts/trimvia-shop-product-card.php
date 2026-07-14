@@ -132,7 +132,7 @@ if ($consultation_required) {
 			<span class="product-badge <?php echo esc_attr($product_badge_class); ?>"><?php echo esc_html($product_badge_label); ?></span>
 		<?php endif; ?>
 		<?php if ($product_image_id) : ?>
-			<div class="product-img-media"><?php echo wp_get_attachment_image($product_image_id, 'large', false, array('loading' => 'lazy')); ?></div>
+			<div class="product-img-media"><?php echo wp_get_attachment_image($product_image_id, 'full', false, array('loading' => 'lazy')); ?></div>
 		<?php else : ?>
 			<div class="product-img-icon">
 				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
@@ -140,13 +140,15 @@ if ($consultation_required) {
 		<?php endif; ?>
 	</div>
 	<div class="product-body">
-		<?php if ('' !== $product_categories) : ?>
-			<div class="product-type"><?php echo esc_html(wp_strip_all_tags($product_categories)); ?></div>
-		<?php endif; ?>
-		<h3 id="<?php echo esc_attr('product-card-title-' . $product_id); ?>"><?php echo esc_html($product_title); ?></h3>
-		<?php if ('' !== $product_subtitle) : ?>
-			<div class="product-subtitle"><?php echo esc_html($product_subtitle); ?></div>
-		<?php endif; ?>
+		<div class="product-card-head">
+			<?php if ('' !== $product_categories) : ?>
+				<div class="product-type"><?php echo esc_html(wp_strip_all_tags($product_categories)); ?></div>
+			<?php endif; ?>
+			<h3 id="<?php echo esc_attr('product-card-title-' . $product_id); ?>"><?php echo esc_html($product_title); ?></h3>
+			<?php if ('' !== $product_subtitle) : ?>
+				<div class="product-subtitle"><?php echo esc_html($product_subtitle); ?></div>
+			<?php endif; ?>
+		</div>
 		<?php if ('' !== $product_description) : ?>
 			<p><?php echo esc_html($product_description); ?></p>
 		<?php endif; ?>

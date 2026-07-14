@@ -1,0 +1,48 @@
+/**
+ * WooCommerce admin — Order Notes colors (match core WooCommerce look).
+ * Loaded on shop order edit screens from the Trimvia child theme.
+ */
+
+/* 1) Private note (admin only) — light grey */
+ul.order_notes li.note .note_content {
+  background: #efefef !important;
+  color: #1d2327;
+  border-left: none !important;
+}
+
+ul.order_notes li.note .note_content::after {
+  border-color: #efefef transparent !important;
+}
+
+/* 2) Note to customer — soft blue (WooCommerce customer-note) */
+ul.order_notes li.note.customer-note .note_content {
+  background: #a7cedc !important;
+  color: #1d2327;
+  border-left: none !important;
+}
+
+ul.order_notes li.note.customer-note .note_content::after {
+  border-color: #a7cedc transparent !important;
+}
+
+/* 3) System note — light purple / lavender (as in your screenshot) */
+ul.order_notes li.note.system-note .note_content {
+  background: #d7cad2 !important;
+  color: #1d2327;
+  border-left: none !important;
+}
+
+ul.order_notes li.note.system-note .note_content::after {
+  border-color: #d7cad2 transparent !important;
+}
+
+/* System + customer → prefer customer blue */
+ul.order_notes li.note.system-note.customer-note .note_content {
+  background: #a7cedc !important;
+  color: #1d2327;
+  border-left: none !important;
+}
+
+ul.order_notes li.note.system-note.customer-note .note_content::after {
+  border-color: #a7cedc transparent !important;
+}

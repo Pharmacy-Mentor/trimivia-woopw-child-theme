@@ -35,7 +35,20 @@ $saved_gp_post_id = ($has_saved_gp && !empty($saved_gp['post_id'])) ? absint($sa
 ?>
 
 <div class="woo-gp-form-wrapper trimvia-gp-form">
-	<h2><?php esc_html_e('We need to inform your GP.', 'woocommerce'); ?></h2>
+	<div class="trimvia-gp-head">
+		<div class="trimvia-gp-head__icon" aria-hidden="true">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/><path d="M10 9h.01"/><path d="M14 9h.01"/></svg>
+		</div>
+		<div class="trimvia-gp-head__copy">
+			<h2><?php esc_html_e('We need to inform your GP.', 'woocommerce'); ?></h2>
+			<p><?php esc_html_e('Choose how you would like to share your GP surgery details for this order.', 'theme-woopm-child'); ?></p>
+		</div>
+	</div>
+
+	<div class="form-alert trimvia-gp-review-alert">
+		<strong><?php esc_html_e('Prescription review required:', 'theme-woopm-child'); ?></strong>
+		<span><?php esc_html_e('Your order starts a pharmacist prescriber review. If extra information is needed, our team will contact you before dispatch.', 'theme-woopm-child'); ?></span>
+	</div>
 
 	<div class="woocommerce-form woocommerce-form-gp-surgery">
 		<input type="hidden" name="inform_gp" value="yes" id="inform_gp" />
@@ -43,7 +56,7 @@ $saved_gp_post_id = ($has_saved_gp && !empty($saved_gp['post_id'])) ? absint($sa
 		<div class="gp-form-fields-wrapper">
 			<div class="trimvia-gp-options woocommerce-gp-surgery-options" role="radiogroup" aria-label="<?php esc_attr_e('How would you like to provide GP details?', 'theme-woopm-child'); ?>">
 				<?php if ($has_saved_gp) : ?>
-					<label class="trimvia-gp-option">
+					<label class="trimvia-gp-option<?php echo ('current' === $selected_gp_mode) ? ' is-selected' : ''; ?>">
 						<input
 							id="gp-surgery-option-current"
 							type="radio"
@@ -51,19 +64,28 @@ $saved_gp_post_id = ($has_saved_gp && !empty($saved_gp['post_id'])) ? absint($sa
 							value="current"
 							<?php checked($selected_gp_mode, 'current'); ?>
 						/>
-						<span class="trimvia-gp-option__label">
-							<?php
-							if (isset($saved_gp['source']) && 'order' === $saved_gp['source']) {
-								esc_html_e('Use previous GP details', 'theme-woopm-child');
-							} else {
-								esc_html_e('Use current GP details', 'theme-woopm-child');
-							}
-							?>
+						<span class="trimvia-gp-option__card">
+							<span class="trimvia-gp-option__radio" aria-hidden="true"></span>
+							<span class="trimvia-gp-option__icon" aria-hidden="true">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+							</span>
+							<span class="trimvia-gp-option__copy">
+								<span class="trimvia-gp-option__title">
+									<?php
+									if (isset($saved_gp['source']) && 'order' === $saved_gp['source']) {
+										esc_html_e('Use previous GP', 'theme-woopm-child');
+									} else {
+										esc_html_e('Use saved GP', 'theme-woopm-child');
+									}
+									?>
+								</span>
+								<span class="trimvia-gp-option__desc"><?php esc_html_e('Continue with the GP details we already have on file.', 'theme-woopm-child'); ?></span>
+							</span>
 						</span>
 					</label>
 				<?php endif; ?>
 
-				<label class="trimvia-gp-option">
+				<label class="trimvia-gp-option<?php echo ('nhs' === $selected_gp_mode) ? ' is-selected' : ''; ?>">
 					<input
 						id="gp-surgery-option-nhs"
 						type="radio"
@@ -71,10 +93,19 @@ $saved_gp_post_id = ($has_saved_gp && !empty($saved_gp['post_id'])) ? absint($sa
 						value="nhs"
 						<?php checked($selected_gp_mode, 'nhs'); ?>
 					/>
-					<span class="trimvia-gp-option__label"><?php esc_html_e('Search for GP Surgery', 'woocommerce'); ?></span>
+					<span class="trimvia-gp-option__card">
+						<span class="trimvia-gp-option__radio" aria-hidden="true"></span>
+						<span class="trimvia-gp-option__icon" aria-hidden="true">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+						</span>
+						<span class="trimvia-gp-option__copy">
+							<span class="trimvia-gp-option__title"><?php esc_html_e('Search GP surgery', 'theme-woopm-child'); ?></span>
+							<span class="trimvia-gp-option__desc"><?php esc_html_e('Find your surgery in the NHS directory.', 'theme-woopm-child'); ?></span>
+						</span>
+					</span>
 				</label>
 
-				<label class="trimvia-gp-option">
+				<label class="trimvia-gp-option<?php echo ('manual' === $selected_gp_mode) ? ' is-selected' : ''; ?>">
 					<input
 						id="gp-surgery-option-manual"
 						type="radio"
@@ -82,7 +113,16 @@ $saved_gp_post_id = ($has_saved_gp && !empty($saved_gp['post_id'])) ? absint($sa
 						value="manual"
 						<?php checked($selected_gp_mode, 'manual'); ?>
 					/>
-					<span class="trimvia-gp-option__label"><?php esc_html_e('Enter Manually', 'woocommerce'); ?></span>
+					<span class="trimvia-gp-option__card">
+						<span class="trimvia-gp-option__radio" aria-hidden="true"></span>
+						<span class="trimvia-gp-option__icon" aria-hidden="true">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+						</span>
+						<span class="trimvia-gp-option__copy">
+							<span class="trimvia-gp-option__title"><?php esc_html_e('Enter manually', 'theme-woopm-child'); ?></span>
+							<span class="trimvia-gp-option__desc"><?php esc_html_e('Type the surgery name and full address yourself.', 'theme-woopm-child'); ?></span>
+						</span>
+					</span>
 				</label>
 			</div>
 
@@ -143,34 +183,34 @@ $saved_gp_post_id = ($has_saved_gp && !empty($saved_gp['post_id'])) ? absint($sa
 
 				<div class="trimvia-gp-panel trimvia-gp-panel--search<?php echo $show_search_panel ? ' is-active' : ''; ?>" data-gp-panel="nhs"<?php echo $show_search_panel ? '' : ' hidden'; ?>>
 					<p class="form-row form-row-wide trimvia-gp-field trimvia-gp-field--search">
-						<label for="gp-surgery-selector" class="screen-reader-text"><?php esc_html_e('Search for GP Surgery', 'woocommerce'); ?>&nbsp;<span class="required">*</span></label>
+						<label for="gp-surgery-selector"><?php esc_html_e('Search for your GP surgery', 'theme-woopm-child'); ?>&nbsp;<span class="required">*</span></label>
 						<select id="gp-surgery-selector" class="gp-surgery-selector" aria-label="<?php esc_attr_e('Search for GP Surgery', 'woocommerce'); ?>"<?php echo $show_search_panel ? '' : ' disabled'; ?>>
-							<option value=""><?php esc_html_e('Select GP Surgery', 'theme-woopm-child'); ?></option>
+							<option value=""><?php esc_html_e('Start typing to find your GP surgery', 'theme-woopm-child'); ?></option>
 						</select>
 					</p>
 				</div>
 
 				<div class="trimvia-gp-panel trimvia-gp-panel--manual<?php echo $show_manual_panel ? ' is-active' : ''; ?>" data-gp-panel="manual"<?php echo $show_manual_panel ? '' : ' hidden'; ?>>
 					<p class="form-row form-row-wide trimvia-gp-field">
-						<label for="gp-surgery-name"><?php esc_html_e('Please enter your GP Surgery Name', 'woocommerce'); ?>&nbsp;<span class="required">*</span></label>
+						<label for="gp-surgery-name"><?php esc_html_e('GP surgery name', 'theme-woopm-child'); ?>&nbsp;<span class="required">*</span></label>
 						<input
 							type="text"
 							class="woocommerce-Input woocommerce-Input--text input-text"
 							name="gp_surgery_name"
 							id="gp-surgery-name"
-							placeholder="<?php esc_attr_e('Please enter GP Surgery Name', 'theme-woopm-child'); ?>"
+							placeholder="<?php esc_attr_e('e.g. High Street Medical Centre', 'theme-woopm-child'); ?>"
 							value="<?php echo !empty($_POST['gp_surgery_name']) ? esc_attr(wp_unslash($_POST['gp_surgery_name'])) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing ?>"
 							<?php echo ('current' === $selected_gp_mode) ? 'disabled' : ''; ?>
 						/>
 					</p>
 					<p class="form-row form-row-wide trimvia-gp-field">
-						<label for="gp-surgery-full-address"><?php esc_html_e('Please enter your GP Surgery full address & postcode', 'woocommerce'); ?>&nbsp;<span class="required">*</span></label>
+						<label for="gp-surgery-full-address"><?php esc_html_e('Full address & postcode', 'theme-woopm-child'); ?>&nbsp;<span class="required">*</span></label>
 						<input
 							type="text"
 							class="woocommerce-Input woocommerce-Input--text input-text"
 							id="gp-surgery-full-address"
 							data-trimvia-gp-address-input
-							placeholder="<?php esc_attr_e('Please enter your GP Surgery full address & postcode', 'theme-woopm-child'); ?>"
+							placeholder="<?php esc_attr_e('Street, town, and postcode', 'theme-woopm-child'); ?>"
 							value="<?php echo !empty($_POST['gp_surgery_address']) && 'manual' === $selected_gp_mode ? esc_attr(wp_unslash($_POST['gp_surgery_address'])) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing ?>"
 							<?php echo ('manual' === $selected_gp_mode) ? '' : 'disabled'; ?>
 						/>

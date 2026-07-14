@@ -70,9 +70,6 @@ if ($is_variable_product && !$is_product_out_of_stock) {
 	$stock_class = $is_product_out_of_stock ? 'single-product-stock single-product-stock--out' : 'single-product-stock';
 }
 $plines_class = ('plines' === $is_prescription_value) ? 'plines-products' : '';
-$consultation_url = function_exists('trimvia_get_consultation_url')
-	? trimvia_get_consultation_url($condition_slug)
-	: home_url('/consultation/');
 ?>
 <section class="page-hero page-hero--single">
 	<div class="hero-noise"></div>
@@ -88,8 +85,6 @@ $consultation_url = function_exists('trimvia_get_consultation_url')
 			<span>&rsaquo;</span>
 			<span><?php echo esc_html($product_title); ?></span>
 		</div>
-		<h1><?php echo esc_html($product_title); ?></h1>
-		<p><?php echo esc_html($hero_description); ?></p>
 	</div>
 </section>
 
@@ -224,21 +219,6 @@ $consultation_url = function_exists('trimvia_get_consultation_url')
 				<h4><?php esc_html_e('100% Secure', 'theme-woopm-child'); ?></h4>
 				<p><?php esc_html_e('Encrypted checkout and data protection', 'theme-woopm-child'); ?></p>
 			</div>
-		</div>
-	</div>
-</section>
-
-<section class="trimvia-single-product-cta-wrap">
-	<div class="trimvia-single-product-cta cta-sec">
-		<div class="orb orb-1"></div>
-		<div class="orb orb-2"></div>
-		<div class="trimvia-single-product-cta-inner">
-			<h2 class="stitle"><?php esc_html_e('Not sure which treatment is right for you?', 'theme-woopm-child'); ?></h2>
-			<p class="sdesc"><?php esc_html_e('Start a free consultation and our prescribers will recommend the best option based on your health profile.', 'theme-woopm-child'); ?></p>
-			<a href="<?php echo esc_url($consultation_url); ?>" class="btn-cta">
-				<?php esc_html_e('Start Free Consultation', 'theme-woopm-child'); ?>
-				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"></path></svg>
-			</a>
 		</div>
 	</div>
 </section>

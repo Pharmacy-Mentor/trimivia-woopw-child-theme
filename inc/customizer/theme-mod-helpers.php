@@ -74,13 +74,35 @@ function trimvia_parse_social_links($value)
 }
 
 /**
- * Email address from Pharmacy Mentor Options (Customizer → Options → Email Address).
+ * Email address used across Trimvia templates and [pharmacy_email].
+ *
+ * Checks Pharmacy Mentor Options first, then Theme Options footer email,
+ * then WooCommerce store email, then the WordPress admin email.
  *
  * @return string
  */
 function trimvia_get_pharmacy_theme_email()
 {
-	return sanitize_email((string) get_theme_mod('email', ''));
+	$candidates = array(
+		(string) get_theme_mod('email', ''),
+		(string) get_theme_mod('trimvia_footer_email', ''),
+	);
+
+	if (function_exists('get_option')) {
+		$candidates[] = (string) get_option('woocommerce_email_from_address', '');
+		$candidates[] = (string) get_option('woocommerce_store_email', '');
+	}
+
+	$candidates[] = (string) get_option('admin_email', '');
+
+	foreach ($candidates as $candidate) {
+		$email = sanitize_email(trim($candidate));
+		if ('' !== $email) {
+			return $email;
+		}
+	}
+
+	return '';
 }
 
 /**
@@ -93,6 +115,22 @@ function trimvia_pharmacy_email_shortcode()
 	return trimvia_get_pharmacy_theme_email();
 }
 add_shortcode('pharmacy_email', 'trimvia_pharmacy_email_shortcode');
+
+/**
+ * Render textarea or WYSIWYG copy that may contain theme shortcodes.
+ *
+ * @param string $value Raw field value.
+ * @return string
+ */
+function trimvia_render_text_with_shortcodes($value)
+{
+	$value = trim((string) $value);
+	if ('' === $value) {
+		return '';
+	}
+
+	return do_shortcode($value);
+}
 
 /**
  * Resolve a contact email field value (plain email or shortcode).
@@ -125,13 +163,29 @@ function trimvia_contact_email_acf_load_field($field)
 	if (is_array($field)) {
 		$field['type'] = 'text';
 		if (empty($field['instructions'])) {
-			$field['instructions'] = __('Enter an email address, or use [pharmacy_email] to pull the email from Appearance → Customize → Pharmacy Mentor Options → Email Address.', 'theme-woopm-child');
+			$field['instructions'] = __('Enter an email address, or use [pharmacy_email] to pull the email from Theme Options → Footer Email (or Pharmacy Mentor Options → Email Address).', 'theme-woopm-child');
 		}
 	}
 
 	return $field;
 }
 add_filter('acf/load_field/key=field_trimvia_contact_email', 'trimvia_contact_email_acf_load_field');
+
+/**
+ * Document shortcode support on service sidebar help card text.
+ *
+ * @param array<string,mixed> $field ACF field settings.
+ * @return array<string,mixed>
+ */
+function trimvia_service_help_text_acf_load_field($field)
+{
+	if (is_array($field) && empty($field['instructions'])) {
+		$field['instructions'] = __('Use [pharmacy_email] to pull the email from Theme Options → Footer Email (or Pharmacy Mentor Options → Email Address).', 'theme-woopm-child');
+	}
+
+	return $field;
+}
+add_filter('acf/load_field/key=field_trimvia_service_sidebar_help_text', 'trimvia_service_help_text_acf_load_field');
 
 /**
  * Available social icon choices for footer links.

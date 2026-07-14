@@ -52,8 +52,8 @@ $back_url = $posts_page_id > 0 ? get_permalink($posts_page_id) : home_url('/');
 	<div class="container">
 		<div class="trimvia-blog-single-head">
 			<a href="<?php echo esc_url($back_url); ?>" class="btn-shop">
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"></path></svg>
 				<?php esc_html_e('Back to all articles', 'theme-woopm-child'); ?>
-				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"></path></svg>
 			</a>
 		</div>
 

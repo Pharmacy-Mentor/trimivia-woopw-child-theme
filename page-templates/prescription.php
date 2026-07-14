@@ -81,7 +81,7 @@ get_header();
 		<div class="row align-items-center">
 			<div class="col-lg-6 col-md-12 mb-3">
 				<div class="featured-image">
-					<img src="<?php echo esc_url(has_post_thumbnail() ? get_the_post_thumbnail_url() : get_placeholder_image()); ?>" class="img img-fluid" alt="">
+					<img src="<?php echo esc_url(has_post_thumbnail() ? get_the_post_thumbnail_url(null, 'full') : get_placeholder_image()); ?>" class="img img-fluid" alt="">
 				</div>
 			</div>
 			<div class="col-lg-6 col-md-12 mb-3">
